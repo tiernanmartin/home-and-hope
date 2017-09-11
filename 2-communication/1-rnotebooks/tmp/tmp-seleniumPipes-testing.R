@@ -119,6 +119,12 @@ run_loop <- function(current_page, urls, remDr, n_pages){
 
 end_session <- function(remDr){remDr %>% deleteSession()}
 
+
+# NOTE:   this only pulls facilities
+#         with "a" in their name.
+#         Augment the script to rotate throught the vowels.
+
+
 nav_to_results(remDr)
 max_results(remDr)
 n_pages <- get_n_pages(remDr) 
