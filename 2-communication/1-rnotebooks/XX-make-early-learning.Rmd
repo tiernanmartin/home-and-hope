@@ -1,0 +1,15 @@
+--- 
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+always_allow_html: yes
+---
+
+```{r make-early-learning-setup}
+library(tidyverse)
+library(sf)
+```
+
+This is a placeholder notebook.
+
+The process for collecting, cleaning, and preparing the early learning facilities data will be documented here.

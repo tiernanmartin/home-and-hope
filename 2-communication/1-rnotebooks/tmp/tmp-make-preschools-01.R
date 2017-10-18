@@ -51,8 +51,7 @@ lower_tbl <-
   spread(1,2) %>% 
   summarise_all(miscgis::first_not_na) %>% 
   rename_all(snakecase::to_screaming_snake_case)%>% 
-  mutate(LICENSED_CAPACITY = as.integer(str_extract(LICENSED_CAPACITY,"[[:digit:]]*")))
-  type_convert()
+  mutate(LICENSED_CAPACITY = as.integer(str_extract(LICENSED_CAPACITY,"[[:digit:]]*"))) 
 
 
 
