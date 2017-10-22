@@ -146,6 +146,16 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li><p>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</p></li>
 <li><p>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</p></li>
 </ol>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris &lt;-<span class="st"> </span>
+<span class="st">  </span><span class="kw">str_split</span>(string, <span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">map</span>(<span class="op">~</span><span class="st"> </span><span class="kw">t</span>(<span class="kw">as.data.frame</span>(<span class="kw">str_split</span>(.x,<span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)))) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">as.data.frame</span>() <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">set_names</span>(<span class="kw">c</span>(<span class="st">&quot;CODE&quot;</span>,<span class="st">&quot;NAME&quot;</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">set_rownames</span>(<span class="ot">NULL</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">mutate_all</span>(as.character) <span class="op">%&gt;%</span><span class="st">  </span>
+<span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>))
+
+<span class="kw">str</span>(juris)</code></pre></div>
 <pre><code>## List of 39
 ##  $ : Named chr &quot;NULL&quot;
 ##   ..- attr(*, &quot;names&quot;)= chr &quot;NULL&quot;

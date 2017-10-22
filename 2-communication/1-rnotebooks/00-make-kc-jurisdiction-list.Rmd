@@ -9,7 +9,7 @@ output:
     code_folding: hide
 ---
 
-```{r make-juris-setup,warning=FALSE, echo=FALSE, message=FALSE}
+```{r make-juris-setup, warning=FALSE, echo=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(sf)
@@ -90,7 +90,7 @@ YP	Yarrow Point"
 
 2. Create `juris`: A named vector of the jurisdictions and their abbreviations.
 
-```{r make-juris-02, message=FALSE}
+```{r make-juris-02, echo = TRUE, message=FALSE}
 
 juris <- 
   str_split(string, pattern = "\n") %>% 
