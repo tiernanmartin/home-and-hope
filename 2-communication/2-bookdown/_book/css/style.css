@@ -15,3 +15,7 @@ pre code {
 hr {
   height: 1px !important;
 }
+h3 {
+  border-bottom: 1px solid #919699  ;
+    padding-bottom: 1px;
+}
