@@ -12,7 +12,7 @@ options("readr.num_columns" = 0)
 
 # Data Methods
 
-## 01 - King County Jurisdictions List
+## King County Jurisdictions List
 ```{r data-methods-juris}
 juris_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-jurisdiction-list.Rmd')
 ```

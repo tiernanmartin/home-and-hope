@@ -30,22 +30,22 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
-### Jusidiction Lookup List
+### Jusidiction Lookup List {-}
 
 <hr>
 
-####Description
+####Description {-}
 
 Jurisdiction planning to annex this area.
 
 <hr>
 
-####Link:
+####Link: {-}
   - [Source <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels) 
   
 <hr>
 
-####Processing Steps
+####Processing Steps {-}
 
 1. Create `string`: The contents of the JURISDICTION table copy-and-pasted in the R environment.
 
