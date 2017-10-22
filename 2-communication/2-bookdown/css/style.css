@@ -13,5 +13,5 @@ pre code {
   white-space: inherit;
 }
 hr {
-  height: 1px;
+  height: 1px !important;
 }
