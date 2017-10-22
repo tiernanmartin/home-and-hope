@@ -122,22 +122,17 @@ $(document).ready(function () {
 </div>
 
 
-<div id="jusidiction-lookup-list" class="section level3">
-<h3>Jusidiction Lookup List</h3>
-<hr>
-<div id="description" class="section level4">
+<div id="description" class="section level4 unnumbered">
 <h4>Description</h4>
 <p>Jurisdiction planning to annex this area.</p>
-<hr>
 </div>
-<div id="link" class="section level4">
+<div id="link" class="section level4 unnumbered">
 <h4>Link:</h4>
 <ul>
 <li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
 </ul>
-<hr>
 </div>
-<div id="processing-steps" class="section level4">
+<div id="processing-steps" class="section level4 unnumbered">
 <h4>Processing Steps</h4>
 <ol style="list-style-type: decimal">
 <li>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</li>
@@ -284,7 +279,6 @@ tmp &lt;- tempfile()
 write_rds(juris,tmp)
 
 drive_upload(tmp, folder,name = &quot;kc-jurisdictions.rds&quot;)</code></pre>
-</div>
 </div>
 
 

@@ -106,7 +106,7 @@ str(juris)
 
 3. Upload to Drive
 
-```{r make-juris-03, eval = FALSE}
+```{r make-juris-03, eval = FALSE, echo = TRUE}
 folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
 tmp <- tempfile()
