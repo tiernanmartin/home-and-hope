@@ -9,6 +9,10 @@ csl: planning-perspectives.csl
 always_allow_html: yes
 ---
 
+```{r index-setup, warning=FALSE, echo=FALSE, message=FALSE}
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
 # {-}
 
 ![](example-image.png)
@@ -16,7 +20,7 @@ always_allow_html: yes
 
 <br>
 
-**Note: this document is a work in progress**
+<i class="fa fa-exclamation-triangle"></i> **This document is a work in progress**
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce sagittis auctor enim. Quisque eros odio, convallis vel diam eu, vehicula gravida neque. Duis sapien ligula, laoreet a sollicitudin a, imperdiet vel est. Fusce tellus ex, mattis sit amet pretium vitae, fringilla a nulla. Vivamus hendrerit erat dignissim cursus sodales. Maecenas facilisis sem malesuada quam blandit, id imperdiet ante fermentum. Proin maximus eros mi, vitae pharetra nisl ultrices non. Nulla varius interdum neque nec aliquam. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec fermentum lacinia malesuada. Aliquam hendrerit sagittis nisi, quis convallis risus cursus sit amet. Sed sodales aliquet ante, sed tempor ipsum laoreet et.
 
