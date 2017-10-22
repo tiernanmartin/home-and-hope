@@ -30,20 +30,13 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
-### Jusidiction Lookup List {-}
-
-<hr>
-
 ####Description {-}
 
-Jurisdiction planning to annex this area.
-
-<hr>
+Jurisdiction planning to annex this area. 
 
 ####Link: {-}
   - [Source <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels) 
-  
-<hr>
+   
 
 ####Processing Steps {-}
 
