@@ -19,3 +19,7 @@ h4 {
   border-bottom: 1px solid #919699  !important;
     padding-bottom: 1px !important;
 }
+div.sourceCode {
+    overflow-x: auto;
+    line-height: 1;
+}
