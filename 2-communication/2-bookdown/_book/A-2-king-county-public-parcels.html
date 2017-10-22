@@ -30,8 +30,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   
   
-
-<link rel="next" href="A-data-methods.html">
+<link rel="prev" href="A-1-king-county-jurisdictions-list.html">
+<link rel="next" href="A-3-resources.html">
 <script src="libs/jquery-2.2.3/jquery.min.js"></script>
 <link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
 <link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
@@ -129,31 +129,72 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
           <div class="page-inner">
 
             <section class="normal" id="section-">
-<!--bookdown:title:end-->
-<!--bookdown:title:start-->
-<div id="section" class="section level1 unnumbered">
-<h1></h1>
-<div class="figure">
-<img src="example-image.png" />
-
+<div id="king-county-public-parcels" class="section level2">
+<h2><span class="header-section-number">A.2</span> King County Public Parcels</h2>
+<div id="description-1" class="section level4 unnumbered">
+<h4>Description</h4>
+<p><em>Description text here</em></p>
 </div>
-<p><br></p>
-<p><strong>Note: this document is a work in progress</strong></p>
-<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce sagittis auctor enim. Quisque eros odio, convallis vel diam eu, vehicula gravida neque. Duis sapien ligula, laoreet a sollicitudin a, imperdiet vel est. Fusce tellus ex, mattis sit amet pretium vitae, fringilla a nulla. Vivamus hendrerit erat dignissim cursus sodales. Maecenas facilisis sem malesuada quam blandit, id imperdiet ante fermentum. Proin maximus eros mi, vitae pharetra nisl ultrices non. Nulla varius interdum neque nec aliquam. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec fermentum lacinia malesuada. Aliquam hendrerit sagittis nisi, quis convallis risus cursus sit amet. Sed sodales aliquet ante, sed tempor ipsum laoreet et.</p>
-<p>Cras dictum sollicitudin augue, at tempus eros. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Aliquam vitae sapien vitae ligula aliquet feugiat ut nec libero. Sed iaculis diam ac lacinia porttitor. Duis at finibus nisl. Nulla imperdiet nisi at mauris consequat fringilla. Vestibulum vehicula tellus sed tellus semper pretium. Nam egestas laoreet neque, ac tristique libero mattis et. Nulla sollicitudin ligula id suscipit dignissim. Morbi metus magna, sagittis vitae diam quis, posuere euismod arcu. Sed sagittis lobortis suscipit. Quisque sit amet sodales sem. Nunc ultricies augue sapien, non dictum metus pharetra at. Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas.</p>
-<p>Integer sit amet ultricies orci, at feugiat ipsum. Ut sagittis eget mi ut sagittis. Nullam ullamcorper augue rhoncus lorem vehicula viverra. Quisque eget lacus nec nisl volutpat faucibus. Curabitur velit sapien, eleifend ut accumsan a, vestibulum et lorem. Nullam vulputate turpis quis nunc lacinia, vitae finibus diam bibendum. Ut quis iaculis nulla. Pellentesque tincidunt accumsan convallis. Duis vel tempus elit. Pellentesque nisl risus, tempus vitae efficitur eget, pharetra sit amet mi. Maecenas eu metus lacus. Curabitur blandit ultrices urna nec faucibus. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam interdum, elit malesuada gravida vehicula, urna ligula varius ipsum, sit amet tempor leo velit vel odio. Sed tincidunt mollis magna ullamcorper consequat.</p>
-
+<div id="link-1" class="section level4 unnumbered">
+<h4>Link:</h4>
+<ul>
+<li><a href="http://www5.kingcounty.gov/gisdataportal/">Source <i class="fa fa-external-link"></i></a></li>
+<li><a href="ftp://ftp.kingcounty.gov/gis-web/GISData/public_parcels_SHP.zip">Data <i class="fa fa-external-link"></i></a></li>
+<li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Metadata <i class="fa fa-external-link"></i></a></li>
+</ul>
 </div>
+<div id="processing-steps-1" class="section level4 unnumbered">
+<h4>Processing Steps</h4>
+<ol style="list-style-type: decimal">
+<li>Create <code>pu_ready</code>: A lookup list of present use categories and their 2-character codes</li>
+</ol>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pu_fp &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/2-external/EXTR_LookUp.csv&quot;</span>)
 
+<span class="kw">maybe_make</span>(pu_fp,{
+  dr_id &lt;-<span class="st"> &quot;0B5Pp4V6eCkhrN212NEFOeVV6T2s&quot;</span>
+  
+  d &lt;-<span class="st"> </span><span class="kw">drive_get</span>(<span class="dt">id =</span> dr_id)
+  
+  tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
+  
+  d <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">drive_download</span>(<span class="dt">path =</span> tmp)
+  
+  unzip_dir &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/2-external&quot;</span>)
+  
+  <span class="kw">unzip</span>(<span class="dt">zipfile =</span> tmp,<span class="dt">exdir =</span> unzip_dir)
+})
 
+pu_ready &lt;-<span class="st"> </span>
+<span class="st">  </span><span class="kw">read_csv</span>(pu_fp) <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">rename_all</span>(to_screaming_snake_case) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">filter</span>(LU_TYPE <span class="op">%in%</span><span class="st"> </span><span class="dv">102</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">select</span>(LU_DESCRIPTION, LU_ITEM) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span>purrr<span class="op">::</span><span class="kw">set_names</span>(..<span class="dv">1</span>,..<span class="dv">2</span>))</code></pre></div>
+<ol start="2" style="list-style-type: decimal">
+<li>Load <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
+</ol>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris_fp &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/3-interim/kc-jurisdictions.rds&quot;</span>)
 
+<span class="kw">maybe_make</span>(juris_fp, {
+  
+  dr_id &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrTU9Kd3hVVVkyZjQ&quot;</span>)
+  
+  d &lt;-<span class="st"> </span><span class="kw">drive_get</span>(dr_id)
+  
+  d <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">drive_download</span>(<span class="dt">path =</span> juris_fp) 
+  
+})
+
+juris &lt;-<span class="st"> </span><span class="kw">read_rds</span>(juris_fp)</code></pre></div>
+</div>
+</div>
             </section>
 
           </div>
         </div>
       </div>
-
-<a href="A-data-methods.html" class="navigation navigation-next navigation-unique" aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+<a href="A-1-king-county-jurisdictions-list.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="A-3-resources.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
     </div>
   </div>
 <script src="libs/gitbook-2.6.7/js/app.min.js"></script>
