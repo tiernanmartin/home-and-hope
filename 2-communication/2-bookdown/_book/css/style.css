@@ -8,6 +8,8 @@ p code {
 pre {
   word-break: normal;
   word-wrap: normal;
+  overflow-y: scroll;
+  max-height: 50vh;
 }
 pre code {
   white-space: inherit;
@@ -22,4 +24,8 @@ h4 {
 div.sourceCode {
     overflow-x: auto;
     line-height: 1;
+    overflow-y: visible;
+}
+pre.sourceCode {
+    height: fit-content !important;
 }
