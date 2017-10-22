@@ -28,28 +28,21 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
-### Public Parcels dataset
-
-<hr>
-
-####Description
+####Description {-}
 
 _Description text here_
 
-<hr>
 
-####Links:
+####Link: {-}
   - [Source <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/gisdataportal/)
   - [Data <i class="fa fa-external-link"></i>](ftp://ftp.kingcounty.gov/gis-web/GISData/public_parcels_SHP.zip)
   - [Metadata <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels)
-  
-<hr>
 
-####Processing Steps
+####Processing Steps {-}
 
 1. Create `pu_ready`: A lookup list of present use categories and their 2-character codes
 
-```{r make-public-parcels-presuse, message=FALSE}
+```{r make-public-parcels-presuse, echo = TRUE, message=FALSE}
 
 pu_fp <- root_file("./1-data/2-external/EXTR_LookUp.csv")
 
@@ -79,4 +72,23 @@ pu_ready <-
 
 2. Load `juris`: A named vector of the jurisdictions and their abbreviations.
 
-3. Do the rest of the things!
+```{r make-public-parcels-juris, echo = TRUE}
+
+juris_fp <- root_file("./1-data/3-interim/kc-jurisdictions.rds")
+
+maybe_make(juris_fp, {
+  
+  dr_id <- as_id("0B5Pp4V6eCkhrTU9Kd3hVVVkyZjQ")
+  
+  d <- drive_get(dr_id)
+  
+  d %>% drive_download(path = juris_fp) 
+  
+})
+
+juris <- read_rds(juris_fp)
+
+
+```
+
+
