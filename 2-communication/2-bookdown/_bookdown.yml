@@ -1,0 +1,8 @@
+rmd_files: ["index.Rmd", "data-methods.Rmd"]
+book_filename: bookdown
+output_dir: _book
+clean: [packages.bib, bookdown.bbl]
+language:
+  label:
+    fig: "FIGURE "
+    tab: "TABLE "

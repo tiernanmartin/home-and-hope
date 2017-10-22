@@ -1,0 +1,23 @@
+# (APPENDIX) Appendices {-}
+
+```{r data-methods-setup, echo=FALSE, warning=FALSE, message=FALSE}
+library(knitr)
+library(rprojroot)
+library(tidyverse)
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+options("readr.num_columns" = 0)
+```
+
+# Data Methods
+
+## 01 - King County Jurisdictions List
+```{r data-methods-juris}
+juris_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-jurisdiction-list.Rmd')
+```
+
+`r knit_child(juris_fp)`
+
+## Resources
+_This is a work in progress document - changes will be made._

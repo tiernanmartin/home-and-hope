@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html >
+
+<head>
+
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title></title>
+  <meta name="description" content="">
+  <meta name="generator" content="bookdown 0.5 and GitBook 2.6.7">
+
+  <meta property="og:title" content="" />
+  <meta property="og:type" content="book" />
+  
+  
+  
+  
+
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="" />
+  
+  
+  
+
+
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  
+  
+<link rel="prev" href="A-data-methods.html">
+<link rel="next" href="A-2-resources.html">
+<script src="libs/jquery-2.2.3/jquery.min.js"></script>
+<link href="libs/gitbook-2.6.7/css/style.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-bookdown.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-highlight.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-search.css" rel="stylesheet" />
+<link href="libs/gitbook-2.6.7/css/plugin-fontsettings.css" rel="stylesheet" />
+
+
+
+
+
+
+
+<link href="libs/pagedtable-1.1/css/pagedtable.css" rel="stylesheet" />
+<script src="libs/pagedtable-1.1/js/pagedtable.js"></script>
+<link href="libs/font-awesome-4.5.0/css/font-awesome.min.css" rel="stylesheet" />
+
+
+
+<link rel="stylesheet" href="css/style.css" type="text/css" />
+<link rel="stylesheet" href="css/bookdownleaflet.css" type="text/css" />
+<link rel="stylesheet" href="css/bookdown-htmlTable.css" type="text/css" />
+<link rel="stylesheet" href="css/bookdown-pagedTable.css" type="text/css" />
+<link rel="stylesheet" href="css/bookdown-general.css" type="text/css" />
+</head>
+
+<body>
+
+
+
+  <div class="book without-animation with-summary font-size-2 font-family-1" data-basepath=".">
+
+    <div class="book-summary">
+      <nav role="navigation">
+
+<ul class="summary">
+<li><a href="index.html#section"></a></li>
+<li class="appendix"><span><b>Appendices</b></span></li>
+<li class="chapter" data-level="A" data-path="A-data-methods.html"><a href="A-data-methods.html"><i class="fa fa-check"></i><b>A</b> Data Methods</a><ul>
+<li class="chapter" data-level="A.1" data-path="A-1-king-county-jurisdictions-list.html"><a href="A-1-king-county-jurisdictions-list.html"><i class="fa fa-check"></i><b>A.1</b> 01 - King County Jurisdictions List</a><ul>
+<li class="chapter" data-level="A.1.1" data-path="A-1-king-county-jurisdictions-list.html"><a href="A-1-king-county-jurisdictions-list.html#jusidiction-lookup-list"><i class="fa fa-check"></i><b>A.1.1</b> Jusidiction Lookup List</a></li>
+</ul></li>
+<li class="chapter" data-level="A.2" data-path="A-2-resources.html"><a href="A-2-resources.html"><i class="fa fa-check"></i><b>A.2</b> Resources</a></li>
+</ul></li>
+</ul>
+
+      </nav>
+    </div>
+
+    <div class="book-body">
+      <div class="body-inner">
+        <div class="book-header" role="navigation">
+          <h1>
+            <i class="fa fa-circle-o-notch fa-spin"></i><a href="./"></a>
+          </h1>
+        </div>
+
+        <div class="page-wrapper" tabindex="-1" role="main">
+          <div class="page-inner">
+
+            <section class="normal" id="section-">
+<div id="king-county-jurisdictions-list" class="section level2">
+<h2><span class="header-section-number">A.1</span> 01 - King County Jurisdictions List</h2>
+<div id="jusidiction-lookup-list" class="section level3">
+<h3><span class="header-section-number">A.1.1</span> Jusidiction Lookup List</h3>
+<hr>
+<div id="description" class="section level4">
+<h4><span class="header-section-number">A.1.1.1</span> Description</h4>
+<p>Jurisdiction planning to annex this area.</p>
+<hr>
+</div>
+<div id="link" class="section level4">
+<h4><span class="header-section-number">A.1.1.2</span> Link:</h4>
+<ul>
+<li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
+</ul>
+<hr>
+</div>
+<div id="processing-steps" class="section level4">
+<h4><span class="header-section-number">A.1.1.3</span> Processing Steps</h4>
+<ol style="list-style-type: decimal">
+<li><p>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</p></li>
+<li><p>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</p></li>
+</ol>
+<pre><code>## List of 39
+##  $ : Named chr &quot;NULL&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;NULL&quot;
+##  $ : Named chr &quot;Algona&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;AL&quot;
+##  $ : Named chr &quot;Auburn&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;AU&quot;
+##  $ : Named chr &quot;Black Diamond&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;BD&quot;
+##  $ : Named chr &quot;Bellevue&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;BE&quot;
+##  $ : Named chr &quot;Bothell&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;BO&quot;
+##  $ : Named chr &quot;Burien&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;BU&quot;
+##  $ : Named chr &quot;Carnation&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;CA&quot;
+##  $ : Named chr &quot;Clyde Hill&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;CH&quot;
+##  $ : Named chr &quot;Covington&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;CO&quot;
+##  $ : Named chr &quot;Des Moines&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;DM&quot;
+##  $ : Named chr &quot;Duvall&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;DU&quot;
+##  $ : Named chr &quot;Enumclaw&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;EN&quot;
+##  $ : Named chr &quot;Federal Way&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;FW&quot;
+##  $ : Named chr &quot;Hunts Point&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;HP&quot;
+##  $ : Named chr &quot;Issaquah&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;IS&quot;
+##  $ : Named chr &quot;Kent&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;KE&quot;
+##  $ : Named chr &quot;Kirkland&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;KI&quot;
+##  $ : Named chr &quot;Kenmore&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;KM&quot;
+##  $ : Named chr &quot;Lake Forest Park&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;LF&quot;
+##  $ : Named chr &quot;Medina&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;ME&quot;
+##  $ : Named chr &quot;Mercer Island&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;MI&quot;
+##  $ : Named chr &quot;Milton&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;MT&quot;
+##  $ : Named chr &quot;Maple Valley&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;MV&quot;
+##  $ : Named chr &quot;North Bend&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;NB&quot;
+##  $ : Named chr &quot;Newcastle&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;NC&quot;
+##  $ : Named chr &quot;Normandy Park&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;NP&quot;
+##  $ : Named chr &quot;Pacific&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;PA&quot;
+##  $ : Named chr &quot;Redmond&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;RM&quot;
+##  $ : Named chr &quot;Renton&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;RN&quot;
+##  $ : Named chr &quot;Seattle&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;SE&quot;
+##  $ : Named chr &quot;Shoreline&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;SH&quot;
+##  $ : Named chr &quot;Skykomish&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;SK&quot;
+##  $ : Named chr &quot;Sammamish&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;SM&quot;
+##  $ : Named chr &quot;Snoqualmie&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;SN&quot;
+##  $ : Named chr &quot;SeaTac&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;ST&quot;
+##  $ : Named chr &quot;Tukwila&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;TU&quot;
+##  $ : Named chr &quot;Woodinville&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;WO&quot;
+##  $ : Named chr &quot;Yarrow Point&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;YP&quot;</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li>Upload to Drive</li>
+</ol>
+</div>
+</div>
+</div>
+            </section>
+
+          </div>
+        </div>
+      </div>
+<a href="A-data-methods.html" class="navigation navigation-prev " aria-label="Previous page"><i class="fa fa-angle-left"></i></a>
+<a href="A-2-resources.html" class="navigation navigation-next " aria-label="Next page"><i class="fa fa-angle-right"></i></a>
+    </div>
+  </div>
+<script src="libs/gitbook-2.6.7/js/app.min.js"></script>
+<script src="libs/gitbook-2.6.7/js/lunr.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-search.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-sharing.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-fontsettings.js"></script>
+<script src="libs/gitbook-2.6.7/js/plugin-bookdown.js"></script>
+<script src="libs/gitbook-2.6.7/js/jquery.highlight.js"></script>
+<script>
+gitbook.require(["gitbook"], function(gitbook) {
+gitbook.start({
+"sharing": {
+"github": false,
+"facebook": true,
+"twitter": true,
+"google": false,
+"weibo": false,
+"instapper": false,
+"vk": false,
+"all": ["facebook", "google", "twitter", "weibo", "instapaper"]
+},
+"fontsettings": {
+"theme": "white",
+"family": "sans",
+"size": 2
+},
+"edit": {
+"link": null,
+"text": null
+},
+"download": null,
+"toc": {
+"collapse": "subsection"
+}
+});
+});
+</script>
+
+</body>
+
+<!-- </html> -->

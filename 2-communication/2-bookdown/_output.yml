@@ -1,0 +1,6 @@
+bookdown::gitbook:
+  css: [css/style.css, css/bookdownleaflet.css, css/bookdown-htmlTable.css, css/bookdown-pagedTable.css, css/bookdown-general.css]
+  split_by: section+number
+  config:
+    toc:
+      collapse: subsection

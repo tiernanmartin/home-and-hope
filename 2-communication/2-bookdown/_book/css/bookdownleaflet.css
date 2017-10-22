@@ -1,0 +1,555 @@
+
+/* required styles */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-map-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-icon,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-shadow,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile-container,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-overlay-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-shadow-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-overlay-pane svg,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-box,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-image-layer,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-layer {
+	position: absolute;
+	left: 0;
+	top: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container {
+	overflow: hidden;
+	-ms-touch-action: none;
+	touch-action: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-icon,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-shadow {
+	-webkit-user-select: none;
+	   -moz-user-select: none;
+	        user-select: none;
+	-webkit-user-drag: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-icon,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-shadow {
+	display: block;
+	}
+/* map is broken in FF if you have max-width: 100% on tiles */
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container img {
+	max-width: none !important;
+	}
+/* stupid Android 2 doesn't understand "max-width: none" properly */
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container img.leaflet-image-layer {
+	max-width: 15000px !important;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile {
+	filter: inherit;
+	visibility: hidden;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile-loaded {
+	visibility: inherit;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-box {
+	width: 0;
+	height: 0;
+	}
+/* workaround for https://bugzilla.mozilla.org/show_bug.cgi?id=888319 */
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-overlay-pane svg {
+	-moz-user-select: none;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-tile-pane    { z-index: 2; }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-objects-pane { z-index: 3; }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-overlay-pane { z-index: 4; }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-shadow-pane  { z-index: 5; }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-marker-pane  { z-index: 6; }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-pane   { z-index: 7; }
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-vml-shape {
+	width: 1px;
+	height: 1px;
+	}
+.lvml {
+	behavior: url(#default#VML);
+	display: inline-block;
+	position: absolute;
+	}
+
+
+/* control positioning */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control {
+	position: relative;
+	z-index: 7;
+	pointer-events: auto;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-top,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bottom {
+	position: absolute;
+	z-index: 1000;
+	pointer-events: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-top {
+	top: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-right {
+	right: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bottom {
+	bottom: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-left {
+	left: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control {
+	float: left;
+	clear: both;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-right .leaflet-control {
+	float: right;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-top .leaflet-control {
+	margin-top: 10px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bottom .leaflet-control {
+	margin-bottom: 10px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-left .leaflet-control {
+	margin-left: 10px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-right .leaflet-control {
+	margin-right: 10px;
+	}
+
+
+/* zoom and fade animations */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-fade-anim .leaflet-tile,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-fade-anim .leaflet-popup {
+	opacity: 0;
+	-webkit-transition: opacity 0.2s linear;
+	   -moz-transition: opacity 0.2s linear;
+	     -o-transition: opacity 0.2s linear;
+	        transition: opacity 0.2s linear;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-fade-anim .leaflet-tile-loaded,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-fade-anim .leaflet-map-pane .leaflet-popup {
+	opacity: 1;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-anim .leaflet-zoom-animated {
+	-webkit-transition: -webkit-transform 0.25s cubic-bezier(0,0,0.25,1);
+	   -moz-transition:    -moz-transform 0.25s cubic-bezier(0,0,0.25,1);
+	     -o-transition:      -o-transform 0.25s cubic-bezier(0,0,0.25,1);
+	        transition:         transform 0.25s cubic-bezier(0,0,0.25,1);
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-anim .leaflet-tile,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-pan-anim .leaflet-tile,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touching .leaflet-zoom-animated {
+	-webkit-transition: none;
+	   -moz-transition: none;
+	     -o-transition: none;
+	        transition: none;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-anim .leaflet-zoom-hide {
+	visibility: hidden;
+	}
+
+
+/* cursors */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-clickable {
+	cursor: pointer;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container {
+	cursor: -webkit-grab;
+	cursor:    -moz-grab;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-pane,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control {
+	cursor: auto;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-dragging .leaflet-container,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-dragging .leaflet-clickable {
+	cursor: move;
+	cursor: -webkit-grabbing;
+	cursor:    -moz-grabbing;
+	}
+
+
+/* visual tweaks */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container {
+	background: #ddd;
+	outline: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container a {
+	color: #0078A8;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container a.leaflet-active {
+	outline: 2px solid orange;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-zoom-box {
+	border: 2px dotted #38f;
+	background: rgba(255,255,255,0.5);
+	}
+
+
+/* general typography */
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container {
+	font: 12px/1.5 "Helvetica Neue", Arial, Helvetica, sans-serif;
+	}
+
+
+/* general toolbar styles */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.65);
+	border-radius: 4px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a:hover {
+	background-color: #fff;
+	border-bottom: 1px solid #ccc;
+	width: 26px;
+	height: 26px;
+	line-height: 26px;
+	display: block;
+	text-align: center;
+	text-decoration: none;
+	color: black;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-toggle {
+	background-position: 50% 50%;
+	background-repeat: no-repeat;
+	display: block;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a:hover {
+	background-color: #f4f4f4;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a:first-child {
+	border-top-left-radius: 4px;
+	border-top-right-radius: 4px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a:last-child {
+	border-bottom-left-radius: 4px;
+	border-bottom-right-radius: 4px;
+	border-bottom: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bar a.leaflet-disabled {
+	cursor: default;
+	background-color: #f4f4f4;
+	color: #bbb;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-bar a {
+	width: 30px;
+	height: 30px;
+	line-height: 30px;
+	}
+
+
+/* zoom control */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-zoom-in,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-zoom-out {
+	font: bold 18px 'Lucida Console', Monaco, monospace;
+	text-indent: 1px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-zoom-out {
+	font-size: 20px;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-zoom-in {
+	font-size: 22px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-zoom-out {
+	font-size: 24px;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-fullscreen a {
+  background:#fff url("../_book/libs/fullscreen-1.0.1/fullscreen.png") no-repeat 0 0;
+  background-size:26px 52px;
+  }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-fullscreen a {
+    background-position: 2px 2px;
+    }
+ .book .book-body .page-wrapper .page-inner section.normal .leaflet-fullscreen-on .leaflet-control-fullscreen a {
+    background-position:0 -26px;
+    }
+ .book .book-body .page-wrapper .page-inner section.normal .leaflet-touch.leaflet-fullscreen-on .leaflet-control-fullscreen a {
+    background-position: 2px -24px;
+    }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container:-webkit-full-screen {
+  width:100%!important;
+  height:100%!important;
+  }
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container.leaflet-fullscreen-on {
+  width:100%!important;
+  height:100%!important;
+  }
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-pseudo-fullscreen {
+  position:fixed!important;
+  width:100%!important;
+  height:100%!important;
+  top:0!important;
+  left:0!important;
+  z-index:99999;
+  }
+
+.book .book-body .page-wrapper .page-inner section.normal @media
+  (-webkit-min-device-pixel-ratio:2),
+  (min-resolution:192dpi) {
+    .leaflet-control-fullscreen a {
+      background-image:url("../_book/libs/fullscreen-1.0.1/fullscreen@2x.png");
+    }
+  }
+
+
+
+
+
+/* layers control */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers {
+	box-shadow: 0 1px 5px rgba(0,0,0,0.4);
+	background: #fff;
+	border-radius: 5px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-toggle {
+	background-image: url(images/layers.png);
+	width: 36px;
+	height: 36px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-retina .leaflet-control-layers-toggle {
+	background-image: url(images/layers-2x.png);
+	background-size: 26px 26px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-layers-toggle {
+	width: 44px;
+	height: 44px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers .leaflet-control-layers-list,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-expanded .leaflet-control-layers-toggle {
+	display: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-expanded .leaflet-control-layers-list {
+	display: block;
+	position: relative;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-expanded {
+	padding: 6px 10px 6px 6px;
+	color: #333;
+	background: #fff;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-selector {
+	margin-top: 2px;
+	position: relative;
+	top: 1px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers label {
+	display: block;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-layers-separator {
+	height: 0;
+	border-top: 1px solid #ddd;
+	margin: 5px -10px 5px -6px;
+	}
+
+
+/* attribution and scale controls */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container .leaflet-control-attribution {
+	background: #fff;
+	background: rgba(255, 255, 255, 0.7);
+	margin: 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-attribution,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-scale-line {
+	padding: 0 5px;
+	color: #333;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-attribution a {
+	text-decoration: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-attribution a:hover {
+	text-decoration: underline;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container .leaflet-control-attribution,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container .leaflet-control-scale {
+	font-size: 11px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-left .leaflet-control-scale {
+	margin-left: 5px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-bottom .leaflet-control-scale {
+	margin-bottom: 5px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-scale-line {
+	border: 2px solid #777;
+	border-top: none;
+	line-height: 1.1;
+	padding: 2px 5px 1px;
+	font-size: 11px;
+	white-space: nowrap;
+	overflow: hidden;
+	-moz-box-sizing: content-box;
+	     box-sizing: content-box;
+
+	background: #fff;
+	background: rgba(255, 255, 255, 0.5);
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-scale-line:not(:first-child) {
+	border-top: 2px solid #777;
+	border-bottom: none;
+	margin-top: -2px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-control-scale-line:not(:first-child):not(:last-child) {
+	border-bottom: 2px solid #777;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-attribution,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-layers,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-bar {
+	box-shadow: none;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-control-layers,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-touch .leaflet-bar {
+	border: 2px solid rgba(0,0,0,0.2);
+	background-clip: padding-box;
+	}
+
+
+/* popup */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup {
+	position: absolute;
+	text-align: center;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-content-wrapper {
+	padding: 1px;
+	text-align: left;
+	border-radius: 12px;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-content {
+	margin: 13px 19px;
+	line-height: 1.4;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-content p {
+	margin: 18px 0;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-tip-container {
+	margin: 0 auto;
+	width: 40px;
+	height: 20px;
+	position: relative;
+	overflow: hidden;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-tip {
+	width: 17px;
+	height: 17px;
+	padding: 1px;
+
+	margin: -10px auto 0;
+
+	-webkit-transform: rotate(45deg);
+	   -moz-transform: rotate(45deg);
+	    -ms-transform: rotate(45deg);
+	     -o-transform: rotate(45deg);
+	        transform: rotate(45deg);
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-content-wrapper,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-tip {
+	background: white;
+
+	box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container a.leaflet-popup-close-button {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 4px 4px 0 0;
+	text-align: center;
+	width: 18px;
+	height: 14px;
+	font: 16px/14px Tahoma, Verdana, sans-serif;
+	color: #c3c3c3;
+	text-decoration: none;
+	font-weight: bold;
+	background: transparent;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-container a.leaflet-popup-close-button:hover {
+	color: #999;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-popup-scrolled {
+	overflow: auto;
+	border-bottom: 1px solid #ddd;
+	border-top: 1px solid #ddd;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-popup-content-wrapper {
+	zoom: 1;
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-popup-tip {
+	width: 24px;
+	margin: 0 auto;
+
+	-ms-filter: "progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)";
+	filter: progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678);
+	}
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-popup-tip-container {
+	margin-top: -1px;
+	}
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-control-zoom,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-control-layers,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-popup-content-wrapper,
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-oldie .leaflet-popup-tip {
+	border: 1px solid #999;
+	}
+
+
+/* div icon */
+
+.book .book-body .page-wrapper .page-inner section.normal .leaflet-div-icon {
+	background: #fff;
+	border: 1px solid #666;
+	}
+
+/* Work around CSS properties introduced on img by bootstrap */
+.book .book-body .page-wrapper .page-inner section.normal img.leaflet-tile {
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  border: none;
+}
+.book .book-body .page-wrapper .page-inner section.normal .info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.book .book-body .page-wrapper .page-inner section.normal .legend {
+    line-height: 18px;
+    color: #555;
+}
+.book .book-body .page-wrapper .page-inner section.normal .legend svg text {
+    fill: #555;
+}
+.book .book-body .page-wrapper .page-inner section.normal .legend svg line {
+    stroke: #555;
+}
+.book .book-body .page-wrapper .page-inner section.normal .legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
