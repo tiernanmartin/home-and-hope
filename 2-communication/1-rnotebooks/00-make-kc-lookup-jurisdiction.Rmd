@@ -44,7 +44,7 @@ Jurisdiction planning to annex this area.
 
 1. Create `string`: The contents of the JURISDICTION table copy-and-pasted in the R environment.
 
-```{rmake-kc-lookup-juris-01, message=FALSE}
+```{r make-kc-lookup-juris-01, message=FALSE}
 
 string <- 
 "NULL	NULL
@@ -92,7 +92,7 @@ YP	Yarrow Point"
 
 2. Create `juris`: A named vector of the jurisdictions and their abbreviations.
 
-```{rmake-kc-lookup-juris-02, echo = TRUE, message=FALSE}
+```{r make-kc-lookup-juris-02, echo = TRUE, message=FALSE}
 
 juris <- 
   str_split(string, pattern = "\n") %>% 
