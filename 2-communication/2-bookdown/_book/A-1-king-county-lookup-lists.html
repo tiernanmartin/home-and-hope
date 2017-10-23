@@ -185,18 +185,67 @@ The named list objects created in this section are used to de-code the various c
 <h4>Description</h4>
 <p>Jurisdiction planning to annex this area.</p>
 </div>
-<div id="link" class="section level4 unnumbered">
-<h4>Link:</h4>
+<div id="links" class="section level4 unnumbered">
+<h4>Links</h4>
 <ul>
 <li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
 </ul>
 </div>
 <div id="processing-steps" class="section level4 unnumbered">
 <h4>Processing Steps</h4>
+<div id="summary" class="section level5 unnumbered">
+<h5>Summary</h5>
 <ol style="list-style-type: decimal">
-<li><p>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</p></li>
-<li><p>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</p></li>
+<li>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</li>
+<li>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
+<li>Upload to Drive</li>
 </ol>
+</div>
+<div id="step-1" class="section level5 unnumbered">
+<h5>Step 1</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> </span>
+<span class="st">&quot;NULL   NULL</span>
+<span class="st">AL  Algona</span>
+<span class="st">AU  Auburn</span>
+<span class="st">BD  Black Diamond</span>
+<span class="st">BE  Bellevue</span>
+<span class="st">BO  Bothell</span>
+<span class="st">BU  Burien</span>
+<span class="st">CA  Carnation</span>
+<span class="st">CH  Clyde Hill</span>
+<span class="st">CO  Covington</span>
+<span class="st">DM  Des Moines</span>
+<span class="st">DU  Duvall</span>
+<span class="st">EN  Enumclaw</span>
+<span class="st">FW  Federal Way</span>
+<span class="st">HP  Hunts Point</span>
+<span class="st">IS  Issaquah</span>
+<span class="st">KE  Kent</span>
+<span class="st">KI  Kirkland</span>
+<span class="st">KM  Kenmore</span>
+<span class="st">LF  Lake Forest Park</span>
+<span class="st">ME  Medina</span>
+<span class="st">MI  Mercer Island</span>
+<span class="st">MT  Milton</span>
+<span class="st">MV  Maple Valley</span>
+<span class="st">NB  North Bend</span>
+<span class="st">NC  Newcastle</span>
+<span class="st">NP  Normandy Park</span>
+<span class="st">PA  Pacific</span>
+<span class="st">RM  Redmond</span>
+<span class="st">RN  Renton</span>
+<span class="st">SE  Seattle</span>
+<span class="st">SH  Shoreline</span>
+<span class="st">SK  Skykomish</span>
+<span class="st">SM  Sammamish</span>
+<span class="st">SN  Snoqualmie</span>
+<span class="st">ST  SeaTac</span>
+<span class="st">TU  Tukwila</span>
+<span class="st">WO  Woodinville</span>
+<span class="st">YP  Yarrow Point&quot;</span></code></pre></div>
+</div>
+<div id="step-2" class="section level5 unnumbered">
+<h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris &lt;-<span class="st"> </span>
 <span class="st">  </span><span class="kw">str_split</span>(string, <span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">  </span><span class="kw">map</span>(<span class="op">~</span><span class="st"> </span><span class="kw">t</span>(<span class="kw">as.data.frame</span>(<span class="kw">str_split</span>(.x,<span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>)))) <span class="op">%&gt;%</span><span class="st"> </span>
@@ -286,9 +335,9 @@ The named list objects created in this section are used to de-code the various c
 ##   ..- attr(*, &quot;names&quot;)= chr &quot;WO&quot;
 ##  $ : Named chr &quot;Yarrow Point&quot;
 ##   ..- attr(*, &quot;names&quot;)= chr &quot;YP&quot;</code></pre>
-<ol start="3" style="list-style-type: decimal">
-<li>Upload to Drive</li>
-</ol>
+</div>
+<div id="step-3" class="section level5 unnumbered">
+<h5>Step 3</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
 
 tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
@@ -300,13 +349,14 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <hr>
 </div>
 </div>
+</div>
 <div id="king-county-present-use-categories" class="section level3">
 <h3><span class="header-section-number">A.1.2</span> King County Present Use Categories</h3>
 <div id="description-1" class="section level4 unnumbered">
 <h4>Description</h4>
 <p><em>Description text here</em></p>
 </div>
-<div id="links" class="section level4 unnumbered">
+<div id="links-1" class="section level4 unnumbered">
 <h4>Links:</h4>
 <ul>
 <li><a href="http://www5.kingcounty.gov/gisdataportal/">Source <i class="fa fa-external-link"></i></a></li>
@@ -316,9 +366,16 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 </div>
 <div id="processing-steps-1" class="section level4 unnumbered">
 <h4>Processing Steps</h4>
+<div id="summary-1" class="section level5 unnumbered">
+<h5>Summary</h5>
 <ol style="list-style-type: decimal">
 <li>Create <code>pu_ready</code>: A lookup list of present use categories and their 2-character codes</li>
+<li>Load <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
+<li><em>Insert third step</em></li>
 </ol>
+</div>
+<div id="step-1-1" class="section level5 unnumbered">
+<h5>Step 1</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">pu_fp &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/2-external/EXTR_LookUp.csv&quot;</span>)
 
 <span class="kw">maybe_make</span>(pu_fp,{
@@ -341,9 +398,9 @@ pu_ready &lt;-<span class="st"> </span>
 <span class="st">  </span><span class="kw">filter</span>(LU_TYPE <span class="op">%in%</span><span class="st"> </span><span class="dv">102</span>) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">  </span><span class="kw">select</span>(LU_DESCRIPTION, LU_ITEM) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span>purrr<span class="op">::</span><span class="kw">set_names</span>(..<span class="dv">1</span>,..<span class="dv">2</span>))</code></pre></div>
-<ol start="2" style="list-style-type: decimal">
-<li>Load <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
-</ol>
+</div>
+<div id="step-2-1" class="section level5 unnumbered">
+<h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris_fp &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/3-interim/kc-jurisdictions.rds&quot;</span>)
 
 <span class="kw">maybe_make</span>(juris_fp, {
@@ -357,9 +414,7 @@ pu_ready &lt;-<span class="st"> </span>
 })
 
 juris &lt;-<span class="st"> </span><span class="kw">read_rds</span>(juris_fp)</code></pre></div>
-<ol start="3" style="list-style-type: decimal">
-<li></li>
-</ol>
+</div>
 </div>
 </div>
 </div>

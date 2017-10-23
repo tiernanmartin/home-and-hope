@@ -32,19 +32,24 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 ### King County Jurisdictions
 
-####Description {-}
+#### Description {-}
 
 Jurisdiction planning to annex this area. 
 
-####Link: {-}
+#### Links {-}
   - [Source <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels) 
    
 
-####Processing Steps {-}
+#### Processing Steps {-}
+##### Summary {-}
 
-1. Create `string`: The contents of the JURISDICTION table copy-and-pasted in the R environment.
+  1. Create `string`: The contents of the JURISDICTION table copy-and-pasted in the R environment.
+  2. Create `juris`: A named vector of the jurisdictions and their abbreviations.
+  3. Upload to Drive
+  
+##### Step 1 {-}
 
-```{r make-kc-lookup-juris-01, message=FALSE}
+```{r make-kc-lookup-juris-01, echo = TRUE, message=FALSE}
 
 string <- 
 "NULL	NULL
@@ -90,7 +95,7 @@ YP	Yarrow Point"
 
 ```
 
-2. Create `juris`: A named vector of the jurisdictions and their abbreviations.
+##### Step 2 {-}
 
 ```{r make-kc-lookup-juris-02, echo = TRUE, message=FALSE}
 
@@ -106,8 +111,7 @@ juris <-
 str(juris)
 ```
 
-3. Upload to Drive
-
+##### Step 3 {-}
 
 ```{r make-kc-lookup-juris-03, eval = FALSE, echo = TRUE}
 folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")

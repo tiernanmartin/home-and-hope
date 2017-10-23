@@ -40,10 +40,13 @@ _Description text here_
   - [Data <i class="fa fa-external-link"></i>](ftp://ftp.kingcounty.gov/gis-web/GISData/public_parcels_SHP.zip)
   - [Metadata <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels)
 
-####Processing Steps {-}
-
-1. Create `pu_ready`: A lookup list of present use categories and their 2-character codes
-
+#### Processing Steps {-}
+##### Summary {-}
+  1. Create `pu_ready`: A lookup list of present use categories and their 2-character codes
+  2. Load `juris`: A named vector of the jurisdictions and their abbreviations.
+  3. _Insert third step_
+  
+##### Step 1 {-}
 ```{r make-kc-lookup-presuse-01, echo = TRUE, message=FALSE}
 
 pu_fp <- root_file("./1-data/2-external/EXTR_LookUp.csv")
@@ -72,8 +75,8 @@ pu_ready <-
 
 ```
 
-2. Load `juris`: A named vector of the jurisdictions and their abbreviations.
 
+##### Step 2 {-}
 ```{r make-kc-lookup-presuse-02, echo = TRUE}
 
 juris_fp <- root_file("./1-data/3-interim/kc-jurisdictions.rds")
@@ -93,4 +96,4 @@ juris <- read_rds(juris_fp)
 
 ```
 
-3. 
+
