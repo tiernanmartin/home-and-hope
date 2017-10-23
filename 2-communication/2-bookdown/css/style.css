@@ -29,3 +29,9 @@ div.sourceCode {
 pre.sourceCode {
     height: fit-content !important;
 }
+table {
+    width: fit-content !important;
+}
+table tr:nth-child(2n){
+    background-color: transparent !important;
+}

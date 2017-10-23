@@ -14,6 +14,7 @@ output:
 library(tidyverse)
 library(tibble)
 library(knitr)
+library(kableExtra)
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
@@ -30,11 +31,11 @@ For example, the following abbreviations are used to indicate the `tax status` o
 ```{r make-kc-lookup-intro-01, echo = FALSE, eval = TRUE}
 
 tibble::tribble(
-  ~ABBR,    ~CATEGORY,
-    "T",    "Taxable",
-    "X",     "Exempt",
-    "O",  "Operating"
-  ) %>% knitr::kable()
+  ~ABBREVIATION,    ~CATEGORY,
+            "T",    "Taxable",
+            "X",     "Exempt",
+            "O",  "Operating"
+  ) %>% knitr::kable("html") 
 
 ```
 
