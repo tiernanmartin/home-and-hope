@@ -9,7 +9,7 @@ output:
     code_folding: hide
 ---
 
-```{r make-juris-setup, warning=FALSE, echo=FALSE, message=FALSE}
+```{r make-kc-lookup-juris-setup, warning=FALSE, echo=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(sf)
@@ -30,6 +30,8 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
+### King County Jurisdictions
+
 ####Description {-}
 
 Jurisdiction planning to annex this area. 
@@ -42,7 +44,7 @@ Jurisdiction planning to annex this area.
 
 1. Create `string`: The contents of the JURISDICTION table copy-and-pasted in the R environment.
 
-```{r make-juris-01, message=FALSE}
+```{rmake-kc-lookup-juris-01, message=FALSE}
 
 string <- 
 "NULL	NULL
@@ -90,7 +92,7 @@ YP	Yarrow Point"
 
 2. Create `juris`: A named vector of the jurisdictions and their abbreviations.
 
-```{r make-juris-02, echo = TRUE, message=FALSE}
+```{rmake-kc-lookup-juris-02, echo = TRUE, message=FALSE}
 
 juris <- 
   str_split(string, pattern = "\n") %>% 
@@ -107,7 +109,7 @@ str(juris)
 3. Upload to Drive
 
 
-```{r make-juris-03, eval = FALSE, echo = TRUE}
+```{r make-kc-lookup-juris-03, eval = FALSE, echo = TRUE}
 folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
 tmp <- tempfile()

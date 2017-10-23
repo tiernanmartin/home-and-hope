@@ -7,7 +7,7 @@ output:
     df_print: paged
 ---
 
-```{r make-public-parcels-setup,warning=FALSE, echo=FALSE, message=FALSE}
+```{r make-kc-lookup-presuse-setup,warning=FALSE, echo=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(sf)
@@ -28,6 +28,8 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
+### King County Present Use Categories
+
 ####Description {-}
 
 _Description text here_
@@ -42,7 +44,7 @@ _Description text here_
 
 1. Create `pu_ready`: A lookup list of present use categories and their 2-character codes
 
-```{r make-public-parcels-presuse, echo = TRUE, message=FALSE}
+```{r make-kc-lookup-presuse-01, echo = TRUE, message=FALSE}
 
 pu_fp <- root_file("./1-data/2-external/EXTR_LookUp.csv")
 
@@ -72,7 +74,7 @@ pu_ready <-
 
 2. Load `juris`: A named vector of the jurisdictions and their abbreviations.
 
-```{r make-public-parcels-juris, echo = TRUE}
+```{r make-kc-lookup-presuse-02, echo = TRUE}
 
 juris_fp <- root_file("./1-data/3-interim/kc-jurisdictions.rds")
 
@@ -91,4 +93,4 @@ juris <- read_rds(juris_fp)
 
 ```
 
-3. Load ``: a 
+3. 

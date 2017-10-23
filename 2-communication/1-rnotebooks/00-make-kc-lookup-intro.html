@@ -122,163 +122,32 @@ $(document).ready(function () {
 </div>
 
 
-<div id="description" class="section level4 unnumbered">
-<h4>Description</h4>
-<p>Jurisdiction planning to annex this area.</p>
-</div>
-<div id="link" class="section level4 unnumbered">
-<h4>Link:</h4>
-<ul>
-<li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
-</ul>
-</div>
-<div id="processing-steps" class="section level4 unnumbered">
-<h4>Processing Steps</h4>
-<ol style="list-style-type: decimal">
-<li>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</li>
-</ol>
-<pre class="r"><code>string &lt;- 
-&quot;NULL   NULL
-AL  Algona
-AU  Auburn
-BD  Black Diamond
-BE  Bellevue
-BO  Bothell
-BU  Burien
-CA  Carnation
-CH  Clyde Hill
-CO  Covington
-DM  Des Moines
-DU  Duvall
-EN  Enumclaw
-FW  Federal Way
-HP  Hunts Point
-IS  Issaquah
-KE  Kent
-KI  Kirkland
-KM  Kenmore
-LF  Lake Forest Park
-ME  Medina
-MI  Mercer Island
-MT  Milton
-MV  Maple Valley
-NB  North Bend
-NC  Newcastle
-NP  Normandy Park
-PA  Pacific
-RM  Redmond
-RN  Renton
-SE  Seattle
-SH  Shoreline
-SK  Skykomish
-SM  Sammamish
-SN  Snoqualmie
-ST  SeaTac
-TU  Tukwila
-WO  Woodinville
-YP  Yarrow Point&quot;</code></pre>
-<ol start="2" style="list-style-type: decimal">
-<li>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
-</ol>
-<pre class="r"><code>juris &lt;- 
-  str_split(string, pattern = &quot;\n&quot;) %&gt;% 
-  map(~ t(as.data.frame(str_split(.x,pattern = &quot;\t&quot;)))) %&gt;% 
-  as.data.frame() %&gt;% 
-  set_names(c(&quot;CODE&quot;,&quot;NAME&quot;)) %&gt;% 
-  set_rownames(NULL) %&gt;% 
-  mutate_all(as.character) %&gt;%  
-  pmap(~ set_names(..2, ..1))
-
-str(juris)</code></pre>
-<pre><code>## List of 39
-##  $ : Named chr &quot;NULL&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NULL&quot;
-##  $ : Named chr &quot;Algona&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;AL&quot;
-##  $ : Named chr &quot;Auburn&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;AU&quot;
-##  $ : Named chr &quot;Black Diamond&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BD&quot;
-##  $ : Named chr &quot;Bellevue&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BE&quot;
-##  $ : Named chr &quot;Bothell&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BO&quot;
-##  $ : Named chr &quot;Burien&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BU&quot;
-##  $ : Named chr &quot;Carnation&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CA&quot;
-##  $ : Named chr &quot;Clyde Hill&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CH&quot;
-##  $ : Named chr &quot;Covington&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CO&quot;
-##  $ : Named chr &quot;Des Moines&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;DM&quot;
-##  $ : Named chr &quot;Duvall&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;DU&quot;
-##  $ : Named chr &quot;Enumclaw&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;EN&quot;
-##  $ : Named chr &quot;Federal Way&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;FW&quot;
-##  $ : Named chr &quot;Hunts Point&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;HP&quot;
-##  $ : Named chr &quot;Issaquah&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;IS&quot;
-##  $ : Named chr &quot;Kent&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KE&quot;
-##  $ : Named chr &quot;Kirkland&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KI&quot;
-##  $ : Named chr &quot;Kenmore&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KM&quot;
-##  $ : Named chr &quot;Lake Forest Park&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;LF&quot;
-##  $ : Named chr &quot;Medina&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;ME&quot;
-##  $ : Named chr &quot;Mercer Island&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MI&quot;
-##  $ : Named chr &quot;Milton&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MT&quot;
-##  $ : Named chr &quot;Maple Valley&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MV&quot;
-##  $ : Named chr &quot;North Bend&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NB&quot;
-##  $ : Named chr &quot;Newcastle&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NC&quot;
-##  $ : Named chr &quot;Normandy Park&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NP&quot;
-##  $ : Named chr &quot;Pacific&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;PA&quot;
-##  $ : Named chr &quot;Redmond&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;RM&quot;
-##  $ : Named chr &quot;Renton&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;RN&quot;
-##  $ : Named chr &quot;Seattle&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SE&quot;
-##  $ : Named chr &quot;Shoreline&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SH&quot;
-##  $ : Named chr &quot;Skykomish&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SK&quot;
-##  $ : Named chr &quot;Sammamish&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SM&quot;
-##  $ : Named chr &quot;Snoqualmie&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SN&quot;
-##  $ : Named chr &quot;SeaTac&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;ST&quot;
-##  $ : Named chr &quot;Tukwila&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;TU&quot;
-##  $ : Named chr &quot;Woodinville&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;WO&quot;
-##  $ : Named chr &quot;Yarrow Point&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;YP&quot;</code></pre>
-<ol start="3" style="list-style-type: decimal">
-<li>Upload to Drive</li>
-</ol>
-<pre class="r"><code>folder &lt;- as_id(&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;)
-
-tmp &lt;- tempfile()
-
-write_rds(juris,tmp)
-
-drive_upload(tmp, folder,name = &quot;kc-jurisdictions.rds&quot;)</code></pre>
+<div id="introduction" class="section level4 unnumbered">
+<h4>Introduction</h4>
+<p>A set of named lists that allow King County’s various codifications to be converted into clearer text.</p>
+<p>For example, the following abbreviations are used to indicate the <code>tax status</code> of a parcel:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">ABBR</th>
+<th align="left">CATEGORY</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">T</td>
+<td align="left">Taxable</td>
+</tr>
+<tr class="even">
+<td align="left">X</td>
+<td align="left">Exempt</td>
+</tr>
+<tr class="odd">
+<td align="left">O</td>
+<td align="left">Operating</td>
+</tr>
+</tbody>
+</table>
 </div>
 
 

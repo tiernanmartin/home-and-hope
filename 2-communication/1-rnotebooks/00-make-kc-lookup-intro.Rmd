@@ -1,0 +1,42 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: paged
+  html_notebook:
+    code_folding: hide
+---
+
+```{r make-kc-lookup-intro-setup, warning=FALSE, echo=FALSE, message=FALSE}
+
+library(tidyverse)
+library(tibble)
+library(knitr)
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+####Introduction {-}
+
+A set of named lists that allow King County's various codifications to be converted into 
+clearer text.
+
+For example, the following abbreviations are used to indicate the `tax status` of a parcel:
+
+```{r make-kc-lookup-intro-01, echo = FALSE, eval = TRUE}
+
+tibble::tribble(
+  ~ABBR,    ~CATEGORY,
+    "T",    "Taxable",
+    "X",     "Exempt",
+    "O",  "Operating"
+  ) %>% knitr::kable()
+
+```
+
+The named list objects created in this section are used to de-code the various codification schemes
+used in the King County data.
