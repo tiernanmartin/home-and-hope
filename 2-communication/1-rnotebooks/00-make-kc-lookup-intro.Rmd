@@ -12,9 +12,19 @@ output:
 ```{r make-kc-lookup-intro-setup, warning=FALSE, echo=FALSE, message=FALSE}
 
 library(tidyverse)
-library(tibble)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(htmltools)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
 library(knitr)
-library(kableExtra)
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
@@ -39,5 +49,39 @@ tibble::tribble(
 
 ```
 
+Most lookup codes are contained in the metadata that Kign County provides for each dataset. They are usually presented in the following format: `T = Taxable; X = Exempt; O = Operating`
+
+The following function is used to parse a string formatted this way:
+
+```{r make-kc-lookup-intro-02, echo = TRUE, warning=FALSE} 
+
+parse_lookup <- function(string, col_sep, row_sep){
+  str_split(string, pattern = row_sep) %>% 
+    flatten %>% 
+    keep(~ str_detect(.x,"")) %>%  
+    str_replace_all("\\\n","") %>% 
+    map_chr(c) %>% 
+    map_df(~.x %>% str_split(pattern = col_sep) %>% as.data.frame %>% t %>% as_data_frame ) %>%  
+    set_rownames(NULL) %>% 
+    mutate_all(as.character) %>%  
+    pmap(~ set_names(..2, ..1))
+}
+
+```
+
+```{r make-kc-lookup-intro-03, echo = TRUE, warning=FALSE} 
+string <- 
+"
+T = Taxable; X = Exempt; O = Operating
+"
+
+string %>% 
+  parse_lookup(col_sep = "\\s=\\s",row_sep = ";\\s") %>% 
+  str()
+```
+
+
 The named list objects created in this section are used to de-code the various codification schemes
 used in the King County data.
+
+

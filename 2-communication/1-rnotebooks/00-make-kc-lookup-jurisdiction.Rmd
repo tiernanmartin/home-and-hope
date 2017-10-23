@@ -100,12 +100,8 @@ YP	Yarrow Point"
 ```{r make-kc-lookup-juris-02, echo = TRUE, message=FALSE}
 
 juris <- 
-  str_split(string, pattern = "\n") %>% 
-  map_df(~.x %>% str_split(pattern = "\t") %>% as.data.frame %>% t %>% as.data.frame ) %>%  
-  set_names(c("CODE","NAME")) %>% 
-  set_rownames(NULL) %>% 
-  mutate_all(as.character) %>%  
-  pmap(~ set_names(..2, ..1))
+  string %>% 
+  parse_lookup(col_sep = "\t",row_sep ="\n" )
 
 str(juris)
 ```

@@ -64,15 +64,9 @@ MX = more than one reason applies
 ```{r make-kc-lookup-tax-reason-02, echo = TRUE, warning = FALSE}
 
 tax_reason <- 
-  str_split(string, pattern = "\n") %>% 
-  flatten %>% 
-  keep(~ str_detect(.x,"")) %>%  
-  map_chr(c) %>% 
-  map_df(~.x %>% str_split(pattern = "\\s=\\s") %>% as.data.frame %>% t %>% as.data.frame ) %>%  
-  set_names(c("CODE","REASON")) %>% 
-  set_rownames(NULL) %>% 
-  mutate_all(as.character) %>%  
-  pmap(~ set_names(..2, ..1))
+  string %>% 
+  parse_lookup(col_sep = "\\s=\\s", row_sep = "\n")
+
 
 str(tax_reason)
 
