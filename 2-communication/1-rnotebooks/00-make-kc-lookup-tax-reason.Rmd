@@ -1,0 +1,91 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r make-kc-lookup-tax-reason-setup,warning=FALSE, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+### King County Tax Value Reasons
+
+#### Description {-}
+
+The reason for a difference between appraised and taxable values.
+
+
+#### Links {-}
+  - [Source <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/DataDownload/default.aspx)
+  - [Data <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc)
+
+#### Processing Steps {-}
+##### Summary {-}
+  1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R          environment.
+  2.  
+  3.  
+  
+##### Step 1 {-}
+```{r make-kc-lookup-tax-reason-01, echo = TRUE, message=FALSE}
+string <- "
+FS = senior citizen exemption
+EX = exempt
+OP = operating
+NP = non profit exemption
+CU = open space exemption
+HI = home improvement exemption
+HP = historic property exemption
+MX = more than one reason applies
+"
+
+```
+
+
+##### Step 2 {-}
+```{r make-kc-lookup-tax-reason-02, echo = TRUE, warning = FALSE}
+
+tax_reason <- 
+  str_split(string, pattern = "\n") %>% 
+  flatten %>% 
+  keep(~ str_detect(.x,"")) %>%  
+  map_chr(c) %>% 
+  map_df(~.x %>% str_split(pattern = "\\s=\\s") %>% as.data.frame %>% t %>% as.data.frame ) %>%  
+  set_names(c("CODE","REASON")) %>% 
+  set_rownames(NULL) %>% 
+  mutate_all(as.character) %>%  
+  pmap(~ set_names(..2, ..1))
+
+str(tax_reason)
+
+```
+
+##### Step 3 {-}
+
+```{r make-kc-lookup-tax-reason-03, eval = FALSE, echo = TRUE}
+folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+tmp <- tempfile()
+
+write_rds(tax_reason,tmp)
+
+drive_upload(tmp, folder,name = "kc-tax-reason.rds")
+```

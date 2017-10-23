@@ -101,8 +101,7 @@ YP	Yarrow Point"
 
 juris <- 
   str_split(string, pattern = "\n") %>% 
-  map(~ t(as.data.frame(str_split(.x,pattern = "\t")))) %>% 
-  as.data.frame() %>% 
+  map_df(~.x %>% str_split(pattern = "\t") %>% as.data.frame %>% t %>% as.data.frame ) %>%  
   set_names(c("CODE","NAME")) %>% 
   set_rownames(NULL) %>% 
   mutate_all(as.character) %>%  

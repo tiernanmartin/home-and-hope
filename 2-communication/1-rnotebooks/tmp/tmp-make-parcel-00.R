@@ -116,6 +116,7 @@ acct_frmt <-
   select(PIN, 
          ACCT_NBR,
          BILL_YR,
+         TAX_STATUS,
          TAX_VAL_REASON,
          APPR_LAND_VAL,
          APPR_IMPS_VAL,
