@@ -177,7 +177,36 @@ Operating
 </tr>
 </tbody>
 </table>
-The named list objects created in this section are used to de-code the various codification schemes used in the King County data. <br>
+<p>Most lookup codes are contained in the metadata that Kign County provides for each dataset. They are usually presented in the following format: <code>T = Taxable; X = Exempt; O = Operating</code></p>
+<p>The following function is used to parse a string formatted this way:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">parse_lookup &lt;-<span class="st"> </span><span class="cf">function</span>(string, col_sep, row_sep){
+  <span class="kw">str_split</span>(string, <span class="dt">pattern =</span> row_sep) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span>flatten <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">keep</span>(<span class="op">~</span><span class="st"> </span><span class="kw">str_detect</span>(.x,<span class="st">&quot;&quot;</span>)) <span class="op">%&gt;%</span><span class="st">  </span>
+<span class="st">    </span><span class="kw">str_replace_all</span>(<span class="st">&quot;</span><span class="ch">\\\n</span><span class="st">&quot;</span>,<span class="st">&quot;&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">map_chr</span>(c) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">map_df</span>(<span class="op">~</span>.x <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">str_split</span>(<span class="dt">pattern =</span> col_sep) <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame <span class="op">%&gt;%</span><span class="st"> </span>t <span class="op">%&gt;%</span><span class="st"> </span>as_data_frame ) <span class="op">%&gt;%</span><span class="st">  </span>
+<span class="st">    </span><span class="kw">set_rownames</span>(<span class="ot">NULL</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">mutate_all</span>(as.character) <span class="op">%&gt;%</span><span class="st">  </span>
+<span class="st">    </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>))
+}</code></pre></div>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> </span>
+<span class="st">&quot;</span>
+<span class="st">T = Taxable; X = Exempt; O = Operating</span>
+<span class="st">&quot;</span>
+
+string <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>,<span class="dt">row_sep =</span> <span class="st">&quot;;</span><span class="ch">\\</span><span class="st">s&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">str</span>()</code></pre></div>
+<pre><code>## List of 3
+##  $ : Named chr &quot;Taxable&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;T&quot;
+##  $ : Named chr &quot;Exempt&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;X&quot;
+##  $ : Named chr &quot;Operating&quot;
+##   ..- attr(*, &quot;names&quot;)= chr &quot;O&quot;</code></pre>
+<p>The named list objects created in this section are used to de-code the various codification schemes used in the King County data.</p>
+<br>
 <hr>
 </div>
 <div id="king-county-jurisdictions" class="section level3">
@@ -248,12 +277,8 @@ The named list objects created in this section are used to de-code the various c
 <div id="step-2" class="section level5 unnumbered">
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris &lt;-<span class="st"> </span>
-<span class="st">  </span><span class="kw">str_split</span>(string, <span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">map_df</span>(<span class="op">~</span>.x <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">str_split</span>(<span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame <span class="op">%&gt;%</span><span class="st"> </span>t <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame ) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">  </span><span class="kw">set_names</span>(<span class="kw">c</span>(<span class="st">&quot;CODE&quot;</span>,<span class="st">&quot;NAME&quot;</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">set_rownames</span>(<span class="ot">NULL</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate_all</span>(as.character) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>))
+<span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>,<span class="dt">row_sep =</span><span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span> )
 
 <span class="kw">str</span>(juris)</code></pre></div>
 <pre><code>## List of 39
@@ -389,15 +414,9 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <div id="step-2-1" class="section level5 unnumbered">
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tax_reason &lt;-<span class="st"> </span>
-<span class="st">  </span><span class="kw">str_split</span>(string, <span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span>flatten <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">keep</span>(<span class="op">~</span><span class="st"> </span><span class="kw">str_detect</span>(.x,<span class="st">&quot;&quot;</span>)) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">  </span><span class="kw">map_chr</span>(c) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">map_df</span>(<span class="op">~</span>.x <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">str_split</span>(<span class="dt">pattern =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame <span class="op">%&gt;%</span><span class="st"> </span>t <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame ) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">  </span><span class="kw">set_names</span>(<span class="kw">c</span>(<span class="st">&quot;CODE&quot;</span>,<span class="st">&quot;REASON&quot;</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">set_rownames</span>(<span class="ot">NULL</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">mutate_all</span>(as.character) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>))
+<span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>, <span class="dt">row_sep =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)
+
 
 <span class="kw">str</span>(tax_reason)</code></pre></div>
 <pre><code>## List of 8
