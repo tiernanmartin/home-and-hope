@@ -15,7 +15,7 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # {-}
 
-![](example-image.png)
+![](http://dhiglobal.com/wp-content/uploads/2016/07/placeholder.jpg)
 
 
 <br>
