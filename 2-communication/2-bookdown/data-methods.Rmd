@@ -21,6 +21,8 @@ lu_juris_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-jurisdi
 lu_tax_reason_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-tax-reason.Rmd')
 
 lu_presentuse_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-presentuse.Rmd")
+
+lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-tax-status.Rmd")
 ```
 
 `r knit_child(lu_intro_fp)`
@@ -33,6 +35,9 @@ lu_presentuse_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-pr
 <br>
 <hr>
 `r knit_child(lu_presentuse_fp)`
+<br>
+<hr>
+`r knit_child(lu_tax_status_fp)`
 
 ## King County Public Parcels
 ```{r data-methods-kc-pub}

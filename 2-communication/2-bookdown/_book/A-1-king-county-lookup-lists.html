@@ -112,6 +112,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="chapter" data-level="A.1.1" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-jurisdictions"><i class="fa fa-check"></i><b>A.1.1</b> King County Jurisdictions</a></li>
 <li class="chapter" data-level="A.1.2" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-value-reasons"><i class="fa fa-check"></i><b>A.1.2</b> King County Tax Value Reasons</a></li>
 <li class="chapter" data-level="A.1.3" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-present-use-categories"><i class="fa fa-check"></i><b>A.1.3</b> King County Present Use Categories</a></li>
+<li class="chapter" data-level="A.1.4" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-status"><i class="fa fa-check"></i><b>A.1.4</b> King County Tax Status</a></li>
 </ul></li>
 <li class="chapter" data-level="A.2" data-path="A-2-king-county-public-parcels.html"><a href="A-2-king-county-public-parcels.html"><i class="fa fa-check"></i><b>A.2</b> King County Public Parcels</a></li>
 <li class="chapter" data-level="A.3" data-path="A-3-resources.html"><a href="A-3-resources.html"><i class="fa fa-check"></i><b>A.3</b> Resources</a></li>
@@ -179,33 +180,35 @@ Operating
 </table>
 <p>Most lookup codes are contained in the metadata that Kign County provides for each dataset. They are usually presented in the following format: <code>T = Taxable; X = Exempt; O = Operating</code></p>
 <p>The following function is used to parse a string formatted this way:</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">parse_lookup &lt;-<span class="st"> </span><span class="cf">function</span>(string, col_sep, row_sep){
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">parse_lookup_string &lt;-<span class="st"> </span><span class="cf">function</span>(string, col_sep, row_sep){
   <span class="kw">str_split</span>(string, <span class="dt">pattern =</span> row_sep) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">    </span>flatten <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">flatten</span>() <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">keep</span>(<span class="op">~</span><span class="st"> </span><span class="kw">str_detect</span>(.x,<span class="st">&quot;&quot;</span>)) <span class="op">%&gt;%</span><span class="st">  </span>
 <span class="st">    </span><span class="kw">str_replace_all</span>(<span class="st">&quot;</span><span class="ch">\\\n</span><span class="st">&quot;</span>,<span class="st">&quot;&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">map_chr</span>(c) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">map_df</span>(<span class="op">~</span>.x <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">str_split</span>(<span class="dt">pattern =</span> col_sep) <span class="op">%&gt;%</span><span class="st"> </span>as.data.frame <span class="op">%&gt;%</span><span class="st"> </span>t <span class="op">%&gt;%</span><span class="st"> </span>as_data_frame ) <span class="op">%&gt;%</span><span class="st">  </span>
 <span class="st">    </span><span class="kw">set_rownames</span>(<span class="ot">NULL</span>) <span class="op">%&gt;%</span><span class="st"> </span>
 <span class="st">    </span><span class="kw">mutate_all</span>(as.character) <span class="op">%&gt;%</span><span class="st">  </span>
-<span class="st">    </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>))
+<span class="st">    </span><span class="kw">pmap</span>(<span class="op">~</span><span class="st"> </span><span class="kw">set_names</span>(..<span class="dv">2</span>, ..<span class="dv">1</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">    </span><span class="kw">unlist</span>()
 }</code></pre></div>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> </span>
 <span class="st">&quot;</span>
 <span class="st">T = Taxable; X = Exempt; O = Operating</span>
 <span class="st">&quot;</span>
 
-string <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>,<span class="dt">row_sep =</span> <span class="st">&quot;;</span><span class="ch">\\</span><span class="st">s&quot;</span>) <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">str</span>()</code></pre></div>
-<pre><code>## List of 3
-##  $ : Named chr &quot;Taxable&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;T&quot;
-##  $ : Named chr &quot;Exempt&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;X&quot;
-##  $ : Named chr &quot;Operating&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;O&quot;</code></pre>
-<p>The named list objects created in this section are used to de-code the various codification schemes used in the King County data.</p>
+tax_reason_named_list &lt;-<span class="st"> </span><span class="kw">parse_lookup_string</span>(string, <span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>,<span class="dt">row_sep =</span> <span class="st">&quot;;</span><span class="ch">\\</span><span class="st">s&quot;</span>) </code></pre></div>
+<p>The named list objects created in this section are used to de-code the various codification schemes used in the King County data. A code value is passed to the named list and the corresponding category or description is returned:</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Option 1</span>
+code_value &lt;-<span class="st"> &quot;X&quot;</span>
+
+tax_reason_named_list[code_value]</code></pre></div>
+<pre><code>##        X 
+## &quot;Exempt&quot;</code></pre>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># Option 2</span>
+tax_reason_named_list[<span class="st">&quot;O&quot;</span>]</code></pre></div>
+<pre><code>##           O 
+## &quot;Operating&quot;</code></pre>
 <br>
 <hr>
 </div>
@@ -278,88 +281,334 @@ string <span class="op">%&gt;%</span><span class="st"> </span>
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris &lt;-<span class="st"> </span>
 <span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>,<span class="dt">row_sep =</span><span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span> )
+<span class="st">  </span><span class="kw">parse_lookup_string</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\t</span><span class="st">&quot;</span>,<span class="dt">row_sep =</span><span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span> )
 
-<span class="kw">str</span>(juris)</code></pre></div>
-<pre><code>## List of 39
-##  $ : Named chr &quot;NULL&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NULL&quot;
-##  $ : Named chr &quot;Algona&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;AL&quot;
-##  $ : Named chr &quot;Auburn&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;AU&quot;
-##  $ : Named chr &quot;Black Diamond&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BD&quot;
-##  $ : Named chr &quot;Bellevue&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BE&quot;
-##  $ : Named chr &quot;Bothell&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BO&quot;
-##  $ : Named chr &quot;Burien&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;BU&quot;
-##  $ : Named chr &quot;Carnation&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CA&quot;
-##  $ : Named chr &quot;Clyde Hill&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CH&quot;
-##  $ : Named chr &quot;Covington&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CO&quot;
-##  $ : Named chr &quot;Des Moines&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;DM&quot;
-##  $ : Named chr &quot;Duvall&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;DU&quot;
-##  $ : Named chr &quot;Enumclaw&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;EN&quot;
-##  $ : Named chr &quot;Federal Way&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;FW&quot;
-##  $ : Named chr &quot;Hunts Point&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;HP&quot;
-##  $ : Named chr &quot;Issaquah&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;IS&quot;
-##  $ : Named chr &quot;Kent&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KE&quot;
-##  $ : Named chr &quot;Kirkland&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KI&quot;
-##  $ : Named chr &quot;Kenmore&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;KM&quot;
-##  $ : Named chr &quot;Lake Forest Park&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;LF&quot;
-##  $ : Named chr &quot;Medina&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;ME&quot;
-##  $ : Named chr &quot;Mercer Island&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MI&quot;
-##  $ : Named chr &quot;Milton&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MT&quot;
-##  $ : Named chr &quot;Maple Valley&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MV&quot;
-##  $ : Named chr &quot;North Bend&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NB&quot;
-##  $ : Named chr &quot;Newcastle&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NC&quot;
-##  $ : Named chr &quot;Normandy Park&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NP&quot;
-##  $ : Named chr &quot;Pacific&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;PA&quot;
-##  $ : Named chr &quot;Redmond&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;RM&quot;
-##  $ : Named chr &quot;Renton&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;RN&quot;
-##  $ : Named chr &quot;Seattle&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SE&quot;
-##  $ : Named chr &quot;Shoreline&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SH&quot;
-##  $ : Named chr &quot;Skykomish&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SK&quot;
-##  $ : Named chr &quot;Sammamish&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SM&quot;
-##  $ : Named chr &quot;Snoqualmie&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;SN&quot;
-##  $ : Named chr &quot;SeaTac&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;ST&quot;
-##  $ : Named chr &quot;Tukwila&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;TU&quot;
-##  $ : Named chr &quot;Woodinville&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;WO&quot;
-##  $ : Named chr &quot;Yarrow Point&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;YP&quot;</code></pre>
+<span class="kw">data.frame</span>(<span class="dt">DESCRIPTION =</span> juris) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">kable</span>(<span class="dt">format =</span> <span class="st">&quot;html&quot;</span>)</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+DESCRIPTION
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+NULL
+</td>
+<td style="text-align:left;">
+NULL
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+AL
+</td>
+<td style="text-align:left;">
+Algona
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+AU
+</td>
+<td style="text-align:left;">
+Auburn
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BD
+</td>
+<td style="text-align:left;">
+Black Diamond
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BE
+</td>
+<td style="text-align:left;">
+Bellevue
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BO
+</td>
+<td style="text-align:left;">
+Bothell
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+BU
+</td>
+<td style="text-align:left;">
+Burien
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CA
+</td>
+<td style="text-align:left;">
+Carnation
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CH
+</td>
+<td style="text-align:left;">
+Clyde Hill
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CO
+</td>
+<td style="text-align:left;">
+Covington
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+DM
+</td>
+<td style="text-align:left;">
+Des Moines
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+DU
+</td>
+<td style="text-align:left;">
+Duvall
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+EN
+</td>
+<td style="text-align:left;">
+Enumclaw
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+FW
+</td>
+<td style="text-align:left;">
+Federal Way
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HP
+</td>
+<td style="text-align:left;">
+Hunts Point
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+IS
+</td>
+<td style="text-align:left;">
+Issaquah
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+KE
+</td>
+<td style="text-align:left;">
+Kent
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+KI
+</td>
+<td style="text-align:left;">
+Kirkland
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+KM
+</td>
+<td style="text-align:left;">
+Kenmore
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+LF
+</td>
+<td style="text-align:left;">
+Lake Forest Park
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ME
+</td>
+<td style="text-align:left;">
+Medina
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MI
+</td>
+<td style="text-align:left;">
+Mercer Island
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MT
+</td>
+<td style="text-align:left;">
+Milton
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MV
+</td>
+<td style="text-align:left;">
+Maple Valley
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NB
+</td>
+<td style="text-align:left;">
+North Bend
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NC
+</td>
+<td style="text-align:left;">
+Newcastle
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NP
+</td>
+<td style="text-align:left;">
+Normandy Park
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+PA
+</td>
+<td style="text-align:left;">
+Pacific
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+RM
+</td>
+<td style="text-align:left;">
+Redmond
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+RN
+</td>
+<td style="text-align:left;">
+Renton
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SE
+</td>
+<td style="text-align:left;">
+Seattle
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SH
+</td>
+<td style="text-align:left;">
+Shoreline
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SK
+</td>
+<td style="text-align:left;">
+Skykomish
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SM
+</td>
+<td style="text-align:left;">
+Sammamish
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+SN
+</td>
+<td style="text-align:left;">
+Snoqualmie
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+ST
+</td>
+<td style="text-align:left;">
+SeaTac
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+TU
+</td>
+<td style="text-align:left;">
+Tukwila
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+WO
+</td>
+<td style="text-align:left;">
+Woodinville
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+YP
+</td>
+<td style="text-align:left;">
+Yarrow Point
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="step-3" class="section level5 unnumbered">
 <h5>Step 3</h5>
@@ -415,27 +664,87 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tax_reason &lt;-<span class="st"> </span>
 <span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
-<span class="st">  </span><span class="kw">parse_lookup</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>, <span class="dt">row_sep =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)
+<span class="st">  </span><span class="kw">parse_lookup_string</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>, <span class="dt">row_sep =</span> <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)
 
 
-<span class="kw">str</span>(tax_reason)</code></pre></div>
-<pre><code>## List of 8
-##  $ : Named chr &quot;senior citizen exemption&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;FS&quot;
-##  $ : Named chr &quot;exempt&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;EX&quot;
-##  $ : Named chr &quot;operating&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;OP&quot;
-##  $ : Named chr &quot;non profit exemption&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;NP&quot;
-##  $ : Named chr &quot;open space exemption&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;CU&quot;
-##  $ : Named chr &quot;home improvement exemption&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;HI&quot;
-##  $ : Named chr &quot;historic property exemption&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;HP&quot;
-##  $ : Named chr &quot;more than one reason applies&quot;
-##   ..- attr(*, &quot;names&quot;)= chr &quot;MX&quot;</code></pre>
+<span class="kw">data.frame</span>(<span class="dt">DESCRIPTION =</span> tax_reason) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">kable</span>(<span class="dt">format =</span> <span class="st">&quot;html&quot;</span>)</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+DESCRIPTION
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+FS
+</td>
+<td style="text-align:left;">
+senior citizen exemption
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+EX
+</td>
+<td style="text-align:left;">
+exempt
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+OP
+</td>
+<td style="text-align:left;">
+operating
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+NP
+</td>
+<td style="text-align:left;">
+non profit exemption
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+CU
+</td>
+<td style="text-align:left;">
+open space exemption
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HI
+</td>
+<td style="text-align:left;">
+home improvement exemption
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+HP
+</td>
+<td style="text-align:left;">
+historic property exemption
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+MX
+</td>
+<td style="text-align:left;">
+more than one reason applies
+</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div id="step-3-1" class="section level5 unnumbered">
 <h5>Step 3</h5>
@@ -515,6 +824,94 @@ pu_ready &lt;-<span class="st"> </span>
 })
 
 juris &lt;-<span class="st"> </span><span class="kw">read_rds</span>(juris_fp)</code></pre></div>
+<br>
+<hr>
+</div>
+</div>
+</div>
+<div id="king-county-tax-status" class="section level3">
+<h3><span class="header-section-number">A.1.4</span> King County Tax Status</h3>
+<div id="description-3" class="section level4 unnumbered">
+<h4>Description</h4>
+<p>The status of the parcel’s taxation. The categories are: <code>Taxable</code>,<code>Exempt</code>, or <code>Operating</code>.</p>
+</div>
+<div id="links-3" class="section level4 unnumbered">
+<h4>Links</h4>
+<ul>
+<li><a href="http://info.kingcounty.gov/assessor/DataDownload/default.aspx">Source <i class="fa fa-external-link"></i></a></li>
+<li><a href="http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc">Data <i class="fa fa-external-link"></i></a></li>
+</ul>
+</div>
+<div id="processing-steps-3" class="section level4 unnumbered">
+<h4>Processing Steps</h4>
+<div id="summary-3" class="section level5 unnumbered">
+<h5>Summary</h5>
+<ol style="list-style-type: decimal">
+<li>Create <code>string</code>: The contents of the Real Property Account metadata table pasted into the R environment.</li>
+<li>Create <code>tax_reason</code>: Pass <code>string</code> to the <code>parse_lookup_string()</code> function.</li>
+<li>Upload <code>tax_reason</code> to Google Drive.</li>
+</ol>
+</div>
+<div id="step-1-3" class="section level5 unnumbered">
+<h5>Step 1</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> &quot;</span>
+<span class="st">T = Taxable; X = Exempt; O = Operating</span>
+<span class="st">&quot;</span></code></pre></div>
+</div>
+<div id="step-2-3" class="section level5 unnumbered">
+<h5>Step 2</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tax_status &lt;-<span class="st"> </span>
+<span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">parse_lookup_string</span>(<span class="dt">col_sep =</span> <span class="st">&quot;</span><span class="ch">\\</span><span class="st">s=</span><span class="ch">\\</span><span class="st">s&quot;</span>, <span class="dt">row_sep =</span> <span class="st">&quot;;</span><span class="ch">\\</span><span class="st">s&quot;</span>)
+
+<span class="kw">data.frame</span>(<span class="dt">DESCRIPTION =</span> tax_status) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">kable</span>(<span class="dt">format =</span> <span class="st">&quot;html&quot;</span>)</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+DESCRIPTION
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+T
+</td>
+<td style="text-align:left;">
+Taxable
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+X
+</td>
+<td style="text-align:left;">
+Exempt
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+O
+</td>
+<td style="text-align:left;">
+Operating
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="step-3-2" class="section level5 unnumbered">
+<h5>Step 3</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
+
+tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
+
+<span class="kw">write_rds</span>(tax_status,tmp)
+
+<span class="kw">drive_upload</span>(tmp, folder,<span class="dt">name =</span> <span class="st">&quot;kc-tax-status.rds&quot;</span>,)</code></pre></div>
 </div>
 </div>
 </div>
