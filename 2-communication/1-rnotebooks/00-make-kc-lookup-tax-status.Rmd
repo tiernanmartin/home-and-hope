@@ -4,10 +4,10 @@ editor_options:
   chunk_output_type: console
 output:
   html_document:
-    df_print: default
+    df_print: paged
 ---
 
-```{r make-kc-lookup-tax-reason-setup,warning=FALSE, echo=FALSE, message=FALSE}
+```{r make-kc-lookup-tax-status-setup,warning=FALSE, echo=FALSE, message=FALSE}
 library(tidyverse)
 library(stringr)
 library(sf)
@@ -27,11 +27,11 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 ```
 
-### King County Tax Value Reasons
+### King County Tax Status
 
 #### Description {-}
 
-The reason for a difference between appraised and taxable values.
+The status of the parcel's taxation. The categories are: `Taxable`,`Exempt`, or `Operating`. 
 
 
 #### Links {-}
@@ -40,46 +40,37 @@ The reason for a difference between appraised and taxable values.
 
 #### Processing Steps {-}
 ##### Summary {-}
-  1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R          environment.
-  2.  
-  3.  
+  1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R environment.
+  2.  Create `tax_reason`: Pass `string` to the `parse_lookup_string()` function.
+  3.  Upload `tax_reason` to Google Drive.
   
 ##### Step 1 {-}
-```{r make-kc-lookup-tax-reason-01, echo = TRUE, message=FALSE}
+```{r make-kc-lookup-tax-status-01, echo = TRUE, message=FALSE}
 string <- "
-FS = senior citizen exemption
-EX = exempt
-OP = operating
-NP = non profit exemption
-CU = open space exemption
-HI = home improvement exemption
-HP = historic property exemption
-MX = more than one reason applies
+T = Taxable; X = Exempt; O = Operating
 "
 
 ```
 
 
 ##### Step 2 {-}
-```{r make-kc-lookup-tax-reason-02, echo = TRUE, warning = FALSE}
+```{r make-kc-lookup-tax-status-02, echo = TRUE, warning = FALSE}
 
-tax_reason <- 
+tax_status <- 
   string %>% 
-  parse_lookup_string(col_sep = "\\s=\\s", row_sep = "\n")
+  parse_lookup_string(col_sep = "\\s=\\s", row_sep = ";\\s")
 
-
-data.frame(DESCRIPTION = tax_reason) %>% kable(format = "html")
-
+data.frame(DESCRIPTION = tax_status) %>% kable(format = "html")
 ```
 
 ##### Step 3 {-}
 
-```{r make-kc-lookup-tax-reason-03, eval = FALSE, echo = TRUE}
+```{r make-kc-lookup-tax-status-03, eval = FALSE, echo = TRUE}
 folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
 tmp <- tempfile()
 
-write_rds(tax_reason,tmp)
+write_rds(tax_status,tmp)
 
-drive_upload(tmp, folder,name = "kc-tax-reason.rds")
+drive_upload(tmp, folder,name = "kc-tax-status.rds",)
 ```

@@ -101,9 +101,9 @@ YP	Yarrow Point"
 
 juris <- 
   string %>% 
-  parse_lookup(col_sep = "\t",row_sep ="\n" )
+  parse_lookup_string(col_sep = "\t",row_sep ="\n" )
 
-str(juris)
+data.frame(DESCRIPTION = juris) %>% kable(format = "html")
 ```
 
 ##### Step 3 {-}
