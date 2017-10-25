@@ -81,23 +81,7 @@ acct <-
 rm(acct_load)
 gc()
 
-maybe_make(acct_fp,{
-  dr_id <- "0B5Pp4V6eCkhreGt2djZCTnFUeFU"
-  
-  d <- drive_get(id = dr_id)
-  
-  tmp <- tempfile()
-  
-  d %>% drive_download(path = tmp)
-  
-  unzip_dir <- "./1-data/2-external"
-  
-  unzip(zipfile = tmp,exdir = unzip_dir)
-})
 
-acct <- 
-  read_csv(acct_fp) %>% 
-  rename_all(to_screaming_snake_case)
 
 # Parcel (spatial)
 
