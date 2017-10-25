@@ -24,7 +24,7 @@ p_fp <- "./1-data/2-external/EXTR_Parcel_20171013.csv"
 p_load <- 
   make_or_read(p_fp,
                {
-                 zip_dir <- "./1-data/2-external/"
+                 zip_dir <- "./1-data/2-external"
                  
                  target_name <- "EXTR_Parcel_20171013.csv"
                  
@@ -61,7 +61,7 @@ acct_load <-
                {
                  dr_id <- "0B5Pp4V6eCkhreGt2djZCTnFUeFU"
                  
-                 zip_dir <- "./1-data/2-external/"
+                 zip_dir <- "./1-data/2-external"
                  
                  target_name <- "EXTR_RPAcctl_20171013.csv"
                  
@@ -87,25 +87,31 @@ gc()
 
 p_sf_fp <- "./1-data/2-external/parcel"
 
-maybe_make(p_sf_fp,{
-  dr_id <- "0B5Pp4V6eCkhrRnM4bHFmWTBTQnM"
-
-  d <- drive_get(id = dr_id)
-
-  tmp <- tempfile()
-
-  d %>% drive_download(path = tmp)
-
-  unzip_dir <- "./1-data/2-external"
-
-  unzip(zipfile = tmp,exdir = unzip_dir)
-})
+p_sf_load <- 
+  make_or_read(p_sf_fp,
+               {
+                 dr_id <- "0B5Pp4V6eCkhrRnM4bHFmWTBTQnM"
+                 
+                 zip_dir <- "./1-data/2-external"
+                 
+                 target_name <- "parcel"
+                 
+                 drive_read_zip(dr_id = dr_id,
+                                dir_path = zip_dir,
+                                read_fun = st_read,
+                                target_name = target_name,
+                                .tempdir = FALSE,
+                                layer = "parcel",
+                                stringsAsFactors = FALSE)
+               },
+               {st_read(p_sf_fp, layer = "parcel", stringsAsFactors = FALSE)})
 
 p_sf <-
-  st_read(p_sf_fp, layer = "parcel", stringsAsFactors = FALSE) %>%
+  p_sf_load %>%
   rename_if(not_sfc, to_screaming_snake_case)
 
-
+rm(p_sf_load)
+gc()
 
 # Clean, Join, Filter ----
 
