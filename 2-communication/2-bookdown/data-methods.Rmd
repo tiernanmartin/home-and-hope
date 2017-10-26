@@ -6,7 +6,7 @@ library(rprojroot)
 library(tidyverse)
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
-opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, comment = "")
 options("readr.num_columns" = 0)
 ```
 
@@ -20,7 +20,7 @@ lu_juris_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-jurisdi
 
 lu_tax_reason_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-tax-reason.Rmd')
 
-lu_presentuse_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-presentuse.Rmd")
+# lu_presentuse_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-presentuse.Rmd")
 
 lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-tax-status.Rmd")
 ```
@@ -33,18 +33,17 @@ lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-ta
 <hr>
 `r knit_child(lu_tax_reason_fp)`
 <br>
-<hr>
-`r knit_child(lu_presentuse_fp)`
+<hr> 
 <br>
 <hr>
 `r knit_child(lu_tax_status_fp)`
 
-## King County Public Parcels
+## Untaxed King County Parcels
 ```{r data-methods-kc-pub}
-kc_pub_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-public-parcels.Rmd")
+kc_tax_0_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-parcels-not-taxed.Rmd")
 ```
 
-`r knit_child(kc_pub_fp)`
+`r knit_child(kc_tax_0_fp)`
 
 ## Resources
 _This is a work in progress document - changes will be made._
