@@ -1,0 +1,66 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: default
+---
+
+```{r make-template-setup,warning=FALSE, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
+library(knitr)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+### Title
+
+#### Description {-}
+
+_Description text here_
+
+
+#### Links {-}
+  - [Source <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/DataDownload/default.aspx)
+  - [Data <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc)
+
+#### Processing Steps {-}
+##### Summary {-}
+  1.  Create `string`: _Brief desciption of the `string`_
+  2.  Step two
+  3.  Step three
+  
+##### Step 1 {-}
+```{r make-template-01, echo = TRUE, message=FALSE}
+
+
+```
+
+
+##### Step 2 {-}
+```{r make-template-02, echo = TRUE, warning = FALSE}
+
+
+```
+
+##### Step 3 {-}
+
+```{r make-template-03, eval = FALSE, echo = TRUE}
+
+
+```
