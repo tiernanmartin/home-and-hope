@@ -48,7 +48,7 @@ p <-
   rename_all(to_screaming_snake_case) 
 
 rm(p_load)
-gc()
+gc(verbose = FALSE)
   
 
 
@@ -109,7 +109,7 @@ acct <-
   rename_all(to_screaming_snake_case) 
 
 rm(acct_load)
-gc()
+gc(verbose = FALSE)
 
 
 
@@ -141,7 +141,7 @@ p_sf <-
   rename_if(not_sfc, to_screaming_snake_case)
 
 rm(p_sf_load)
-gc()
+gc(verbose = FALSE)
 
 # Clean, Join, Filter ----
 
