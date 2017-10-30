@@ -1,0 +1,177 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r make-kc-parcels-public-setup, include = FALSE, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
+library(knitr)
+library(skimr)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+#### Description {-}
+
+A dataset of publicly-owned parcels within King County, Washington. These records were derived from the Real Property Account dataset by selecting taxpayer names that indicate the parcel is publically owned (non-empty values in the `KCTP_NAME` field). The dataset is intended to help users more easily display public land information and use it in analyses.
+
+According to the metadata provide at the time the file was downloaded, this data reflects the King County Assessor records as of `July 27, 2017`.
+
+#### Summary {-}
+
+```{r  make-kc-parcels-public-01, eval = TRUE, echo = FALSE, max.print = 10}
+
+pub_fp <- root_file("./1-data/3-interim/public_parcels_20170727.rds")
+
+pub <- 
+  make_or_read(pub_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrSUhXdHNtdjBfa28")
+                 
+                 drive_read(dr_id = dr_id,
+                            path = pub_fp,
+                            read_fun = read_rds,
+                            .tempfile = FALSE)
+               },
+               {read_rds(pub_fp)})
+
+set.seed(20171013)
+pub %>% 
+  group_by(TYPE) %>%
+  drop_na() %>% 
+  sample_n(1) 
+
+```
+
+#### Links {-}
+  - [Source <i class="fa-external-link"></i>](http://info.kingcounty.gov/assessor/DataDownload/default.aspx)
+  - [Data <i class="fa fa-download"></i>](ftp://ftp.kingcounty.gov/gis-web/GISData/public_parcels_SHP.zip)
+  - [Metadata <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels)
+
+#### Processing Steps {-}
+##### Summary {-}
+  1.  Create `pub`: a `tibble` containing real property account data for publicly-owned parcels.
+  2.  Clean/process the dataset: `pub_ready`  
+    - Load `present_use` and `jurisdiction` for transforming coded features into descriptive text.
+  3.  Upload to Drive
+
+##### Step 1 {-}
+```{r make-kc-parcels-public-02, echo = TRUE, eval = FALSE, message=FALSE}
+
+pub_fp <- root_file("./1-data/2-external/public_parcels_shp_20170727")
+
+pub_load <- 
+  make_or_read(pub_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrZ2tfS3d6YzZ0aXM")
+                 
+                 zip_dir <- root_file("./1-data/2-external")
+                 
+                 target_name <- "public_parcels_shp_20170727"
+                 
+                 drive_read_zip(dr_id = dr_id,
+                                .tempdir = FALSE,
+                                dir_path = zip_dir,
+                                read_fun = st_read,
+                                target_name = target_name,
+                                layer = "public_parcels", 
+                                stringsAsFactors = FALSE)
+                 
+               },
+               {st_read(pub_fp, layer = "public_parcels", stringsAsFactors = FALSE)})
+
+pub <-
+  pub_load %>% 
+  st_drop_geometry() %>% 
+  rename_all(to_screaming_snake_case)
+
+rm(pub_load)
+gc(verbose = FALSE)
+
+```
+
+
+##### Step 2 {-}
+```{r make-kc-parcels-public-03, echo = TRUE, eval = FALSE, warning = FALSE}
+
+pu_fp <- root_file("./1-data/3-interim/kc-present-use.rds")
+
+present_use <- 
+  make_or_read(pu_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrYjhCenFqQktHTTg")
+                 
+                 drive_read(dr_id = dr_id,
+                            .tempfile = FALSE,
+                            path = pu_fp,
+                            read_fun = read_rds)
+                 
+               },
+               {read_rds(pu_fp)})
+
+juris_fp <- root_file("./1-data/3-interim/kc-jurisdictions.rds")
+
+jurisdiction <- 
+  make_or_read(juris_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrTU9Kd3hVVVkyZjQ")
+                 
+                 drive_read(dr_id = dr_id,
+                            .tempfile = FALSE,
+                            path = juris_fp,
+                            read_fun = read_rds)
+                 
+               },
+               {read_rds(juris_fp)})
+
+pub_ready <- 
+  pub %>% 
+  select(PIN,
+         TYPE,
+         PRESENTUSE,
+         LOT_SQFT = LOTSQFT,
+         APPR_LND_VAL = APPRLNDVAL,
+         APPR_IMPR_VAL = APPR_IMPR,
+         KCTP_NAME,
+         JURISDICTION = JURIS,
+         ADDR_FULL,
+         ZIP_5,
+         POSTAL_CTY_NAME = POSTALCTYN,
+         LAT,
+         LON) %>% 
+  mutate(PRESENTUSE = present_use[as.character(PRESENTUSE)],
+         JURISDICTION = jurisdiction[JURISDICTION],
+         DATE = "20170727")
+
+```
+
+##### Step 3 {-}
+
+```{r make-kc-parcels-public-04, eval = FALSE, echo = TRUE}
+tmp <- tempfile()
+
+write_rds(pub_ready, tmp)
+
+drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+drive_upload(tmp, path = drive_folder,name = "public_parcels_20170727.rds")
+
+```
