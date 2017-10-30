@@ -81,9 +81,9 @@ tax_0_sf %>%
 
 #### Processing Steps {-}
 ##### Summary {-}
-  1.  Create `p`: a `tibble` containing parcel data.
-  2.  Create `acct`: a `tibble` containing real property account data.
-  3.  Create `p_sf`: a `simple feature` object containing the spatial polygon representations of each parcel in the dataset.
+  1.  Create `p`: a `tibble` containing parcel data for the entire county.
+  2.  Create `acct`: a `tibble` containing real property account data for the entire county.
+  3.  Create `p_sf`: a `simple feature` object containing the spatial polygon representations of each parcel in the county-wide dataset.
   4.  Clean/process the three dataset: prepare the datasets to be joined and filtered.
     - Load `tax_status` and `tax_reason` for transforming coded features into descriptive text.
   5.  Create `tax_0_sf`: Join and filter the datasets.
@@ -234,6 +234,7 @@ p_ready <-
          SQ_FT_LOT,
          ACCESS,
          TOPOGRAPHY,
+         RESTRICTIVE_SZ_SHAPE,
          PCNT_UNUSABLE,
          CONTAMINATION,
          HISTORIC_SITE,
