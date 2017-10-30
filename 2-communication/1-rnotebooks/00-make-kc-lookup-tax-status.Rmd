@@ -43,8 +43,8 @@ The status of the parcel's taxation. The categories are: `Taxable`,`Exempt`, or 
 #### Processing Steps {-}
 ##### Summary {-}
   1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R environment.
-  2.  Create `tax_reason`: Pass `string` to the `parse_lookup_string()` function.
-  3.  Upload `tax_reason` to Google Drive.
+  2.  Create `tax_status`: Pass `string` to the `parse_lookup_string()` function.
+  3.  Upload `tax_status` to Google Drive.
   
 ##### Step 1 {-}
 ```{r make-kc-lookup-tax-status-01, echo = TRUE, message=FALSE}

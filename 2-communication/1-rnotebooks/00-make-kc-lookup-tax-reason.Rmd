@@ -41,9 +41,9 @@ The reason for a difference between appraised and taxable values.
 
 #### Processing Steps {-}
 ##### Summary {-}
-  1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R          environment.
-  2.  
-  3.  
+  1.  Create `string`: The contents of the Real Property Account metadata table pasted into the R environment.
+  2.  Create `tax_reason`: Pass `string` to the `parse_lookup_string()` function.
+  3.  Upload `tax_reason` to Google Drive.
   
 ##### Step 1 {-}
 ```{r make-kc-lookup-tax-reason-01, echo = TRUE, message=FALSE}
