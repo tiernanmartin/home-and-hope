@@ -109,9 +109,10 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <li class="appendix"><span><b>Appendices</b></span></li>
 <li class="chapter" data-level="A" data-path="A-data-methods.html"><a href="A-data-methods.html"><i class="fa fa-check"></i><b>A</b> Data Methods</a><ul>
 <li class="chapter" data-level="A.1" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html"><i class="fa fa-check"></i><b>A.1</b> King County Lookup Lists</a><ul>
-<li class="chapter" data-level="A.1.1" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-jurisdictions"><i class="fa fa-check"></i><b>A.1.1</b> King County Jurisdictions</a></li>
-<li class="chapter" data-level="A.1.2" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-value-reasons"><i class="fa fa-check"></i><b>A.1.2</b> King County Tax Value Reasons</a></li>
-<li class="chapter" data-level="A.1.3" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-status"><i class="fa fa-check"></i><b>A.1.3</b> King County Tax Status</a></li>
+<li class="chapter" data-level="A.1.1" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#lookup-table-categorical-features"><i class="fa fa-check"></i><b>A.1.1</b> Lookup Table Categorical Features</a></li>
+<li class="chapter" data-level="A.1.2" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-jurisdictions"><i class="fa fa-check"></i><b>A.1.2</b> King County Jurisdictions</a></li>
+<li class="chapter" data-level="A.1.3" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-value-reasons"><i class="fa fa-check"></i><b>A.1.3</b> King County Tax Value Reasons</a></li>
+<li class="chapter" data-level="A.1.4" data-path="A-1-king-county-lookup-lists.html"><a href="A-1-king-county-lookup-lists.html#king-county-tax-status"><i class="fa fa-check"></i><b>A.1.4</b> King County Tax Status</a></li>
 </ul></li>
 <li class="chapter" data-level="A.2" data-path="A-2-untaxed-king-county-parcels.html"><a href="A-2-untaxed-king-county-parcels.html"><i class="fa fa-check"></i><b>A.2</b> Untaxed King County Parcels</a></li>
 <li class="chapter" data-level="A.3" data-path="A-3-resources.html"><a href="A-3-resources.html"><i class="fa fa-check"></i><b>A.3</b> Resources</a></li>
@@ -137,7 +138,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 <h2><span class="header-section-number">A.1</span> King County Lookup Lists</h2>
 <div id="introduction" class="section level4 unnumbered">
 <h4>Introduction</h4>
-<p>A set of named lists that allow King County’s various codifications to be converted into clearer text.</p>
+<p>The maintainers of King County’s Assessor datasets use several different codified abbreviations for the categorical features in the dataset.</p>
 <p>For example, the following abbreviations are used to indicate the <code>tax status</code> of a parcel:</p>
 <table>
 <thead>
@@ -177,7 +178,8 @@ Operating
 </tr>
 </tbody>
 </table>
-<p>Most lookup codes are contained in the metadata that Kign County provides for each dataset. They are usually presented in the following format: <code>T = Taxable; X = Exempt; O = Operating</code></p>
+<p>Most codes are provided in the metadata guide document <a href="http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip">Lookup.zip <i class="fa fa-download"></i></a>, but some are listed in the metadata tables on the <a href="http://www5.kingcounty.gov/gisdataportal/">GIS Data Portal <i class="fa fa-external-link"></i></a>.</p>
+<p>Features contained in the metadata guide are extracted directly from that document. Categorical features contained in the GIS Data Portal are usually presented as text strings in the following format:<br> <code>&quot;T = Taxable; X = Exempt; O = Operating&quot;</code></p>
 <p>The following function is used to parse a string formatted this way:</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">parse_lookup_string &lt;-<span class="st"> </span><span class="cf">function</span>(string, col_sep, row_sep){
   <span class="kw">str_split</span>(string, <span class="dt">pattern =</span> row_sep) <span class="op">%&gt;%</span><span class="st"> </span>
@@ -211,16 +213,21 @@ tax_reason_named_list[<span class="st">&quot;O&quot;</span>]</code></pre></div>
 <br>
 <hr>
 </div>
-<div id="king-county-jurisdictions" class="section level3">
-<h3><span class="header-section-number">A.1.1</span> King County Jurisdictions</h3>
+<div id="lookup-table-categorical-features" class="section level3">
+<h3><span class="header-section-number">A.1.1</span> Lookup Table Categorical Features</h3>
 <div id="description" class="section level4 unnumbered">
 <h4>Description</h4>
-<p>Jurisdiction planning to annex this area.</p>
+<p>King County provides a Lookup Table to decode features from the Assesor datasets and this analysis makes use of the following features from that Table:</p>
+<ul>
+<li>Present Use</li>
+<li><em>add others here</em></li>
+</ul>
 </div>
 <div id="links" class="section level4 unnumbered">
-<h4>Links</h4>
+<h4>Links:</h4>
 <ul>
-<li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
+<li><a href="http://info.kingcounty.gov/assessor/DataDownload/default.aspx">Source <i class="fa fa-external-link"></i></a></li>
+<li><a href="http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip">Data <i class="fa fa-download"></i></a></li>
 </ul>
 </div>
 <div id="processing-steps" class="section level4 unnumbered">
@@ -228,12 +235,1127 @@ tax_reason_named_list[<span class="st">&quot;O&quot;</span>]</code></pre></div>
 <div id="summary" class="section level5 unnumbered">
 <h5>Summary</h5>
 <ol style="list-style-type: decimal">
+<li>Create <code>lu</code>: A <code>tibble</code> object containing the King County Lookup document information.</li>
+<li>Create <code>pu</code> (<em>add others here</em>): Filter <code>lu</code> by <code>LU_TYPE</code> to select a single lookup category, then exact <code>LU_DESCRIPTION</code> and <code>LU_ITEM</code> in a named vector object.</li>
+<li>Upload each object to Drive.</li>
+</ol>
+</div>
+<div id="step-1" class="section level5 unnumbered">
+<h5>Step 1</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">lu_fp &lt;-<span class="st"> </span><span class="kw">root_file</span>(<span class="st">&quot;./1-data/2-external/EXTR_LookUp.csv&quot;</span>)
+
+lu &lt;-<span class="st"> </span>
+<span class="st">  </span><span class="kw">make_or_read</span>(lu_fp,
+               {
+                 dr_id &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrSThkY055LUdxakE&quot;</span>)
+                 
+                 <span class="kw">drive_read</span>(<span class="dt">dr_id =</span> dr_id,
+                            <span class="dt">path =</span> lu_fp,
+                            <span class="dt">read_fun =</span> read_csv,
+                            <span class="dt">.tempfile =</span> <span class="ot">FALSE</span>,
+                            <span class="dt">progress =</span> <span class="ot">FALSE</span>)
+               },
+               {<span class="kw">read_csv</span>(lu_fp,<span class="dt">progress =</span> <span class="ot">FALSE</span>)})</code></pre></div>
+</div>
+<div id="step-2" class="section level5 unnumbered">
+<h5>Step 2</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># PRESENT USE</span>
+pu &lt;-<span class="st"> </span>
+<span class="st">  </span>lu <span class="op">%&gt;%</span>
+<span class="st">  </span><span class="kw">rename_all</span>(to_screaming_snake_case) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">filter</span>(LU_TYPE <span class="op">%in%</span><span class="st"> </span><span class="dv">102</span>) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">select</span>(LU_DESCRIPTION, LU_ITEM) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span><span class="kw">pmap</span>(<span class="op">~</span>purrr<span class="op">::</span><span class="kw">set_names</span>(..<span class="dv">1</span>,..<span class="dv">2</span>)) <span class="op">%&gt;%</span><span class="st"> </span>
+<span class="st">  </span>unlist
+
+<span class="kw">data.frame</span>(<span class="dt">DESCRIPTION =</span> pu) <span class="op">%&gt;%</span><span class="st"> </span><span class="kw">kable</span>(<span class="dt">format =</span> <span class="st">&quot;html&quot;</span>)</code></pre></div>
+<table>
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+DESCRIPTION
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+0
+</td>
+<td style="text-align:left;">
+NA
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+101
+</td>
+<td style="text-align:left;">
+Retail Store
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+104
+</td>
+<td style="text-align:left;">
+Retail(Big Box)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+105
+</td>
+<td style="text-align:left;">
+Retail(Discount)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+106
+</td>
+<td style="text-align:left;">
+Office Building
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+11
+</td>
+<td style="text-align:left;">
+Apartment
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+118
+</td>
+<td style="text-align:left;">
+Office Park
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+122
+</td>
+<td style="text-align:left;">
+Medical/Dental Office
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+126
+</td>
+<td style="text-align:left;">
+Condominium(Office)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+130
+</td>
+<td style="text-align:left;">
+Farm
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+137
+</td>
+<td style="text-align:left;">
+Greenhse/Nrsry/Hort Srvc
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+138
+</td>
+<td style="text-align:left;">
+Mining/Quarry/Ore Processing
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+140
+</td>
+<td style="text-align:left;">
+Bowling Alley
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+141
+</td>
+<td style="text-align:left;">
+Campground
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+142
+</td>
+<td style="text-align:left;">
+Driving Range
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+143
+</td>
+<td style="text-align:left;">
+Golf Course
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+145
+</td>
+<td style="text-align:left;">
+Health Club
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+146
+</td>
+<td style="text-align:left;">
+Marina
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+147
+</td>
+<td style="text-align:left;">
+Movie Theater
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+149
+</td>
+<td style="text-align:left;">
+Park, Public(Zoo/Arbor)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+150
+</td>
+<td style="text-align:left;">
+Park, Private(Amuse Ctr)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+152
+</td>
+<td style="text-align:left;">
+Ski Area
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+153
+</td>
+<td style="text-align:left;">
+Skating Rink(Ice/Roller)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+156
+</td>
+<td style="text-align:left;">
+Sport Facility
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+157
+</td>
+<td style="text-align:left;">
+Art Gallery/Museum/Soc Srvc
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+159
+</td>
+<td style="text-align:left;">
+Parking(Assoc)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+16
+</td>
+<td style="text-align:left;">
+Apartment(Mixed Use)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+160
+</td>
+<td style="text-align:left;">
+Auditorium//Assembly Bldg
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+161
+</td>
+<td style="text-align:left;">
+Auto Showroom and Lot
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+162
+</td>
+<td style="text-align:left;">
+Bank
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+163
+</td>
+<td style="text-align:left;">
+Car Wash
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+165
+</td>
+<td style="text-align:left;">
+Church/Welfare/Relig Srvc
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+166
+</td>
+<td style="text-align:left;">
+Club
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+167
+</td>
+<td style="text-align:left;">
+Conv Store without Gas
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+168
+</td>
+<td style="text-align:left;">
+Conv Store with Gas
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+17
+</td>
+<td style="text-align:left;">
+Apartment(Co-op)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+171
+</td>
+<td style="text-align:left;">
+Restaurant(Fast Food)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+172
+</td>
+<td style="text-align:left;">
+Governmental Service
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+173
+</td>
+<td style="text-align:left;">
+Hospital
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+179
+</td>
+<td style="text-align:left;">
+Mortuary/Cemetery/Crematory
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+18
+</td>
+<td style="text-align:left;">
+Apartment(Subsidized)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+180
+</td>
+<td style="text-align:left;">
+Parking(Commercial Lot)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+182
+</td>
+<td style="text-align:left;">
+Parking(Garage)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+183
+</td>
+<td style="text-align:left;">
+Restaurant/Lounge
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+184
+</td>
+<td style="text-align:left;">
+School(Public)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+185
+</td>
+<td style="text-align:left;">
+School(Private)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+186
+</td>
+<td style="text-align:left;">
+Service Station
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+188
+</td>
+<td style="text-align:left;">
+Tavern/Lounge
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+189
+</td>
+<td style="text-align:left;">
+Post Office/Post Service
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+190
+</td>
+<td style="text-align:left;">
+Vet/Animal Control Srvc
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+191
+</td>
+<td style="text-align:left;">
+Grocery Store
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+193
+</td>
+<td style="text-align:left;">
+Daycare Center
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+194
+</td>
+<td style="text-align:left;">
+Mini Lube
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+195
+</td>
+<td style="text-align:left;">
+Warehouse
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+2
+</td>
+<td style="text-align:left;">
+Single Family(Res Use/Zone)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+20
+</td>
+<td style="text-align:left;">
+Condominium(Residential)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+202
+</td>
+<td style="text-align:left;">
+High Tech/High Flex
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+210
+</td>
+<td style="text-align:left;">
+Industrial Park
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+216
+</td>
+<td style="text-align:left;">
+Service Building
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+223
+</td>
+<td style="text-align:left;">
+Industrial(Gen Purpose)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+245
+</td>
+<td style="text-align:left;">
+Industrial(Heavy)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+246
+</td>
+<td style="text-align:left;">
+Industrial(Light)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+247
+</td>
+<td style="text-align:left;">
+Air Terminal and Hangers
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+25
+</td>
+<td style="text-align:left;">
+Condominium(Mixed Use)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+252
+</td>
+<td style="text-align:left;">
+Mini Warehouse
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+261
+</td>
+<td style="text-align:left;">
+Terminal(Rail)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+262
+</td>
+<td style="text-align:left;">
+Terminal(Marine/Comm Fish)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+263
+</td>
+<td style="text-align:left;">
+Terminal(Grain)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+264
+</td>
+<td style="text-align:left;">
+Terminal(Auto/Bus/Other)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+266
+</td>
+<td style="text-align:left;">
+Utility, Public
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+267
+</td>
+<td style="text-align:left;">
+Utility, Private(Radio/T.V.)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+271
+</td>
+<td style="text-align:left;">
+Terminal(Marine)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+272
+</td>
+<td style="text-align:left;">
+Historic Prop(Residence)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+273
+</td>
+<td style="text-align:left;">
+Historic Prop(Office)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+274
+</td>
+<td style="text-align:left;">
+Historic Prop(Retail)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+275
+</td>
+<td style="text-align:left;">
+Historic Prop(Eat/Drink)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+276
+</td>
+<td style="text-align:left;">
+Historic Prop(Loft/Warehse)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+277
+</td>
+<td style="text-align:left;">
+Historic Prop(Park/Billbrd)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+278
+</td>
+<td style="text-align:left;">
+Historic Prop(Transient Fac)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+279
+</td>
+<td style="text-align:left;">
+Historic Prop(Rec/Entertain)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+280
+</td>
+<td style="text-align:left;">
+Historic Prop(Misc)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+29
+</td>
+<td style="text-align:left;">
+Townhouse Plat
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+299
+</td>
+<td style="text-align:left;">
+Historic Prop(Vacant Land)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+3
+</td>
+<td style="text-align:left;">
+Duplex
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+300
+</td>
+<td style="text-align:left;">
+Vacant(Single-family)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+301
+</td>
+<td style="text-align:left;">
+Vacant(Multi-family)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+309
+</td>
+<td style="text-align:left;">
+Vacant(Commercial)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+316
+</td>
+<td style="text-align:left;">
+Vacant(Industrial)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+323
+</td>
+<td style="text-align:left;">
+Reforestation(RCW 84.28)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+324
+</td>
+<td style="text-align:left;">
+Forest Land(Class-RCW 84.33)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+325
+</td>
+<td style="text-align:left;">
+Forest Land(Desig-RCW 84.33)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+326
+</td>
+<td style="text-align:left;">
+Open Space(Curr Use-RCW 84.34)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+327
+</td>
+<td style="text-align:left;">
+Open Space(Agric-RCW 84.34)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+328
+</td>
+<td style="text-align:left;">
+Open Space Tmbr Land/Greenbelt
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+330
+</td>
+<td style="text-align:left;">
+Easement
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+331
+</td>
+<td style="text-align:left;">
+Reserve/Wilderness Area
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+332
+</td>
+<td style="text-align:left;">
+Right of Way/Utility, Road
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+333
+</td>
+<td style="text-align:left;">
+River/Creek/Stream
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+334
+</td>
+<td style="text-align:left;">
+Tideland, 1st Class
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+335
+</td>
+<td style="text-align:left;">
+Tideland, 2nd Class
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+336
+</td>
+<td style="text-align:left;">
+Transferable Dev Rights
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+337
+</td>
+<td style="text-align:left;">
+Water Body, Fresh
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+339
+</td>
+<td style="text-align:left;">
+Shell Structure
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+340
+</td>
+<td style="text-align:left;">
+Bed &amp; Breakfast
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+341
+</td>
+<td style="text-align:left;">
+Rooming House
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+342
+</td>
+<td style="text-align:left;">
+Fraternity/Sorority House
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+343
+</td>
+<td style="text-align:left;">
+Gas Station
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+38
+</td>
+<td style="text-align:left;">
+Mobile Home Park
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+4
+</td>
+<td style="text-align:left;">
+Triplex
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+48
+</td>
+<td style="text-align:left;">
+Condominium(M Home Pk)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+49
+</td>
+<td style="text-align:left;">
+Retirement Facility
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+5
+</td>
+<td style="text-align:left;">
+4-Plex
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+51
+</td>
+<td style="text-align:left;">
+Hotel/Motel
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+55
+</td>
+<td style="text-align:left;">
+Rehabilitation Center
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+56
+</td>
+<td style="text-align:left;">
+Residence Hall/Dorm
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+57
+</td>
+<td style="text-align:left;">
+Group Home
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+58
+</td>
+<td style="text-align:left;">
+Resort/Lodge/Retreat
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+59
+</td>
+<td style="text-align:left;">
+Nursing Home
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+6
+</td>
+<td style="text-align:left;">
+Single Family(C/I Zone)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+60
+</td>
+<td style="text-align:left;">
+Shopping Ctr(Nghbrhood)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+61
+</td>
+<td style="text-align:left;">
+Shopping Ctr(Community)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+62
+</td>
+<td style="text-align:left;">
+Shopping Ctr(Regional)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+63
+</td>
+<td style="text-align:left;">
+Shopping Ctr(Maj Retail)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+64
+</td>
+<td style="text-align:left;">
+Shopping Ctr(Specialty)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+7
+</td>
+<td style="text-align:left;">
+Houseboat
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+8
+</td>
+<td style="text-align:left;">
+Mobile Home
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+9
+</td>
+<td style="text-align:left;">
+Single Family(C/I Use)
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+96
+</td>
+<td style="text-align:left;">
+Retail(Line/Strip)
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="step-3" class="section level5 unnumbered">
+<h5>Step 3</h5>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">args_df &lt;-<span class="st"> </span>
+<span class="st">  </span><span class="kw">tribble</span>( 
+    <span class="op">~</span><span class="st"> </span>obj,               <span class="op">~</span><span class="st"> </span>name,
+       pu, <span class="st">&quot;kc-present-use.rds&quot;</span>           
+  )
+
+save_and_upload &lt;-<span class="st"> </span><span class="cf">function</span>(obj, name){
+ 
+  folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
+ 
+  tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
+
+  <span class="kw">write_rds</span>(obj,tmp)
+
+  <span class="kw">drive_upload</span>(tmp, folder, <span class="dt">name =</span> name)
+   
+}
+
+<span class="kw">pmap</span>(args_df, <span class="op">~</span><span class="st"> </span><span class="kw">save_and_upload</span>(..<span class="dv">1</span>,..<span class="dv">2</span>)) </code></pre></div>
+<br>
+<hr>
+</div>
+</div>
+</div>
+<div id="king-county-jurisdictions" class="section level3">
+<h3><span class="header-section-number">A.1.2</span> King County Jurisdictions</h3>
+<div id="description-1" class="section level4 unnumbered">
+<h4>Description</h4>
+<p>Jurisdiction planning to annex this area.</p>
+</div>
+<div id="links-1" class="section level4 unnumbered">
+<h4>Links</h4>
+<ul>
+<li><a href="http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=public_parcels">Source <i class="fa fa-external-link"></i></a></li>
+</ul>
+</div>
+<div id="processing-steps-1" class="section level4 unnumbered">
+<h4>Processing Steps</h4>
+<div id="summary-1" class="section level5 unnumbered">
+<h5>Summary</h5>
+<ol style="list-style-type: decimal">
 <li>Create <code>string</code>: The contents of the JURISDICTION table copy-and-pasted in the R environment.</li>
 <li>Create <code>juris</code>: A named vector of the jurisdictions and their abbreviations.</li>
 <li>Upload to Drive</li>
 </ol>
 </div>
-<div id="step-1" class="section level5 unnumbered">
+<div id="step-1-1" class="section level5 unnumbered">
 <h5>Step 1</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> </span>
 <span class="st">&quot;NULL   NULL</span>
@@ -276,7 +1398,7 @@ tax_reason_named_list[<span class="st">&quot;O&quot;</span>]</code></pre></div>
 <span class="st">WO  Woodinville</span>
 <span class="st">YP  Yarrow Point&quot;</span></code></pre></div>
 </div>
-<div id="step-2" class="section level5 unnumbered">
+<div id="step-2-1" class="section level5 unnumbered">
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">juris &lt;-<span class="st"> </span>
 <span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
@@ -609,7 +1731,7 @@ Yarrow Point
 </tbody>
 </table>
 </div>
-<div id="step-3" class="section level5 unnumbered">
+<div id="step-3-1" class="section level5 unnumbered">
 <h5>Step 3</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
 
@@ -624,21 +1746,21 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 </div>
 </div>
 <div id="king-county-tax-value-reasons" class="section level3">
-<h3><span class="header-section-number">A.1.2</span> King County Tax Value Reasons</h3>
-<div id="description-1" class="section level4 unnumbered">
+<h3><span class="header-section-number">A.1.3</span> King County Tax Value Reasons</h3>
+<div id="description-2" class="section level4 unnumbered">
 <h4>Description</h4>
 <p>The reason for a difference between appraised and taxable values.</p>
 </div>
-<div id="links-1" class="section level4 unnumbered">
+<div id="links-2" class="section level4 unnumbered">
 <h4>Links</h4>
 <ul>
 <li><a href="http://info.kingcounty.gov/assessor/DataDownload/default.aspx">Source <i class="fa fa-external-link"></i></a></li>
 <li><a href="http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc">Data <i class="fa fa-external-link"></i></a></li>
 </ul>
 </div>
-<div id="processing-steps-1" class="section level4 unnumbered">
+<div id="processing-steps-2" class="section level4 unnumbered">
 <h4>Processing Steps</h4>
-<div id="summary-1" class="section level5 unnumbered">
+<div id="summary-2" class="section level5 unnumbered">
 <h5>Summary</h5>
 <ol style="list-style-type: decimal">
 <li>Create <code>string</code>: The contents of the Real Property Account metadata table pasted into the R environment.</li>
@@ -646,7 +1768,7 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <li></li>
 </ol>
 </div>
-<div id="step-1-1" class="section level5 unnumbered">
+<div id="step-1-2" class="section level5 unnumbered">
 <h5>Step 1</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> &quot;</span>
 <span class="st">FS = senior citizen exemption</span>
@@ -659,7 +1781,7 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <span class="st">MX = more than one reason applies</span>
 <span class="st">&quot;</span></code></pre></div>
 </div>
-<div id="step-2-1" class="section level5 unnumbered">
+<div id="step-2-2" class="section level5 unnumbered">
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tax_reason &lt;-<span class="st"> </span>
 <span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
@@ -745,7 +1867,7 @@ more than one reason applies
 </tbody>
 </table>
 </div>
-<div id="step-3-1" class="section level5 unnumbered">
+<div id="step-3-2" class="section level5 unnumbered">
 <h5>Step 3</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
 
@@ -756,27 +1878,25 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <span class="kw">drive_upload</span>(tmp, folder,<span class="dt">name =</span> <span class="st">&quot;kc-tax-reason.rds&quot;</span>)</code></pre></div>
 <br>
 <hr>
-<br>
-<hr>
 </div>
 </div>
 </div>
 <div id="king-county-tax-status" class="section level3">
-<h3><span class="header-section-number">A.1.3</span> King County Tax Status</h3>
-<div id="description-2" class="section level4 unnumbered">
+<h3><span class="header-section-number">A.1.4</span> King County Tax Status</h3>
+<div id="description-3" class="section level4 unnumbered">
 <h4>Description</h4>
 <p>The status of the parcel’s taxation. The categories are: <code>Taxable</code>,<code>Exempt</code>, or <code>Operating</code>.</p>
 </div>
-<div id="links-2" class="section level4 unnumbered">
+<div id="links-3" class="section level4 unnumbered">
 <h4>Links</h4>
 <ul>
 <li><a href="http://info.kingcounty.gov/assessor/DataDownload/default.aspx">Source <i class="fa fa-external-link"></i></a></li>
 <li><a href="http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc">Data <i class="fa fa-external-link"></i></a></li>
 </ul>
 </div>
-<div id="processing-steps-2" class="section level4 unnumbered">
+<div id="processing-steps-3" class="section level4 unnumbered">
 <h4>Processing Steps</h4>
-<div id="summary-2" class="section level5 unnumbered">
+<div id="summary-3" class="section level5 unnumbered">
 <h5>Summary</h5>
 <ol style="list-style-type: decimal">
 <li>Create <code>string</code>: The contents of the Real Property Account metadata table pasted into the R environment.</li>
@@ -784,13 +1904,13 @@ tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()
 <li>Upload <code>tax_reason</code> to Google Drive.</li>
 </ol>
 </div>
-<div id="step-1-2" class="section level5 unnumbered">
+<div id="step-1-3" class="section level5 unnumbered">
 <h5>Step 1</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">string &lt;-<span class="st"> &quot;</span>
 <span class="st">T = Taxable; X = Exempt; O = Operating</span>
 <span class="st">&quot;</span></code></pre></div>
 </div>
-<div id="step-2-2" class="section level5 unnumbered">
+<div id="step-2-3" class="section level5 unnumbered">
 <h5>Step 2</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">tax_status &lt;-<span class="st"> </span>
 <span class="st">  </span>string <span class="op">%&gt;%</span><span class="st"> </span>
@@ -835,7 +1955,7 @@ Operating
 </tbody>
 </table>
 </div>
-<div id="step-3-2" class="section level5 unnumbered">
+<div id="step-3-3" class="section level5 unnumbered">
 <h5>Step 3</h5>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">folder &lt;-<span class="st"> </span><span class="kw">as_id</span>(<span class="st">&quot;0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc&quot;</span>)
 
