@@ -16,11 +16,11 @@ options("readr.num_columns" = 0)
 ```{r data-methods-kc-lookup}
 lu_intro_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-intro.Rmd")
 
+lu_excel_doc_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-excel-doc.Rmd")
+
 lu_juris_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-jurisdiction.Rmd')
 
 lu_tax_reason_fp <- root_file('2-communication/1-rnotebooks/00-make-kc-lookup-tax-reason.Rmd')
-
-# lu_presentuse_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-presentuse.Rmd")
 
 lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-tax-status.Rmd")
 ```
@@ -28,12 +28,13 @@ lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-ta
 `r knit_child(lu_intro_fp)`
 <br>
 <hr>
+`r knit_child(lu_excel_doc_fp)`
+<br>
+<hr>
 `r knit_child(lu_juris_fp)`
 <br>
 <hr>
-`r knit_child(lu_tax_reason_fp)`
-<br>
-<hr> 
+`r knit_child(lu_tax_reason_fp)` 
 <br>
 <hr>
 `r knit_child(lu_tax_status_fp)`
