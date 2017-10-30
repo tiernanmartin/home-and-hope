@@ -55,8 +55,13 @@ tax_0_sf <-
                },
                {st_read(tax_0_sf_fp, quiet = TRUE, stringsAsFactors = TRUE)})
 
+set.seed(20171013)
 tax_0_sf %>%
   mutate_at(c("PIN","ACCT_NBR","PROP_NAME"), as.character) %>%
+  mutate_if(is.factor, as.character) %>% 
+  group_by(TAX_STATUS, TAX_REASON) %>% 
+  filter(APPR_LAND_VAL>0 & APPR_IMPS_VAL>0) %>% 
+  sample_n(1) %>% 
   st_drop_geometry() 
 
 ```
