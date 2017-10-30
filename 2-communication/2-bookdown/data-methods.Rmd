@@ -39,8 +39,16 @@ lu_tax_status_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-lookup-ta
 <hr>
 `r knit_child(lu_tax_status_fp)`
 
-## Untaxed King County Parcels
+## Publicly-Owned King County Parcels
+
 ```{r data-methods-kc-pub}
+kc_pub_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-parcels-public.Rmd")
+```
+
+`r knit_child(kc_pub_fp)`
+
+## Tax-Exempt King County Parcels
+```{r data-methods-kc-untaxed}
 kc_tax_0_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-parcels-not-taxed.Rmd")
 ```
 
