@@ -48,8 +48,8 @@ p <-
   rename_all(to_screaming_snake_case) 
 
 rm(p_load)
-gc()
-  
+gc(verbose = FALSE)
+
 
 
 # Real Property Account
@@ -109,7 +109,7 @@ acct <-
   rename_all(to_screaming_snake_case) 
 
 rm(acct_load)
-gc()
+gc(verbose = FALSE)
 
 
 
@@ -141,7 +141,7 @@ p_sf <-
   rename_if(not_sfc, to_screaming_snake_case)
 
 rm(p_sf_load)
-gc()
+gc(verbose = FALSE)
 
 # Clean, Join, Filter ----
 
@@ -158,7 +158,6 @@ p_ready <-
          SQ_FT_LOT,
          ACCESS,
          TOPOGRAPHY,
-         RESTRICTIVE_SZ_SHAPE,
          PCNT_UNUSABLE,
          CONTAMINATION,
          HISTORIC_SITE,
@@ -212,9 +211,4 @@ st_write(tax_0_sf,dsn = tax_0_fp, driver = "GPKG")
 
 drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
-drive_update(as_id("0B5Pp4V6eCkhrdUh5ZmlGcFpQNzg"),tax_0_fp)
-
 drive_upload(tax_0_fp, path = drive_folder)
-
-
-

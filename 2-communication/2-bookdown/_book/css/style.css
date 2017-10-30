@@ -29,8 +29,15 @@ h4 {
 .book .book-body .page-wrapper .page-inner section.normal table{
         font-size: .85em !important;
         line-height: 1;
-        width: fit-content !important;
-        max-width: 25vh;
+        width: fit-content;
+        overflow-wrap: normal;
+        
+}
+
+.book .book-body .page-wrapper .page-inner section.normal .pagedtable table{
+        font-size: .85em !important;
+        line-height: 1;
+        width: -webkit-fill-available;
         overflow-wrap: normal;
         
 }

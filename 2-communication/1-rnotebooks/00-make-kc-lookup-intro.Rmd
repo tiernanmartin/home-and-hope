@@ -33,8 +33,7 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 ####Introduction {-}
 
-A set of named lists that allow King County's various codifications to be converted into 
-clearer text.
+The maintainers of King County's Assessor datasets use several different codified abbreviations for the categorical features in the dataset. 
 
 For example, the following abbreviations are used to indicate the `tax status` of a parcel:
 
@@ -49,7 +48,9 @@ tibble::tribble(
 
 ```
 
-Most lookup codes are contained in the metadata that Kign County provides for each dataset. They are usually presented in the following format: `T = Taxable; X = Exempt; O = Operating`
+Most codes are provided in the metadata guide document [Lookup.zip <i class="fa fa-download"></i>](http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip), but some are listed in the metadata tables on the [GIS Data Portal <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/gisdataportal/).
+
+Features contained in the metadata guide are extracted directly from that document. Categorical features contained in the GIS Data Portal are usually presented as text strings in the following format:<br> `"T = Taxable; X = Exempt; O = Operating"`
 
 The following function is used to parse a string formatted this way:
 
@@ -78,7 +79,6 @@ T = Taxable; X = Exempt; O = Operating
 
 tax_reason_named_list <- parse_lookup_string(string, col_sep = "\\s=\\s",row_sep = ";\\s") 
 ```
-
 
 The named list objects created in this section are used to de-code the various codification schemes
 used in the King County data. A code value is passed to the named list and the corresponding category or description is returned: 

@@ -1,0 +1,114 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r make-kc-lookup-excel-doc-setup, include = FALSE}
+library(tidyverse)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(htmltools)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
+library(knitr)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+### Lookup Table Categorical Features
+
+####Description {-}
+
+King County provides a Lookup Table to decode features from the Assesor datasets and this analysis makes use of the following features from that Table:
+
+  - Present Use
+  - _add others here_
+
+
+####Links: {-}
+  - [Source <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/DataDownload/default.aspx)
+  - [Data <i class="fa fa-download"></i>](http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip) 
+
+#### Processing Steps {-}
+##### Summary {-}
+  1. Create `lu`: A `tibble` object containing the King County Lookup document information.
+  2. Create `pu` (_add others here_): Filter `lu` by `LU_TYPE` to select a single lookup category, then exact `LU_DESCRIPTION` and `LU_ITEM` in a named vector object.
+  3. Upload each object to Drive.
+  
+##### Step 1 {-}
+```{r make-kc-lookup-excel-doc-01, echo = TRUE, message=FALSE}
+
+lu_fp <- root_file("./1-data/2-external/EXTR_LookUp.csv")
+
+lu <- 
+  make_or_read(lu_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrSThkY055LUdxakE")
+                 
+                 drive_read(dr_id = dr_id,
+                            path = lu_fp,
+                            read_fun = read_csv,
+                            .tempfile = FALSE,
+                            progress = FALSE)
+               },
+               {read_csv(lu_fp,progress = FALSE)})
+
+```
+
+
+##### Step 2 {-}
+```{r make-kc-lookup-excel-doc-02, echo = TRUE}
+
+# PRESENT USE
+pu <- 
+  lu %>%
+  rename_all(to_screaming_snake_case) %>% 
+  filter(LU_TYPE %in% 102) %>% 
+  select(LU_DESCRIPTION, LU_ITEM) %>% 
+  pmap(~purrr::set_names(..1,..2)) %>% 
+  unlist
+
+data.frame(DESCRIPTION = pu) %>% kable(format = "html")
+
+```
+
+##### Step 3 {-}
+
+```{r make-kc-lookup-excel-doc-03, eval = FALSE, echo = TRUE}
+
+args_df <- 
+  tribble( 
+    ~ obj,               ~ name,
+       pu, "kc-present-use.rds"           
+  )
+
+save_and_upload <- function(obj, name){
+ 
+  folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+ 
+  tmp <- tempfile()
+
+  write_rds(obj,tmp)
+
+  drive_upload(tmp, folder, name = name)
+   
+}
+
+pmap(args_df, ~ save_and_upload(..1,..2)) 
+
+```
+
