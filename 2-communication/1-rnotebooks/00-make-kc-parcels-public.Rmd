@@ -21,7 +21,7 @@ library(snakecase)
 library(magrittr)
 library(rprojroot)
 library(knitr)
-library(skimr)
+library(lubridate)
 
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
@@ -159,7 +159,8 @@ pub_ready <-
          LON) %>% 
   mutate(PRESENTUSE = present_use[as.character(PRESENTUSE)],
          JURISDICTION = jurisdiction[JURISDICTION],
-         DATE = "20170727")
+         DATE = ymd(20170727)
+  )
 
 ```
 
