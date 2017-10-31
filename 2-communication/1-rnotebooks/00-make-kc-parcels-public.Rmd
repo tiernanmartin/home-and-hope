@@ -148,7 +148,7 @@ pub_ready <-
          TYPE,
          PRESENTUSE,
          LOT_SQFT = LOTSQFT,
-         APPR_LND_VAL = APPRLNDVAL,
+         APPR_LAND_VAL = APPRLNDVAL,
          APPR_IMPR_VAL = APPR_IMPR,
          KCTP_NAME,
          JURISDICTION = JURIS,

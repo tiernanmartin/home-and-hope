@@ -39,28 +39,25 @@ This data reflects the King County Assessor records as of `October 13, 2017`.
 
 ```{r  make-kc-parcels-not-taxed-01, eval = TRUE, echo = FALSE, max.print = 10}
 
-tax_0_sf_fp <- root_file("./1-data/3-interim/tax_0_sf_20171013.gpkg")
+pub_or_tax_exempt_sf_fp <- root_file("./1-data/3-interim/pub_or_tax_exempt_sf_20171013.gpkg")
 
-tax_0_sf <- 
-  make_or_read(tax_0_sf_fp,
+pub_or_tax_exempt_sf <- 
+  make_or_read(pub_or_tax_exempt_sf_fp,
                {
-                 dr_id <- as_id("0B5Pp4V6eCkhrdUh5ZmlGcFpQNzg")
+                 dr_id <- as_id("0B5Pp4V6eCkhrZnRtUjlWaFVrb0E")
                  
                  drive_read(dr_id = dr_id,
-                            path = tax_0_sf_fp,
+                            path = pub_or_tax_exempt_sf_fp,
                             read_fun = st_read,
                             .tempfile = FALSE,
                             quiet = TRUE, 
-                            stringsAsFactors = TRUE)
+                            stringsAsFactors = FALSE)
                },
-               {st_read(tax_0_sf_fp, quiet = TRUE, stringsAsFactors = TRUE)})
+               {st_read(pub_or_tax_exempt_sf_fp, quiet = TRUE, stringsAsFactors = FALSE)})
 
 set.seed(20171013)
-tax_0_sf %>%
-  mutate_at(c("PIN","ACCT_NBR","PROP_NAME"), as.character) %>%
-  mutate_if(is.factor, as.character) %>% 
+pub_or_tax_exempt_sf %>% 
   group_by(TAX_STATUS, TAX_REASON) %>% 
-  filter(APPR_LAND_VAL>0 & APPR_IMPS_VAL>0) %>% 
   sample_n(1) %>% 
   st_drop_geometry() 
 
@@ -86,7 +83,8 @@ tax_0_sf %>%
   3.  Create `p_sf`: a `simple feature` object containing the spatial polygon representations of each parcel in the county-wide dataset.
   4.  Clean/process the three dataset: prepare the datasets to be joined and filtered.
     - Load `tax_status` and `tax_reason` for transforming coded features into descriptive text.
-  5.  Create `tax_0_sf`: Join and filter the datasets.
+    - Load `pub` for joining the public parcels.
+  5.  Create `pub_or_tax_exempt_sf`: Join and filter the datasets.
     - Join with `inner_join()` to ensure that only records common to all three datasets are retained (note: this action may implicitly filter the data)
     - Filter by excluding records whose `TAX_STATUS` is `Taxable`.
   6. Upload to Drive
@@ -149,6 +147,10 @@ acct_load <-
                  
                },
                {read_csv(acct_fp)}) 
+
+acct <- 
+  acct_load %>% 
+  rename_all(to_screaming_snake_case)
 
 rm(acct_load)
 gc(verbose = FALSE)
@@ -222,6 +224,21 @@ tax_status <-
                },
                {read_rds(ts_fp)})
 
+
+pub_fp <- root_file("./1-data/3-interim/public_parcels_20170727.rds")
+
+pub <- 
+  make_or_read(pub_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrSUhXdHNtdjBfa28")
+                 
+                 drive_read(dr_id = dr_id,
+                            path = pub_fp,
+                            read_fun = read_rds,
+                            .tempfile = FALSE)
+               },
+               {read_rds(pub_fp)})
+
 p_ready <- 
   p %>% 
   mutate(PIN = str_c(MAJOR, MINOR)) %>% 
@@ -256,9 +273,9 @@ acct_frmt <-
          TAX_STATUS,
          TAX_REASON,
          APPR_LAND_VAL,
-         APPR_IMPS_VAL,
+         APPR_IMPR_VAL = APPR_IMPS_VAL,
          TAXABLE_LAND_VAL,
-         TAXABLE_IMPS_VAL)
+         TAXABLE_IMPR_VAL = TAXABLE_IMPS_VAL)
 
 acct_ready <- 
   acct_frmt %>% 
@@ -279,11 +296,32 @@ p_sf_ready <-
 
 ```{r make-kc-parcels-not-taxed-06, eval = FALSE, echo = TRUE}
 
-tax_0_sf <- 
-  list(acct_ready,p_ready,p_sf_ready) %>% 
-  reduce(.f = inner_join, by = "PIN") %>%   # Filter: inner_join()
-  filter(TAX_STATUS %!in% "Taxable") %>%    # Filter: TAX_STATUS %!in% "Taxable"
-  st_as_sf()
+p_join <- 
+  list(acct_ready,p_ready) %>% 
+  reduce(.f = inner_join, by = "PIN") 
+
+pub_join <- 
+  pub %>% 
+  select(-matches("APPR")) # remove these columns to avoid duplicates later
+
+# in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN") # note: the public parcels not found in the master parcel dataset are dropped
+
+not_taxed <- 
+  p_join %>% 
+  filter(TAX_STATUS %!in% "Taxable") %>% 
+  left_join(pub_join, by = c("PIN"))
+
+pub_join_other <- 
+  anti_join(pub_join, not_taxed, by = "PIN") %>% 
+  left_join(tmp, by = "PIN")
+
+pub_or_tax_exempt <- 
+  bind_rows(not_taxed, pub_join_other) %>% 
+  filter(!is.na(TAX_REASON))
+
+pub_or_tax_exempt_sf <- 
+  inner_join(pub_or_tax_exempt, p_sf, by = "PIN") %>% 
+  st_as_sf
 
 ```
 
@@ -292,10 +330,10 @@ tax_0_sf <-
 
 ```{r make-kc-parcels-not-taxed-07, eval = FALSE, echo = TRUE}
 
-tax_0_fp <- "./1-data/3-interim/tax_0_sf_20171013.gpkg"
+pub_or_tax_exempt_sf_fp <- "./1-data/3-interim/pub_or_tax_exempt_sf_20171013.gpkg"
 
-st_write(tax_0_sf,dsn = tax_0_fp, driver = "GPKG")
+st_write(pub_or_tax_exempt_sf,dsn = pub_or_tax_exempt_sf_fp, driver = "GPKG")
 
 drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
-drive_upload(tax_0_fp, path = drive_folder)
+drive_upload(pub_or_tax_exempt_sf_fp, path = drive_folder, name = "pub_or_tax_exempt_sf_20171013.gpkg")

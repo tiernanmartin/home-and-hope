@@ -1,0 +1,339 @@
+--- 
+always_allow_html: yes
+editor_options:
+  chunk_output_type: console
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r make-kc-parcels-not-taxed-setup,warning=FALSE, echo=FALSE, message=FALSE}
+library(tidyverse)
+library(stringr)
+library(sf)
+library(googledrive)
+library(miscgis)
+library(forcats)
+library(leaflet)
+library(mapview)
+library(miscgis)
+library(snakecase)
+library(magrittr)
+library(rprojroot)
+library(knitr)
+library(skimr)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
+options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+```
+
+#### Description {-}
+
+A dataset of parcels within King County, Washington. Each record in this datatset is not currently paying taxes - a status which _may_ make them a suitable candidate for the development of affordable housing and early learning facilities.
+
+This data reflects the King County Assessor records as of `October 13, 2017`.
+
+#### Summary {-}
+
+```{r  make-kc-parcels-not-taxed-01, eval = TRUE, echo = FALSE, max.print = 10}
+
+pub_or_tax_exempt_sf_fp <- root_file("./1-data/3-interim/pub_or_tax_exempt_sf_20171013.gpkg")
+
+pub_or_tax_exempt_sf <- 
+  make_or_read(pub_or_tax_exempt_sf_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrZnRtUjlWaFVrb0E")
+                 
+                 drive_read(dr_id = dr_id,
+                            path = pub_or_tax_exempt_sf_fp,
+                            read_fun = st_read,
+                            .tempfile = FALSE,
+                            quiet = TRUE, 
+                            stringsAsFactors = FALSE)
+               },
+               {st_read(pub_or_tax_exempt_sf_fp, quiet = TRUE, stringsAsFactors = FALSE)})
+
+set.seed(20171013)
+pub_or_tax_exempt_sf %>% 
+  group_by(TAX_STATUS, TAX_REASON) %>% 
+  sample_n(1) %>% 
+  st_drop_geometry() 
+
+```
+
+#### Links {-}
+  - Sources
+    - [King County Assessor Data Download <i class="fa fa-external-link"></i>](http://info.kingcounty.gov/assessor/DataDownload/default.aspx)
+    - [King County GIS Portal <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/gisdataportal/)
+  - Datasets
+    - [Parcel (tabular) <i class="fa fa-download"></i>](http://aqua.kingcounty.gov/extranet/assessor/Parcel.zip)
+    - [Parcel (spatial) <i class="fa fa-download"></i>](ftp://ftp.kingcounty.gov/gis-web/GISData/parcel_SHP.zip)
+    - [Real Property Account <i class="fa fa-download"></i>](http://aqua.kingcounty.gov/extranet/assessor/Real%20Property%20Account.zip)
+  - Metadata
+    - [Parcel (tabular) <i class="fa fa-download"></i>](http://info.kingcounty.gov/assessor/datadownload/desc/Parcel.doc)
+    - [Parcel (spatial) <i class="fa fa-external-link"></i>](http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=parcel)
+    - [Real Property Account <i class="fa fa-download"></i>](http://info.kingcounty.gov/assessor/datadownload/desc/Real%20Property%20Account.doc)
+
+#### Processing Steps {-}
+##### Summary {-}
+  1.  Create `p`: a `tibble` containing parcel data for the entire county.
+  2.  Create `acct`: a `tibble` containing real property account data for the entire county.
+  3.  Create `p_sf`: a `simple feature` object containing the spatial polygon representations of each parcel in the county-wide dataset.
+  4.  Clean/process the three dataset: prepare the datasets to be joined and filtered.
+    - Load `tax_status` and `tax_reason` for transforming coded features into descriptive text.
+    - Load `pub` for joining the public parcels.
+  5.  Create `pub_or_tax_exempt_sf`: Join and filter the datasets.
+    - Join with `inner_join()` to ensure that only records common to all three datasets are retained (note: this action may implicitly filter the data)
+    - Filter by excluding records whose `TAX_STATUS` is `Taxable`.
+  6. Upload to Drive
+
+##### Step 1 {-}
+```{r make-kc-parcels-not-taxed-02, echo = TRUE, eval = FALSE, message=FALSE}
+p_fp <- root_file("./1-data/2-external/EXTR_Parcel_20171013.csv")
+
+
+p_load <- 
+  make_or_read(p_fp,
+               {
+                 zip_dir <- root_file("./1-data/2-external")
+                 
+                 target_name <- "EXTR_Parcel_20171013.csv"
+                 
+                 dr_id <- as_id("0B5Pp4V6eCkhraF9jOTl3bURiMkU")
+                 
+                 drive_read_zip(
+                   dr_id = dr_id,
+                   .tempdir = FALSE,
+                   dir_path = zip_dir,
+                   read_fun = read_csv,
+                   target_name = target_name
+                 ) 
+               },
+               {
+                 read_csv(p_fp)
+               }) 
+
+
+p <- 
+  p_load %>% 
+  rename_all(to_screaming_snake_case) 
+
+rm(p_load)
+gc(verbose = FALSE)
+
+```
+
+
+##### Step 2 {-}
+```{r make-kc-parcels-not-taxed-03, echo = TRUE, eval = FALSE, warning = FALSE}
+acct_fp <- root_file("./1-data/2-external/EXTR_RPAcctl_20171013.csv")
+
+acct_load <- 
+  make_or_read(acct_fp,
+               {
+                 dr_id <- "0B5Pp4V6eCkhreGt2djZCTnFUeFU"
+                 
+                 zip_dir <- root_file("./1-data/2-external")
+                 
+                 target_name <- "EXTR_RPAcctl_20171013.csv"
+                 
+                 drive_read_zip(dr_id = dr_id,
+                                .tempdir = FALSE,
+                                dir_path = zip_dir,
+                                read_fun = read_csv,
+                                target_name = target_name)
+                 
+               },
+               {read_csv(acct_fp)}) 
+
+acct <- 
+  acct_load %>% 
+  rename_all(to_screaming_snake_case)
+
+rm(acct_load)
+gc(verbose = FALSE)
+
+```
+
+##### Step 3 {-}
+
+```{r make-kc-parcels-not-taxed-04, eval = FALSE, echo = TRUE}
+p_sf_fp <- root_file("./1-data/2-external/parcel")
+
+p_sf_load <- 
+  make_or_read(p_sf_fp,
+               {
+                 dr_id <- "0B5Pp4V6eCkhrRnM4bHFmWTBTQnM"
+                 
+                 zip_dir <- root_file("./1-data/2-external")
+                 
+                 target_name <- "parcel"
+                 
+                 drive_read_zip(dr_id = dr_id,
+                                dir_path = zip_dir,
+                                read_fun = st_read,
+                                target_name = target_name,
+                                .tempdir = FALSE,
+                                layer = "parcel",
+                                stringsAsFactors = FALSE)
+               },
+               {st_read(p_sf_fp, layer = "parcel", stringsAsFactors = FALSE)})
+
+p_sf <-
+  p_sf_load %>%
+  rename_if(not_sfc, to_screaming_snake_case)
+
+rm(p_sf_load)
+gc(verbose = FALSE)
+
+```
+
+##### Step 4 {-}
+
+```{r make-kc-parcels-not-taxed-05, eval = FALSE, echo = TRUE}
+
+tr_fp <- root_file("./1-data/3-interim/kc-tax-reason.rds")
+
+tax_reason <- 
+  make_or_read(tr_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrQzdjY0hKVUhOR3M")
+                 
+                 drive_read(dr_id = dr_id,
+                            .tempfile = FALSE,
+                            path = tr_fp,
+                            read_fun = read_rds)
+                 
+               },
+               {read_rds(tr_fp)})
+
+ts_fp <- root_file("./1-data/3-interim/kc-tax-status.rds")
+
+tax_status <- 
+  make_or_read(ts_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrWFlYLWM3RC1pRDA")
+                 
+                 drive_read(dr_id = dr_id,
+                            .tempfile = FALSE,
+                            path = ts_fp,
+                            read_fun = read_rds)
+                 
+               },
+               {read_rds(ts_fp)})
+
+
+pub_fp <- root_file("./1-data/3-interim/public_parcels_20170727.rds")
+
+pub <- 
+  make_or_read(pub_fp,
+               {
+                 dr_id <- as_id("0B5Pp4V6eCkhrSUhXdHNtdjBfa28")
+                 
+                 drive_read(dr_id = dr_id,
+                            path = pub_fp,
+                            read_fun = read_rds,
+                            .tempfile = FALSE)
+               },
+               {read_rds(pub_fp)})
+
+p_ready <- 
+  p %>% 
+  mutate(PIN = str_c(MAJOR, MINOR)) %>% 
+  select(PIN,
+         PROP_NAME,
+         PROP_TYPE,
+         DISTRICT_NAME,
+         CURRENT_ZONING,
+         PRESENT_USE,
+         SQ_FT_LOT,
+         ACCESS,
+         TOPOGRAPHY,
+         RESTRICTIVE_SZ_SHAPE,
+         PCNT_UNUSABLE,
+         CONTAMINATION,
+         HISTORIC_SITE,
+         EASEMENTS,
+         SEISMIC_HAZARD,
+         LANDSLIDE_HAZARD,
+         STEEP_SLOPE_HAZARD 
+  )
+
+
+acct_frmt <- 
+  acct %>% 
+  mutate(PIN = str_c(MAJOR,MINOR),
+         TAX_STATUS = tax_status[TAX_STAT],
+         TAX_REASON = tax_reason[TAX_VAL_REASON]) %>% 
+  select(PIN, 
+         ACCT_NBR,
+         BILL_YR,
+         TAX_STATUS,
+         TAX_REASON,
+         APPR_LAND_VAL,
+         APPR_IMPR_VAL = APPR_IMPS_VAL,
+         TAXABLE_LAND_VAL,
+         TAXABLE_IMPR_VAL = TAXABLE_IMPS_VAL)
+
+acct_ready <- 
+  acct_frmt %>% 
+  miscgis::subset_duplicated("PIN") %>% 
+  group_by(PIN) %>% 
+  drop_na %>% 
+  ungroup %>% 
+  bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>% 
+  arrange(PIN)
+
+p_sf_ready <- 
+  select(p_sf, PIN)
+
+```
+
+
+##### Step 5 {-}
+
+```{r make-kc-parcels-not-taxed-06, eval = FALSE, echo = TRUE}
+
+p_join <- 
+  list(acct_ready,p_ready) %>% 
+  reduce(.f = inner_join, by = "PIN") 
+
+pub_join <- 
+  pub %>% 
+  select(-matches("APPR")) # remove these columns to avoid duplicates later
+
+# in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN") # note: the public parcels not found in the master parcel dataset are dropped
+
+not_taxed <- 
+  p_join %>% 
+  filter(TAX_STATUS %!in% "Taxable") %>% 
+  left_join(pub_join, by = c("PIN"))
+
+pub_join_other <- 
+  anti_join(pub_join, not_taxed, by = "PIN") %>% 
+  left_join(tmp, by = "PIN")
+
+pub_or_tax_exempt <- 
+  bind_rows(not_taxed, pub_join_other) %>% 
+  filter(!is.na(TAX_REASON))
+
+pub_or_tax_exempt_sf <- 
+  inner_join(pub_or_tax_exempt, p_sf, by = "PIN") %>% 
+  st_as_sf
+
+```
+
+
+##### Step 6 {-}
+
+```{r make-kc-parcels-not-taxed-07, eval = FALSE, echo = TRUE}
+
+pub_or_tax_exempt_sf_fp <- "./1-data/3-interim/pub_or_tax_exempt_sf_20171013.gpkg"
+
+st_write(pub_or_tax_exempt_sf,dsn = pub_or_tax_exempt_sf_fp, driver = "GPKG")
+
+drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+drive_upload(pub_or_tax_exempt_sf_fp, path = drive_folder, name = "pub_or_tax_exempt_sf_20171013.gpkg")
