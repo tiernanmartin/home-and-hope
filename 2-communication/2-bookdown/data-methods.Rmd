@@ -47,7 +47,7 @@ kc_pub_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-parcels-public.R
 
 `r knit_child(kc_pub_fp)`
 
-## Tax-Exempt King County Parcels
+## Public or Tax-Exempt King County Parcels
 ```{r data-methods-kc-untaxed}
 kc_pub_or_tax_exempt_fp <- root_file("2-communication/1-rnotebooks/00-make-kc-parcels-pub-or-tax-exempt.Rmd")
 ```
