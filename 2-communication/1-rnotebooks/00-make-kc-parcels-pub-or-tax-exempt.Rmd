@@ -20,8 +20,7 @@ library(miscgis)
 library(snakecase)
 library(magrittr)
 library(rprojroot)
-library(knitr)
-library(skimr)
+library(knitr) 
 library(lubridate)
 
 root <- rprojroot::is_rstudio_project
@@ -85,13 +84,13 @@ pub_or_tax_exempt_sf %>%
   4.  Clean/process the three dataset: prepare the datasets to be joined and filtered.
     - Load `tax_status` and `tax_reason` for transforming coded features into descriptive text.
     - Load `pub` for joining the public parcels.
-<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
-  5.  Create `tax_0_sf`: Join and filter the datasets.
-=======
   5.  Create `pub_or_tax_exempt_sf`: Join and filter the datasets.
->>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
-    - Join with `inner_join()` to ensure that only records common to all three datasets are retained (note: this action may implicitly filter the data)
+    - Join `p` and `acct` with `inner_join()` (an implicit filter that returns all records contained in _both_ datasets) 
     - Filter by excluding records whose `TAX_STATUS` is `Taxable`.
+    - Create a subset of `pub` which includes only those records not found in `p_sf`
+    - Combine the two filtered objects together using `bind_rows()`
+    - Drop any record which has `NA` in the `TAX_STATUS` column (these records are mostly empty)
+    - Join and filter the combined object to `p_sf` using `inner_join()` - this returns a `simple feature` class spatial object (i.e., it can be shown on a map).
   6. Upload to Drive
 
 ##### Step 1 {-}
@@ -308,38 +307,22 @@ p_sf_ready <-
 
 p_join <- 
   list(acct_ready,p_ready) %>% 
-<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
   reduce(.f = inner_join, by = c("PIN","DATE")) 
-=======
-  reduce(.f = inner_join, by = "PIN") 
->>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 pub_join <- 
   pub %>% 
   select(-matches("APPR")) # remove these columns to avoid duplicates later
 
-<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 # in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN")  # note: the public parcels not found in the master parcel dataset are dropped
-=======
-# in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN") # note: the public parcels not found in the master parcel dataset are dropped
->>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 not_taxed <- 
   p_join %>% 
   filter(TAX_STATUS %!in% "Taxable") %>% 
-<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
   left_join(pub_join, by = c("PIN", "DATE"))
 
 pub_join_other <- 
   anti_join(pub_join, not_taxed, by = "PIN") %>% 
   left_join(p_join, by = c("PIN","DATE"))
-=======
-  left_join(pub_join, by = c("PIN"))
-
-pub_join_other <- 
-  anti_join(pub_join, not_taxed, by = "PIN") %>% 
-  left_join(tmp, by = "PIN")
->>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 pub_or_tax_exempt <- 
   bind_rows(not_taxed, pub_join_other) %>% 
@@ -348,6 +331,7 @@ pub_or_tax_exempt <-
 pub_or_tax_exempt_sf <- 
   inner_join(pub_or_tax_exempt, p_sf, by = "PIN") %>% 
   st_as_sf
+
 
 ```
 
