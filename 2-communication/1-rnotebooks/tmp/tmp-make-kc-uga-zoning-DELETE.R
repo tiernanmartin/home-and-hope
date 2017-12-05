@@ -87,6 +87,31 @@ zoning_sf <-
   filter(!duplicated(CAT)) %>%  
   mutate(
     CAT_FCT = factor(CAT),
+    CAT_FCT_OTHER = factor(
+      case_when(
+        CAT %in% c("Central Business District", 
+                   "General Commercial", 
+                   "General Mixed Use", 
+                   "Historic District", 
+                   "Mixed Use Commercial/Residential", 
+                   "Mobile Home Park", 
+                   "Multi-Family Residential",
+                   "Public Use/Institutional",
+                   "Single-Family Residential") ~ CAT,
+        TRUE ~ "Other"
+      ),
+      levels = c("Central Business District", 
+                 "General Commercial", 
+                 "General Mixed Use", 
+                 "Historic District", 
+                 "Mixed Use Commercial/Residential", 
+                 "Mobile Home Park", 
+                 "Multi-Family Residential",
+                 "Public Use/Institutional",
+                 "Single-Family Residential",
+                 "Other"),
+      ordered = TRUE
+    ),
     POT_SUITABLE_LGL = case_when(
       CAT %in% c("Central Business District", 
                  "General Commercial", 
@@ -124,21 +149,26 @@ zoning_sf <-
 
 # Check out the map ----
 
-pal <- 
-  zoning_sf %>% 
-  st_drop_geometry() %>% 
-  filter(POT_SUITABLE_LGL) %>% 
-  transmute(CAT_FCT = factor(CAT)) %>% 
-  pull %>% 
-  {colorFactor("Set1", domain = .)}
-  
+# WARNING: HUGE FILE SIZE -- EXCEEDS 1GB RAM LIMIT FOR EC2
 
-# zoning_sf %>%  
-#   filter(POT_SUITABLE_LGL) %>% 
-#   mutate(CAT_FCT = factor(CAT)) %>%  
-#   leaflet() %>% 
-#   addTiles() %>% 
-#   addPolygons(fillColor = ~pal(CAT_FCT)) 
+# pal <- 
+#   zoning_sf %>% 
+#   st_drop_geometry() %>% 
+#   pull(CAT_FCT_OTHER) %>% 
+#   {colorFactor("Set1", domain = .)}
+#   
+# 
+# zoning_sf %>%
+#   leaflet() %>%
+#   addTiles() %>%
+#   addPolygons(smoothFactor = 0,
+#               color = ~pal(CAT_FCT_OTHER),
+#               opacity = 1,
+#               weight = 1,
+#               fillOpacity = .9,
+#               fillColor = ~pal(CAT_FCT_OTHER),
+#               popup = ~CAT) %>% 
+#   addLegend(position = "topright",pal = pal, values = ~CAT_FCT_OTHER,opacity = .9)
   
 
 
@@ -149,7 +179,7 @@ zoning_sf_fp <- "./1-data/3-interim/zoning_sf.gpkg"
 
 st_write(zoning_sf,dsn = zoning_sf_fp, driver = "GPKG",layer_options = c("OVERWRITE=YES"))
 
-drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+drive_folder <- as_id("0B5Pp4V6eCkhrZHZuTlhPY3ZYOWs")
 
 drive_upload(zoning_sf_fp, path = drive_folder, name = "zoning-sf.gpkg")
 
