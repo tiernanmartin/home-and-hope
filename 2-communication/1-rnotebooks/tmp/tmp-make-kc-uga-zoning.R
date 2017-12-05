@@ -149,6 +149,7 @@ zoning_sf <-
 
 # Check out the map ----
 
+<<<<<<< HEAD:2-communication/1-rnotebooks/tmp/tmp-make-kc-uga-zoning-DELETE.R
 # WARNING: HUGE FILE SIZE -- EXCEEDS 1GB RAM LIMIT FOR EC2
 
 # pal <- 
@@ -170,7 +171,28 @@ zoning_sf <-
 #               popup = ~CAT) %>% 
 #   addLegend(position = "topright",pal = pal, values = ~CAT_FCT_OTHER,opacity = .9)
   
+=======
+pal <- 
+  zoning_sf %>% 
+  st_drop_geometry() %>% 
+  pull(CAT_FCT_OTHER) %>% 
+  {colorFactor("Set1", domain = .)}
+  
 
+zoning_sf %>%
+  leaflet() %>%
+  addTiles() %>%
+  addPolygons(smoothFactor = 0,
+              color = ~pal(CAT_FCT_OTHER),
+              opacity = 1,
+              weight = 1,
+              fillOpacity = .9,
+              fillColor = ~pal(CAT_FCT_OTHER),
+              popup = ~CAT) %>% 
+  addLegend(position = "topright",pal = pal, values = ~CAT_FCT_OTHER,opacity = .9)
+>>>>>>> e17edb568871e9491960c4a2578c29ecdc061efa:2-communication/1-rnotebooks/tmp/tmp-make-kc-uga-zoning.R
+
+  
 
 
 # Write + Upload Data ----
@@ -183,4 +205,4 @@ drive_folder <- as_id("0B5Pp4V6eCkhrZHZuTlhPY3ZYOWs")
 
 drive_upload(zoning_sf_fp, path = drive_folder, name = "zoning-sf.gpkg")
 
-# drive_update(as_id("0B5Pp4V6eCkhrby11Qzd2NEV5Wnc"), zoning_sf_fp)
+# drive_update(as_id("0B5Pp4V6eCkhrZHZuTlhPY3ZYOWs"), zoning_sf_fp)
