@@ -180,15 +180,16 @@ toc()
 
 # note: I figured out a more straight-forward way of doing this:
 #       https://github.com/r-spatial/sf/issues/586#issuecomment-349480500
-st_nest_sf <- function(sf){
+st_nest_sf <- function(x){
   
-  
-  cbind(
-    data = mutate(sf, ROW = row_number()) %>% st_set_geometry(NULL) %>% as_tibble %>% nest(-ROW) %>% select(data),
-    geometry = st_geometry(sf)
-  ) %>% 
-    as_tibble() %>% 
-    st_as_sf() 
+  x %>% 
+    rownames_to_column('ROW') %>% 
+    nest(-ROW) %>% 
+    select(-ROW) %>% 
+    mutate(geometry = map(data, "geometry") %>% flatten %>% st_sfc,
+           data = map(data, st_drop_geometry)) %>% 
+    st_sf %>% 
+    st_set_crs(st_crs(x))
 }
 
 
@@ -212,6 +213,7 @@ drive_upload(media = p_uga_zng_no_other_fp, path = folder_id)
 
 # drive_update(media = p_uga_zng_no_other_fp,file = as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"))
 
-# x <-
-#   drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"),TRUE,read_fun = read_rds) %>%
-#   st_nest_sf
+
+x <- 
+  drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"),TRUE,read_fun = read_rds) %>% 
+  st_nest_sf()
