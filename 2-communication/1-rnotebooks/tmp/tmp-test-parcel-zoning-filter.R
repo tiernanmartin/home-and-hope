@@ -27,8 +27,9 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # Access Data ----
 
-p <- 
-  drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"),TRUE,read_fun = read_rds) %>% 
+p <-  drive_read(as_id("12IEjuIlWxXjWhJCwAo-nxDBI8l6ZJlIa"),TRUE,read_fun = read_sf, stringsAsFactors = FALSE) %>% 
+
+p %<>%  
   st_set_crs(2926) %>% 
   st_transform(4326)
 
