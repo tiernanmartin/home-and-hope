@@ -27,15 +27,9 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # Access Data ----
 
-<<<<<<< HEAD
 p <- drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"),TRUE,read_fun = st_read, stringsAsFactors = FALSE) 
 
 p %<>% 
-=======
-p <-  drive_read(as_id("12IEjuIlWxXjWhJCwAo-nxDBI8l6ZJlIa"),TRUE,read_fun = read_sf, stringsAsFactors = FALSE) %>% 
-
-p %<>%  
->>>>>>> 1af678771aeb1ab0c61b8baeea691457f7e63bad
   st_set_crs(2926) %>% 
   st_transform(4326)
 
@@ -47,7 +41,7 @@ p_sf <-
   p_nest %>% 
   mutate(PROP_NAME = map_chr(data, "PROP_NAME"),
          PIN = map_chr(data, "PIN"),
-         PIN = map_chr(PIN, ~ a(href = str_c(url,.x),.x) %>% as.character),
+         PIN = map_chr(PIN, ~ a(href = str_c(url,.x),target="_blank",.x) %>% as.character),
          CURRENT_ZONING = map_chr(data, "CURRENT_ZONING"),
          CAT = map_chr(data, "CAT"),
          POPUP = str_c(PROP_NAME,PIN,CURRENT_ZONING,CAT,sep = br())
