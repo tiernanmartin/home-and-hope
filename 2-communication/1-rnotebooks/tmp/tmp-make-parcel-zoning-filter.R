@@ -178,8 +178,6 @@ tic()
 toc()
 
 
-# note: I figured out a more straight-forward way of doing this:
-#       https://github.com/r-spatial/sf/issues/586#issuecomment-349480500
 st_nest_sf <- function(x){
   
   x %>% 
@@ -199,21 +197,17 @@ p_uga_zng_no_other_sf <-
   mutate(CAT_FCT_OTHER = map_chr(data, 'CAT_FCT_OTHER')) %>% 
   filter(CAT_FCT_OTHER %!in% "Other") %>% 
   select(CAT_FCT_OTHER, everything()) %>% 
-  unnest()
-  
-write_rds(p_uga_zng_no_other_sf, root_file("./1-data/3-interim/pub-uga-zng-no-other-sf.rds"))
+  unnest() %>% 
+  mutate_if(is_logical,as.character)
 
 # Upload to Drive ----
 
-p_uga_zng_no_other_fp <- root_file("./1-data/3-interim/pub-uga-zng-no-other-sf.rds")
+p_uga_zng_no_other_fp <- root_file("./1-data/3-interim/pub-uga-zng-no-other-sf.gpkg")
 
 folder_id <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
+st_write(obj = p_uga_zng_no_other_sf, dsn = p_uga_zng_no_other_fp, layer = 'p_uga_zng_no_other_sf', driver = 'GPKG', layer_options = "OVERWRITE=YES")
+
 drive_upload(media = p_uga_zng_no_other_fp, path = folder_id)
 
-# drive_update(media = p_uga_zng_no_other_fp,file = as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"))
-
-
-x <- 
-  drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"),TRUE,read_fun = read_rds) %>% 
-  st_nest_sf()
+drive_update(media = p_uga_zng_no_other_fp,file = as_id("12IEjuIlWxXjWhJCwAo-nxDBI8l6ZJlIa"))
