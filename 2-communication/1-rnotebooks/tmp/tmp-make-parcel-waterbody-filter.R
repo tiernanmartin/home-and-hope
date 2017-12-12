@@ -39,7 +39,8 @@ p_nest <- st_nest_sf(p)
 
 # WATERBODIES
 
-
+# Ecology: http://www.ecy.wa.gov/services/gis/data/data.htm
+# ArcGIS: https://www.arcgis.com/home/item.html?id=b5a20ceaa6114e28b688d4236b417b2b
 
 
 
