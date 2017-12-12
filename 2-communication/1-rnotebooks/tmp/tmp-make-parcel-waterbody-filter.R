@@ -41,8 +41,6 @@ p_nest <- st_nest_sf(p)
 
 
 
-
-
 # Filters ----
 
 
