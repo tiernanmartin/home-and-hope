@@ -28,18 +28,27 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # FILTERED PARCELS
 
-p <- drive_read(as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4"), TRUE, read_fun = st_read, stringsAsFactors = FALSE) 
+p_id <- as_id("1wiBedRBk8Ygx7jZGctdH0kdLe-4jlQr4")
+
+p <- drive_read(p_id, TRUE, read_fun = st_read, stringsAsFactors = FALSE) 
 
 p %<>% 
-  st_set_crs(2926) %>% 
-  st_transform(4326)
+  st_set_crs(2926)
 
 p_nest <- st_nest_sf(p)
 
 
 # WATERBODIES
 
+w_id <- as_id("1OF2Z0sNWBmdDdZ4lPgUoolVELd7HCyWL")
 
+w <- drive_read(w_id, TRUE, read_fun, read_sf, stringsAsFactors = FALSE)
+
+w_union_nest <- w %>%
+  st_nest_sf %>% 
+  st_set_crs(4326) %>% 
+  st_transform(2926) %>% 
+  st_union()
 
 # Filters ----
 
