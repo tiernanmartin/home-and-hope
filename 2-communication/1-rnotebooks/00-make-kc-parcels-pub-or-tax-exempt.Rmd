@@ -317,7 +317,7 @@ pub_join <-
 
 not_taxed <- 
   p_join %>% 
-  filter(TAX_STATUS %!in% "Taxable") %>% 
+  filter(TAX_STATUS %in% "Exempt") %>%    
   left_join(pub_join, by = c("PIN", "DATE"))
 
 pub_join_other <- 
@@ -342,8 +342,10 @@ pub_or_tax_exempt_sf <-
 
 pub_or_tax_exempt_sf_fp <- "./1-data/3-interim/pub_or_tax_exempt_sf_20171013.gpkg"
 
-st_write(pub_or_tax_exempt_sf,dsn = pub_or_tax_exempt_sf_fp, driver = "GPKG")
+st_write(pub_or_tax_exempt_sf,dsn = pub_or_tax_exempt_sf_fp, driver = "GPKG",layer_options = "OVERWRITE=YES")
 
 drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
 
 drive_upload(pub_or_tax_exempt_sf_fp, path = drive_folder, name = "pub_or_tax_exempt_sf_20171013.gpkg")
+
+drive_update(file = as_id("0B5Pp4V6eCkhrZnRtUjlWaFVrb0E"),media = pub_or_tax_exempt_sf_fp)

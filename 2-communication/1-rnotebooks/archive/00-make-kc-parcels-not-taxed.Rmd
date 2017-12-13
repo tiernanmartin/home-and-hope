@@ -22,6 +22,7 @@ library(magrittr)
 library(rprojroot)
 library(knitr)
 library(skimr)
+library(lubridate)
 
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
@@ -84,7 +85,11 @@ pub_or_tax_exempt_sf %>%
   4.  Clean/process the three dataset: prepare the datasets to be joined and filtered.
     - Load `tax_status` and `tax_reason` for transforming coded features into descriptive text.
     - Load `pub` for joining the public parcels.
+<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
+  5.  Create `tax_0_sf`: Join and filter the datasets.
+=======
   5.  Create `pub_or_tax_exempt_sf`: Join and filter the datasets.
+>>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
     - Join with `inner_join()` to ensure that only records common to all three datasets are retained (note: this action may implicitly filter the data)
     - Filter by excluding records whose `TAX_STATUS` is `Taxable`.
   6. Upload to Drive
@@ -241,8 +246,11 @@ pub <-
 
 p_ready <- 
   p %>% 
-  mutate(PIN = str_c(MAJOR, MINOR)) %>% 
+  mutate(PIN = str_c(MAJOR, MINOR),
+         DATE = ymd(20171013)
+         ) %>% 
   select(PIN,
+         DATE,
          PROP_NAME,
          PROP_TYPE,
          DISTRICT_NAME,
@@ -265,9 +273,11 @@ p_ready <-
 acct_frmt <- 
   acct %>% 
   mutate(PIN = str_c(MAJOR,MINOR),
+         DATE = ymd(20171013),
          TAX_STATUS = tax_status[TAX_STAT],
          TAX_REASON = tax_reason[TAX_VAL_REASON]) %>% 
   select(PIN, 
+         DATE,
          ACCT_NBR,
          BILL_YR,
          TAX_STATUS,
@@ -298,22 +308,38 @@ p_sf_ready <-
 
 p_join <- 
   list(acct_ready,p_ready) %>% 
+<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
+  reduce(.f = inner_join, by = c("PIN","DATE")) 
+=======
   reduce(.f = inner_join, by = "PIN") 
+>>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 pub_join <- 
   pub %>% 
   select(-matches("APPR")) # remove these columns to avoid duplicates later
 
+<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
+# in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN")  # note: the public parcels not found in the master parcel dataset are dropped
+=======
 # in_pub_not_p <- anti_join(pub_join,p_join, by = "PIN") # note: the public parcels not found in the master parcel dataset are dropped
+>>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 not_taxed <- 
   p_join %>% 
   filter(TAX_STATUS %!in% "Taxable") %>% 
+<<<<<<< HEAD:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
+  left_join(pub_join, by = c("PIN", "DATE"))
+
+pub_join_other <- 
+  anti_join(pub_join, not_taxed, by = "PIN") %>% 
+  left_join(p_join, by = c("PIN","DATE"))
+=======
   left_join(pub_join, by = c("PIN"))
 
 pub_join_other <- 
   anti_join(pub_join, not_taxed, by = "PIN") %>% 
   left_join(tmp, by = "PIN")
+>>>>>>> 7691e2b841c31e40f2355b1a928d57e1cbbd8ba8:2-communication/1-rnotebooks/archive/00-make-kc-parcels-not-taxed.Rmd
 
 pub_or_tax_exempt <- 
   bind_rows(not_taxed, pub_join_other) %>% 

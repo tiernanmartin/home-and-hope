@@ -49,7 +49,7 @@ p <-
 
 rm(p_load)
 gc(verbose = FALSE)
-  
+
 
 
 # Real Property Account
