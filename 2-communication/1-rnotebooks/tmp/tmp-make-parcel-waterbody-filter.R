@@ -52,12 +52,6 @@ w_union <- w %>%
 
 # Filters ----
 
-sample_pins <- c("7666200311","0468000050","9528100790","0225049061","4315701200","342403900109","2524039040")
-
-p_sample <- p_nest %>% 
-  mutate(PIN = map_chr(data,"PIN")) %>% 
-  filter(PIN %in% sample_pins)
-
 st_intersect_area <- function(x, y, crs){ 
   
   x_sfc <- x %>% 
@@ -78,20 +72,42 @@ st_intersect_area <- function(x, y, crs){
   return(overlap_pct)
 }
 
-tmp <- p_sample %>% 
-  mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = w_union, crs = 2926)) %>% 
-  st_transform(4326)
+# WARNING: long-running process (~40 minutes)
 
+# p_overlap <- p_nest %>% 
+#   mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = w_union, crs = 2926)) %>% 
+#   mutate(WATER_OVERLAP_LGL = WATER_OVERLAP_PCT > 0) %>% 
+#   unnest()
 
-tic()
+p_water_overlap_0_50 <- p_overlap %>% 
+  filter(WATER_OVERLAP_PCT <= .5)
 
-p_overlap_fp <- root_file("./1-data/3-interim/p-no-water-sf.gpkg")
-
-p_overlap <- p_nest %>% 
-  mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = w_union, crs = 2926))
-
-st_write(obj = p_overlap, dsn = p_overlap_fp, driver = "GPKG", layer_options = "OVERWRITE=TRUE")
-
-toc()
 # Upload to Drive ----
 
+# Parcels with pct overlap column
+
+p_overlap_fp <- root_file("./1-data/3-interim/p-water-overlap-sf.gpkg")
+
+drive_folder_id <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+p_overlap_ready <- p_overlap %>% 
+  mutate_if(is_logical, as.character)
+  
+st_write(obj = p_overlap_ready, dsn = p_overlap_fp, driver = "GPKG", layer = "p_water_overlap",layer_options = "OVERWRITE=TRUE")
+
+drive_upload(media = p_overlap_fp, path = drive_folder_id)
+
+# drive_update(file = p_overlap_ready, media = as_id("1Trvievehg4DCA2WuYLQ6aBRljMkl_bCW"))
+
+# Parcels with 50% or less water overlap
+
+p_water_overlap_0_50_fp <- root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg")
+
+p_water_overlap_0_50_ready <- p_water_overlap_0_50 %>% 
+  mutate_if(is_logical, as.character)
+
+st_write(obj = p_water_overlap_0_50_ready, dsn = p_water_overlap_0_50_fp, driver = "GPKG", layer = "p_water_overlap_0_50_ready",layer_options = "OVERWRITE=TRUE")
+
+drive_upload(media = p_water_overlap_0_50_fp, path = drive_folder_id)
+
+# drive_update(file = p_water_overlap_0_50_ready, media = as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg"))
