@@ -161,7 +161,52 @@ gc(verbose = FALSE)
 
 # Clean, Join, Filter ----
 
+bldg <- tibble(PIN = as.character(""), 
+               BLDG_NBR = as.integer(""),
+               BLDG_NET_SQ_FT= as.integer(""),
+               NBR_LIVING_UNITS = as.integer(""),
+               NBR_BLDGS = as.integer(""),
+               BLDG_CAT = as.character("")) %>% 
+  slice(0)
+
+comm_join <- comm %>% 
+  transmute(PIN,
+            BLDG_NBR,
+            BLDG_NET_SQ_FT,
+            NBR_BLDGS,
+            BLDG_CAT = "commercial")
+
+res_join <- res %>% 
+  transmute(PIN,
+            BLDG_NBR,
+            NBR_LIVING_UNITS,
+            BLDG_CAT = "residential")
+
+apt_join <- apt %>% 
+  transmute(PIN,
+            NBR_BLDGS,
+            NBR_LIVING_UNITS = NBR_UNITS,
+            BLDG_CAT = "apartment")
+
+condo_join <- condo %>% 
+  transmute(PIN = MAJOR,
+            NBR_LIVING_UNITS = NBR_UNITS,
+            BLDG_CAT = "condo")
 
 
+bldg_all <- bldg %>% 
+  full_join(comm_join) %>% 
+  full_join(res_join) %>% 
+  full_join(apt_join) %>% 
+  full_join(condo_join) 
+
+
+bldg_all %>% 
+  mutate(CAT_LGL = TRUE,
+         COL_NAME = str_c("TYPE",toupper(BLDG_CAT),"LGL", sep = "_")) %>% 
+  spread(COL_NAME, CAT_LGL) %>% 
+  mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.))  
+  
+  
 
 # Write + Upload Data ----
