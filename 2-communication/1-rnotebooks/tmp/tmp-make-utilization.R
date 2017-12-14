@@ -226,9 +226,11 @@ r_load <- r_fp %>%
   make_or_read({NULL}, #fill this in later
                {read_rds(r_fp)})
 
-r <- transmute(r_load,
-               PIN = str_c(MAJOR,MINOR, sep = ""),
-               KCTP_NAME = TAXPAYERNAME)
+r <- r_load %>% 
+  transmute(PIN = str_c(MAJOR,MINOR, sep = ""),
+            KCTP_NAME = TAXPAYERNAME) %>% 
+  filter(!duplicated(PIN))
+
 
 
 # Create: p_util ----
@@ -267,13 +269,13 @@ p_nest <- p %>%
 city_block_sqft <- as.integer(66000)
 
 lot_size_types <- 
-  crossing(SIZE = c("less than 1/8 block", "1/4 block", "greater than 1/4 block"),
+  crossing(LOT_SIZE = c("less than 1/8 block", "1/4 block", "greater than 1/4 block"),
            RESTRICTIVE_SZ_SHAPE = unique(p_nest$RESTRICTIVE_SZ_SHAPE),
            DEV_ASSUMPTION = unique(p_nest$DEV_ASSUMPTION)
   ) %>% 
   arrange(RESTRICTIVE_SZ_SHAPE) %>% 
-  mutate(LOT_SIZE_TYPE = case_when(str_detect(SIZE,"less") ~ "small",
-                                   str_detect(SIZE,"^1") ~ "medium",
+  mutate(LOT_SIZE_TYPE = case_when(str_detect(LOT_SIZE,"less") ~ "small",
+                                   str_detect(LOT_SIZE,"^1") ~ "medium",
                                    TRUE ~ "large")) %>% 
   mutate(LOT_SIZE_TYPE = if_else(str_detect(DEV_ASSUMPTION,"^one"),"single family",LOT_SIZE_TYPE)) %>% 
   mutate(LOT_SIZE_TYPE = if_else(RESTRICTIVE_SZ_SHAPE == as.integer(1),"restrictive shape",LOT_SIZE_TYPE)) %>% 
@@ -285,23 +287,44 @@ p_join <- p_nest %>%
   select(-data,everything(),data)
 
 p_util <- p_join %>% 
-  mutate(SIZE = case_when(SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
+  mutate(LOT_SIZE = case_when(SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
                           between(SQ_FT_LOT,city_block_sqft/8,city_block_sqft/4) ~ "1/4 block",
                           SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
                           TRUE ~ NA_character_)
          ) %>% 
   left_join(lot_size_types) %>% 
-  mutate(MAX_UTILIZATION_SF = case_when(LOT_SIZE_TYPE %in% "single family" ~  as.integer(round(.75*(SQ_FT_LOT * 2))),
-                                        LOT_SIZE_TYPE %in% "small" ~  as.integer(round(.75*(SQ_FT_LOT * 3))),
-                                        LOT_SIZE_TYPE %in% "medium" ~  as.integer(round(.75*(SQ_FT_LOT * 6))),
-                                        LOT_SIZE_TYPE %in% "large" ~  as.integer(round(.50*(SQ_FT_LOT * 6))),
+  mutate(MAX_UTILIZATION_SF = case_when(LOT_SIZE_TYPE %in% "single family" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 2))),
+                                        LOT_SIZE_TYPE %in% "small" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 3))),
+                                        LOT_SIZE_TYPE %in% "medium" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 6))),
+                                        LOT_SIZE_TYPE %in% "large" ~  as.integer(round(.50*(WATER_OVERLAP_PCT * SQ_FT_LOT * 6))),
                                         TRUE ~ NA_integer_),
          UNDER_UTILIZED_LGL = case_when(BLDG_NET_SQ_FT >= MAX_UTILIZATION_SF ~ FALSE,
                                         BLDG_NET_SQ_FT < MAX_UTILIZATION_SF ~ TRUE,
                                         TRUE ~ NA)
-         )
-
-
-
+         ) %>% 
+  select(PROP_NAME,
+         KCTP_NAME,
+         PIN,
+         UNDER_UTILIZED_LGL,
+         BLDG_NET_SQ_FT,
+         NBR_BLDGS,
+         MAX_UTILIZATION_SF,
+         LOT_SIZE,
+         LOT_SIZE_TYPE,
+         everything())
 
 # Write + Upload Data ----
+
+p_util_fp <- "./1-data/3-interim/p_utilization.gpkg"
+
+p_util_ready <- p_util %>% 
+  unnest() %>% 
+  mutate_if(is_logical,as.character)
+
+drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+st_write(p_util_ready,dsn = p_util_fp, driver = "GPKG",layer_options = c("OVERWRITE=YES"))
+
+drive_upload(p_util_fp, path = drive_folder, name = "p_utilization.gpkg")
+
+# drive_update(as_id("15B9sduv0IBIA2giXnGR8sVigus73qvcc"), p_util_fp)
