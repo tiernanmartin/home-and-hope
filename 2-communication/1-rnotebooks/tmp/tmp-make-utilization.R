@@ -290,7 +290,16 @@ p_util <- p_join %>%
                           SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
                           TRUE ~ NA_character_)
          ) %>% 
-  left_join(lot_size_types)
+  left_join(lot_size_types) %>% 
+  mutate(MAX_UTILIZATION_SF = case_when(LOT_SIZE_TYPE %in% "single family" ~  as.integer(round(.75*(SQ_FT_LOT * 2))),
+                                        LOT_SIZE_TYPE %in% "small" ~  as.integer(round(.75*(SQ_FT_LOT * 3))),
+                                        LOT_SIZE_TYPE %in% "medium" ~  as.integer(round(.75*(SQ_FT_LOT * 6))),
+                                        LOT_SIZE_TYPE %in% "large" ~  as.integer(round(.50*(SQ_FT_LOT * 6))),
+                                        TRUE ~ NA_integer_),
+         UNDER_UTILIZED_LGL = case_when(BLDG_NET_SQ_FT >= MAX_UTILIZATION_SF ~ FALSE,
+                                        BLDG_NET_SQ_FT < MAX_UTILIZATION_SF ~ TRUE,
+                                        TRUE ~ NA)
+         )
 
 
 
