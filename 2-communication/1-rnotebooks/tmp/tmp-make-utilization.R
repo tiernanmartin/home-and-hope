@@ -218,7 +218,81 @@ bldg_all_sum <- bldg_all %>%
 
 bldg <- bldg_all_sum
   
+# Create: p_KCTP_NAME NOTE: this should be taken care of in a previous script ----
 
-# p_util: Create
+r_fp <- root_file("./1-data/2-external/kc_real_prop_acct_extract.rds")
+
+r_load <- r_fp %>% 
+  make_or_read({NULL}, #fill this in later
+               {read_rds(r_fp)})
+
+r <- transmute(r_load,
+               PIN = str_c(MAJOR,MINOR, sep = ""),
+               KCTP_NAME = TAXPAYERNAME)
+
+
+# Create: p_util ----
+
+# parcel filtered by: uga, zoning, waterbody overlap
+
+p_id <- as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg")
+
+p <- drive_read(p_id, TRUE, read_fun = read_sf, stringsAsFactors = FALSE) 
+
+p %<>% 
+  st_set_crs(2926) %>% 
+  st_transform(4326)
+
+url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Dashboard.aspx?ParcelNbr="
+
+p_nest <- p %>% 
+  st_nest_sf() %>% 
+  mutate(PROP_NAME = map_chr(data, "PROP_NAME"),
+         PIN = map_chr(data, "PIN"),
+         WATER_OVERLAP_PCT = map_dbl(data, "WATER_OVERLAP_PCT"),
+         WATER_OVERLAP_LGL = map_lgl(data, ~pull(.x, "WATER_OVERLAP_LGL") %>% as.logical),
+         CURRENT_ZONING = map_chr(data, "CURRENT_ZONING"),
+         CAT = map_chr(data, "CAT"),
+         PRESENT_USE = map_chr(data, "PRESENT_USE"),
+         SQ_FT_LOT = map_int(data, "SQ_FT_LOT"), 
+         DEV_ASSUMPTION = map_chr(data, "DEV_ASSUMPTION"),
+         ACCESS = map_int(data,"ACCESS"),
+         TOPOGRAPHY = map_int(data, "TOPOGRAPHY"),
+         RESTRICTIVE_SZ_SHAPE = map_int(data,"RESTRICTIVE_SZ_SHAPE"),
+         PCNT_UNUSABLE = map_int(data, "PCNT_UNUSABLE"),
+         CONTAMINATION = map_int(data, "CONTAMINATION"),
+         STEEP_SLOPE_HAZARD = map_chr(data, "STEEP_SLOPE_HAZARD")
+         )
+
+city_block_sqft <- as.integer(66000)
+
+lot_size_types <- 
+  crossing(SIZE = c("less than 1/8 block", "1/4 block", "greater than 1/4 block"),
+           RESTRICTIVE_SZ_SHAPE = unique(p_nest$RESTRICTIVE_SZ_SHAPE),
+           DEV_ASSUMPTION = unique(p_nest$DEV_ASSUMPTION)
+  ) %>% 
+  arrange(RESTRICTIVE_SZ_SHAPE) %>% 
+  mutate(LOT_SIZE_TYPE = case_when(str_detect(SIZE,"less") ~ "small",
+                                   str_detect(SIZE,"^1") ~ "medium",
+                                   TRUE ~ "large")) %>% 
+  mutate(LOT_SIZE_TYPE = if_else(str_detect(DEV_ASSUMPTION,"^one"),"single family",LOT_SIZE_TYPE)) %>% 
+  mutate(LOT_SIZE_TYPE = if_else(RESTRICTIVE_SZ_SHAPE == as.integer(1),"restrictive shape",LOT_SIZE_TYPE)) %>% 
+  mutate(LOT_SIZE_TYPE = if_else(str_detect(DEV_ASSUMPTION,"^no"),"not developable",LOT_SIZE_TYPE))
+
+p_join <- p_nest %>% 
+  left_join(bldg, by = "PIN") %>% 
+  left_join(r, by = "PIN") %>% 
+  select(-data,everything(),data)
+
+p_util <- p_join %>% 
+  mutate(SIZE = case_when(SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
+                          between(SQ_FT_LOT,city_block_sqft/8,city_block_sqft/4) ~ "1/4 block",
+                          SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
+                          TRUE ~ NA_character_)
+         ) %>% 
+  left_join(lot_size_types)
+
+
+
 
 # Write + Upload Data ----
