@@ -26,35 +26,41 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # Access Data ----
 
-p_id <- as_id("")
+kc_url <- "https://opendata.arcgis.com/datasets/19b7f1e85a0f4c9ebfcc2830bd1d783e_121.geojson"
+
+kc <- read_sf(kc_url)
+
+
+
+p_id <- as_id("15B9sduv0IBIA2giXnGR8sVigus73qvcc")
 
 p <- drive_read(p_id, TRUE, read_fun = read_sf, stringsAsFactors = FALSE) 
 
 p %<>% 
-  st_set_crs(2926) %>% 
-  st_transform(4326)
-
-p_nest <- st_nest_sf(p) 
+  st_set_crs(4326) %>% 
+  mutate_at(vars(ends_with("LGL")),as.logical)
 
 url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Dashboard.aspx?ParcelNbr="
 
 p_sf <- 
-  p_nest %>%  
-  mutate(PROP_NAME = map_chr(data, "PROP_NAME"),
-         PIN = map_chr(data, "PIN"),
-         PIN = map_chr(PIN, ~ a(href = str_c(url,.x),target="_blank",.x) %>% as.character),
-         WATER_OVERLAP_PCT = map_dbl(data, "WATER_OVERLAP_PCT"),
-         WATER_OVERLAP_LGL = map_lgl(data, ~pull(.x, "WATER_OVERLAP_LGL") %>% as.logical),
-         CURRENT_ZONING = map_chr(data, "CURRENT_ZONING"),
-         CAT = map_chr(data, "CAT"),
-         POPUP = str_c(PROP_NAME,PIN,CURRENT_ZONING,CAT,sep = br())
+  p %>%  
+  mutate(PIN = map_chr(PIN, ~ a(href = str_c(url,.x),target="_blank",.x) %>% as.character),
+         UTILIZATION = factor(case_when(UNDER_UTILIZED_LGL ~ "Under-utilized",
+                                 !UNDER_UTILIZED_LGL ~ "Fully-utilized",
+                                 TRUE ~ "Not developable"),
+                              levels = c("Not developable",
+                                         "Fully-utilized",
+                                         "Under-utilized"))
          ) %>% 
-  select(-data,-POPUP) # take out POPUP b/c mapview does a good job 
+  select(PROP_NAME:PIN,UTILIZATION,everything(),UNDER_UTILIZED_LGL)
 
 # View Data ----
 
 # All parcels included in this subset
-mapview(p_sf)
 
-# Parcels with some waterbody overlap
-p_sf %>% filter(WATER_OVERLAP_LGL) %>% mapview()
+mapview(list(kc, p_sf), 
+        layer.name = c("COUNTY","PARCELS"), 
+        alpha.regions = c(0,.5), 
+        zcol = c("COUNTY", "UTILIZATION"),
+        legend = TRUE)
+
