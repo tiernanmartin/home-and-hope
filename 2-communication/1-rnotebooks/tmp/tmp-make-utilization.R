@@ -319,6 +319,7 @@ p_util_fp <- "./1-data/3-interim/p_utilization.gpkg"
 
 p_util_ready <- p_util %>% 
   unnest() %>% 
+  select(-matches("1$")) %>%   # drop duplicate columns
   mutate_if(is_logical,as.character)
 
 drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
@@ -327,4 +328,4 @@ st_write(p_util_ready,dsn = p_util_fp, driver = "GPKG",layer_options = c("OVERWR
 
 drive_upload(p_util_fp, path = drive_folder, name = "p_utilization.gpkg")
 
-# drive_update(as_id("15B9sduv0IBIA2giXnGR8sVigus73qvcc"), p_util_fp)
+drive_update(as_id("15B9sduv0IBIA2giXnGR8sVigus73qvcc"), p_util_fp)
