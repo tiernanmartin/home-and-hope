@@ -159,14 +159,14 @@ res <- res_load %>%
 rm(res_load)
 gc(verbose = FALSE)
 
-# Clean, Join, Filter ----
+# Create: bldg ----
 
-bldg <- tibble(PIN = as.character(""), 
-               BLDG_NBR = as.integer(""),
-               BLDG_NET_SQ_FT= as.integer(""),
-               NBR_LIVING_UNITS = as.integer(""),
-               NBR_BLDGS = as.integer(""),
-               BLDG_CAT = as.character("")) %>% 
+bldg_empty <- tibble(PIN = as.character(""), 
+                     BLDG_NBR = as.integer(""),
+                     BLDG_NET_SQ_FT= as.integer(""),
+                     NBR_LIVING_UNITS = as.integer(""),
+                     NBR_BLDGS = as.integer(""),
+                     BLDG_CAT = as.character("")) %>% 
   slice(0)
 
 comm_join <- comm %>% 
@@ -194,19 +194,31 @@ condo_join <- condo %>%
             BLDG_CAT = "condo")
 
 
-bldg_all <- bldg %>% 
+bldg_all <- bldg_empty %>% 
   full_join(comm_join) %>% 
   full_join(res_join) %>% 
   full_join(apt_join) %>% 
   full_join(condo_join) 
 
 
-bldg_all %>% 
+bldg_all_sum <- bldg_all %>% 
+  mutate(NBR_BLDGS = if_else(BLDG_CAT %in% c("residential", "condo"),as.integer(1),NBR_BLDGS)) %>% 
   mutate(CAT_LGL = TRUE,
          COL_NAME = str_c("TYPE",toupper(BLDG_CAT),"LGL", sep = "_")) %>% 
   spread(COL_NAME, CAT_LGL) %>% 
-  mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.))  
+  mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.)) %>% 
+  group_by(PIN) %>% 
+  summarise(NBR_BLDGS = as.integer(max(NBR_BLDGS)),  # note: sum() may be a better approach
+            BLDG_NET_SQ_FT = sum(BLDG_NET_SQ_FT, na.rm = TRUE),
+            NBR_LIVING_UNITS = sum(NBR_LIVING_UNITS, na.rm = TRUE),
+            TYPE_APARTMENT_LGL = any(TYPE_APARTMENT_LGL),
+            TYPE_COMMERCIAL_LGL = any(TYPE_COMMERCIAL_LGL),
+            TYPE_CONDO_LGL = any(TYPE_CONDO_LGL),
+            TYPE_RESIDENTIAL_LGL = any(TYPE_RESIDENTIAL_LGL))
+
+bldg <- bldg_all_sum
   
-  
+
+# p_util: Create
 
 # Write + Upload Data ----
