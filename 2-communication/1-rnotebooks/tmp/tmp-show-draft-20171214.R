@@ -23,6 +23,7 @@ root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+# Sys.setlocale("LC_CTYPE", "Chinese")  # if working on a Windows machine, this is required for skimr::skim()
 
 # Access Data ----
 
@@ -45,13 +46,14 @@ url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Dashboard.aspx?ParcelN
 p_sf <- 
   p %>%  
   mutate(PIN = map_chr(PIN, ~ a(href = str_c(url,.x),target="_blank",.x) %>% as.character),
-         UTILIZATION = factor(case_when(UNDER_UTILIZED_LGL ~ "Under-utilized",
-                                 !UNDER_UTILIZED_LGL ~ "Fully-utilized",
-                                 TRUE ~ "Not developable"),
-                              levels = c("Not developable",
-                                         "Fully-utilized",
-                                         "Under-utilized"))
-         ) %>% 
+         UTILIZATION = factor(case_when(
+           UNDER_UTILIZED_LGL ~ "Under-utilized",
+           !UNDER_UTILIZED_LGL ~ "Fully-utilized",
+           TRUE ~ "Not developable"),
+           levels = c("Not developable",
+                      "Fully-utilized",
+                      "Under-utilized"))
+  ) %>% 
   select(PROP_NAME:PIN,UTILIZATION,everything(),UNDER_UTILIZED_LGL)
 
 # View Data ----
@@ -64,3 +66,9 @@ mapview(list(kc, p_sf),
         zcol = c("COUNTY", "UTILIZATION"),
         legend = TRUE)
 
+# No County boundary
+mapview(p_sf, 
+        layer.name = "PARCELS", 
+        alpha.regions = .5, 
+        zcol = "UTILIZATION",
+        legend = TRUE)
