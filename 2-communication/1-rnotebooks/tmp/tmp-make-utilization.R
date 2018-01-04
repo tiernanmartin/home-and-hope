@@ -236,8 +236,9 @@ r <- r_load %>%
 # Create: p_util ----
 
 # parcel filtered by: uga, zoning, waterbody overlap
+# parcel with: DEVELOPABLE_PCT
 
-p_id <- as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg")
+p_id <- as_id("1O3QRkE7SmW3AxlWSdecARBW7MQ1TmHnH")
 
 p <- drive_read(p_id, TRUE, read_fun = read_sf, stringsAsFactors = FALSE) 
 
@@ -251,6 +252,7 @@ p_nest <- p %>%
   st_nest_sf() %>% 
   mutate(PROP_NAME = map_chr(data, "PROP_NAME"),
          PIN = map_chr(data, "PIN"),
+         DEVELOPABLE_PCT = map_dbl(data, "DEVELOPABLE_PCT"),
          WATER_OVERLAP_PCT = map_dbl(data, "WATER_OVERLAP_PCT"),
          WATER_OVERLAP_LGL = map_lgl(data, ~pull(.x, "WATER_OVERLAP_LGL") %>% as.logical),
          CURRENT_ZONING = map_chr(data, "CURRENT_ZONING"),
@@ -312,8 +314,7 @@ p_util <- p_join %>%
     between(SQ_FT_LOT,city_block_sqft/8,city_block_sqft/4) ~ "1/4 block",
     SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
     TRUE ~ NA_character_)
-  ) %>% 
-  mutate(DEVELOPABLE_SF = 1 - WATER_OVERLAP_PCT) %>%   # this should probably be done in the parcel make script
+  ) %>%  
   left_join(lot_size_types) %>% 
   left_join(dev_params) %>% 
   mutate(
@@ -324,7 +325,7 @@ p_util <- p_join %>%
          ) %>% 
   mutate(
     MAX_UTILIZATION_SF = if_else(DEVELOPABLE_LGL,
-                                      as.integer(round(LOT_COVERAGE*(DEVELOPABLE_SF * SQ_FT_LOT * N_STORIES))),
+                                      as.integer(round(LOT_COVERAGE*(DEVELOPABLE_PCT * SQ_FT_LOT * N_STORIES))),
                                       NA_integer_)) %>% 
   mutate(
     UNDER_UTILIZED_LGL = case_when(
