@@ -47,7 +47,6 @@ p %<>%
 p_dev <- p %>% 
   mutate(DEVELOPABLE_PCT = 1 - WATER_OVERLAP_PCT)
 
-
 # Write + Upload Data ----
 
 p_dev_sf_fp <- "./1-data/3-interim/p_dev_sf.gpkg"
