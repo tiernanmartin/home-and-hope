@@ -268,18 +268,38 @@ p_nest <- p %>%
 
 city_block_sqft <- as.integer(66000)
 
+# the lot size types and the parameters that determine them
+# note: in order for this object to be successfully joined to the parcel
+#       object, the column names must be identical
+
 lot_size_types <- 
   crossing(LOT_SIZE = c("less than 1/8 block", "1/4 block", "greater than 1/4 block"),
            RESTRICTIVE_SZ_SHAPE = unique(p_nest$RESTRICTIVE_SZ_SHAPE),
            DEV_ASSUMPTION = unique(p_nest$DEV_ASSUMPTION)
   ) %>% 
   arrange(RESTRICTIVE_SZ_SHAPE) %>% 
-  mutate(LOT_SIZE_TYPE = case_when(str_detect(LOT_SIZE,"less") ~ "small",
+  mutate(LOT_SIZE_TYPE = case_when(is.na(DEV_ASSUMPTION) ~ NA_character_,
+                                   str_detect(DEV_ASSUMPTION,"^no") ~ "not developable",
+                                   RESTRICTIVE_SZ_SHAPE == as.integer(1) ~ "restrictive shape",
+                                   str_detect(DEV_ASSUMPTION,"^one") ~ "single family",
+                                   str_detect(LOT_SIZE,"less") ~ "small",
                                    str_detect(LOT_SIZE,"^1") ~ "medium",
-                                   TRUE ~ "large")) %>% 
-  mutate(LOT_SIZE_TYPE = if_else(str_detect(DEV_ASSUMPTION,"^one"),"single family",LOT_SIZE_TYPE)) %>% 
-  mutate(LOT_SIZE_TYPE = if_else(RESTRICTIVE_SZ_SHAPE == as.integer(1),"restrictive shape",LOT_SIZE_TYPE)) %>% 
-  mutate(LOT_SIZE_TYPE = if_else(str_detect(DEV_ASSUMPTION,"^no"),"not developable",LOT_SIZE_TYPE))
+                                   TRUE ~ "large"))
+
+# Parameters of the development assumptions
+# note: in order for this object to be successfully joined to the parcel
+#       object (with lot size types), the column names must be identical
+
+dev_params <- tibble::tribble(
+        ~LOT_SIZE_TYPE, ~LOT_COVERAGE, ~N_STORIES,
+                    NA,            NA,         NA,
+     "not developable",            NA,         NA,
+   "restrictive shape",            NA,         NA,
+       "single family",          0.75,          2,
+               "small",          0.75,          3,
+              "medium",          0.75,          7,
+               "large",           0.5,          7
+  ) 
 
 p_join <- p_nest %>% 
   left_join(bldg, by = "PIN") %>% 
@@ -287,21 +307,31 @@ p_join <- p_nest %>%
   select(-data,everything(),data)
 
 p_util <- p_join %>% 
-  mutate(LOT_SIZE = case_when(SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
-                          between(SQ_FT_LOT,city_block_sqft/8,city_block_sqft/4) ~ "1/4 block",
-                          SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
-                          TRUE ~ NA_character_)
-         ) %>% 
+  mutate(LOT_SIZE = case_when(
+    SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
+    between(SQ_FT_LOT,city_block_sqft/8,city_block_sqft/4) ~ "1/4 block",
+    SQ_FT_LOT > city_block_sqft/4 ~  "greater than 1/4 block",
+    TRUE ~ NA_character_)
+  ) %>% 
+  mutate(DEVELOPABLE_SF = 1 - WATER_OVERLAP_PCT) %>%   # this should probably be done in the parcel make script
   left_join(lot_size_types) %>% 
-  mutate(MAX_UTILIZATION_SF = case_when(LOT_SIZE_TYPE %in% "single family" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 2))),
-                                        LOT_SIZE_TYPE %in% "small" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 3))),
-                                        LOT_SIZE_TYPE %in% "medium" ~  as.integer(round(.75*(WATER_OVERLAP_PCT * SQ_FT_LOT * 6))),
-                                        LOT_SIZE_TYPE %in% "large" ~  as.integer(round(.50*(WATER_OVERLAP_PCT * SQ_FT_LOT * 6))),
-                                        TRUE ~ NA_integer_),
-         UNDER_UTILIZED_LGL = case_when(BLDG_NET_SQ_FT >= MAX_UTILIZATION_SF ~ FALSE,
-                                        BLDG_NET_SQ_FT < MAX_UTILIZATION_SF ~ TRUE,
-                                        TRUE ~ NA)
+  left_join(dev_params) %>% 
+  mutate(
+    DEVELOPABLE_LGL = if_else(LOT_SIZE_TYPE %in% c("single family","small","medium","large"),
+                              TRUE,
+                              FALSE,
+                              missing = FALSE)
          ) %>% 
+  mutate(
+    MAX_UTILIZATION_SF = if_else(DEVELOPABLE_LGL,
+                                      as.integer(round(LOT_COVERAGE*(DEVELOPABLE_SF * SQ_FT_LOT * N_STORIES))),
+                                      NA_integer_)) %>% 
+  mutate(
+    UNDER_UTILIZED_LGL = case_when(
+      BLDG_NET_SQ_FT >= MAX_UTILIZATION_SF ~ FALSE,
+      BLDG_NET_SQ_FT < MAX_UTILIZATION_SF ~ TRUE,
+      TRUE ~ NA)
+  ) %>% 
   select(PROP_NAME,
          KCTP_NAME,
          PIN,
