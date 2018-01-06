@@ -40,9 +40,12 @@ p_nest <- st_nest_sf(p)
 
 # WATERBODIES
 
+# Ecology: http://www.ecy.wa.gov/services/gis/data/data.htm
+# ArcGIS: https://www.arcgis.com/home/item.html?id=b5a20ceaa6114e28b688d4236b417b2b
+
 w_id <- as_id("1OF2Z0sNWBmdDdZ4lPgUoolVELd7HCyWL")
 
-w <- drive_read(w_id, TRUE, read_fun, read_sf, stringsAsFactors = FALSE)
+w <- drive_read(w_id, TRUE, read_fun, read_sf, stringsAsFactors = FALSE) 
 
 w_union <- w %>% 
   st_set_crs(4326) %>% 
