@@ -1,97 +1,139 @@
-# Setup ----
-library(skimr)
-library(scales)
+# Setup ---- 
 library(tidyverse) 
 library(sf)
-library(mapview)
 library(snakecase)
+library(mapview) 
 library(AmesHousing)
-library(rpart)
-library(rattle) 
-library(janitor)
-library(devtools)
+library(skimr)
+library(rpart) 
+library(rattle)  
 
 Sys.setlocale("LC_CTYPE", "Chinese")     # use skim() on Windows (See README.md on pkg Github repo)
 
-# Access Data ----
+# Create Data ----
 
-a <- make_ames() %>% 
+houses <- make_ames() %>% 
   rename_all(to_screaming_snake_case) %>% 
+  mutate_if(is.factor,as.character) %>% 
+  select(FIRST_FLR_SF,POOL_QC, POOL_AREA, LONGITUDE,LATITUDE)
+
+skim(houses)
+
+houses_sm <- tibble::tribble(
+  ~FIRST_FLR_SF,     ~POOL_QC, ~POOL_AREA,  ~LONGITUDE,  ~LATITUDE,
+          1392L,       "Fair",       519L,  -93.637387,  42.050514,
+          1309L,       "Fair",       648L,  -93.630289,   42.04977,
+          1118L,       "Good",       576L,  -93.604549,  41.997069,
+          2411L,  "Excellent",       555L, -93.6575919, 42.0533209,
+          2151L,       "Good",       800L,  -93.660643,  42.037065,
+          1360L,  "Excellent",       512L,  -93.620355,  42.042156,
+          1575L,       "Good",       738L,  -93.663475,  42.026614,
+          1656L,    "No_Pool",         0L,  -93.619754,  42.054035,
+          1329L,    "No_Pool",         0L, -93.6193873,  42.052659,
+          2110L,    "No_Pool",         0L,   -93.61732,  42.051245,
+          1338L,    "No_Pool",         0L,  -93.633792,  42.062978,
+          1280L,    "No_Pool",         0L,  -93.633826,  42.060728,
+           896L,    "No_Pool",         0L,  -93.619756,  42.053014,
+           928L,    "No_Pool",         0L,  -93.638933,  42.060899,
+           926L,    "No_Pool",         0L,  -93.638925,  42.060779,
+           763L,    "No_Pool",         0L,  -93.636947,   42.05848,
+           789L,    "No_Pool",         0L,  -93.638647,  42.058151,
+          2470L,  "Excellent",       144L,  -93.656958,  42.058484,
+          4692L,       "Good",       480L,  -93.674898,  42.016804,
+          1647L,    "Typical",       368L,  -93.618606,  42.034789,
+          1105L,    "Typical",       444L,  -93.693153,  42.034453,
+          2726L,  "Excellent",       228L,  -93.640182,  42.010076
+  )
+
+skim(houses_sm)
+
+# First attempt ----
+
+# Criteria: 
+#   1) big house...
+#   2) with a pool!
+
+pool_party_1 <- houses_sm %>% 
+  mutate(IS_A_MANSION = if_else(FIRST_FLR_SF >= 1000, TRUE, FALSE,missing = FALSE)) %>% 
+  mutate(HAS_POOL = !if_else(POOL_QC %in% "No_Pool", TRUE, FALSE,missing = FALSE)) %>% 
+  mutate(PARTY_HOUSE = if_else(IS_A_MANSION & HAS_POOL, TRUE, FALSE, missing = FALSE))
+
+# Map it:
+p_1 <- pool_party_1 %>% 
   mutate(geometry = st_sfc(map2(LONGITUDE, LATITUDE, ~ st_point(c(.x,.y))))) %>% 
+  mutate(PARTY_HOUSE = factor(PARTY_HOUSE) %>% fct_rev) %>% 
+  select(-LONGITUDE, -LATITUDE) %>% 
   st_sf %>% 
   st_set_crs(4326)
 
-# View Data ----
+mapview(p_1, zcol = "PARTY_HOUSE", legend = TRUE) 
 
-skim(a)
+# Second attempt ----
 
-mapview(a)
+# Criteria: 
+#   1) big house...
+#   2) with a _nice_ pool!
 
-make_ames() %>% select_if(is.factor) %>% map(table)
+pool_party_2 <- pool_party_1 %>% 
+  mutate(POOL_IS_NICE = if_else(POOL_QC %in% "Excellent", TRUE, FALSE,missing = FALSE)) %>% 
+  mutate(PARTY_HOUSE = if_else(IS_A_MANSION & HAS_POOL & POOL_IS_NICE, TRUE, FALSE, missing = FALSE))
+
+# Map it:
+p_2 <- pool_party_2 %>% 
+  mutate(geometry = st_sfc(map2(LONGITUDE, LATITUDE, ~ st_point(c(.x,.y))))) %>% 
+  mutate(PARTY_HOUSE = factor(PARTY_HOUSE) %>% fct_rev) %>% 
+  select(-LONGITUDE, -LATITUDE) %>% 
+  st_sf %>% 
+  st_set_crs(4326)
+
+mapview(p_2, zcol = "PARTY_HOUSE", legend = TRUE) 
+
+
+# Third attempt ----
+
+# Criteria: 
+#   1) big house...
+#   2) with a pool that's big enough and...
+#   3) not too nasty!
+
+pool_party_3 <- houses_sm %>% 
+  mutate(IS_A_MANSION = if_else(FIRST_FLR_SF >= 1000, TRUE, FALSE, missing = FALSE)) %>% 
+  mutate(POOL_SIZE = case_when(
+    POOL_AREA > 500 ~ "large",
+    between(POOL_AREA,1,500) ~ "regular",
+    TRUE ~ "none"
+  )) %>% 
+  mutate(PARTY_HOUSE = case_when(
+    (!IS_A_MANSION) ~ "not a mansion",
+    POOL_QC %in% "No_Pool" ~ "no pool",
+    POOL_SIZE %in% 'large' & POOL_QC %in% c("Excellent", "Good") ~ "great",
+    POOL_SIZE %in% "large" & POOL_QC %in% c("Typical") ~ "ok",
+    POOL_SIZE %in% "regular" & POOL_QC %in% c("Excellent", "Good", "Typical") ~ "ok", 
+    TRUE ~ "bad"
+  ))
+
+lvls <- c("not a mansion", "no pool", "bad", "ok", "great")
+
+# Map it:
+p_3 <- pool_party_3 %>% 
+  mutate(geometry = st_sfc(map2(LONGITUDE, LATITUDE, ~ st_point(c(.x,.y))))) %>% 
+  mutate(PARTY_HOUSE = factor(PARTY_HOUSE, levels = lvls) %>% fct_rev) %>% 
+  select(-LONGITUDE, -LATITUDE) %>% 
+  st_sf %>% 
+  st_set_crs(4326)
+
+mapview(p_3, zcol = "PARTY_HOUSE", legend = TRUE) 
 
 # Create a decision tree ----
 
-# VAR ONE: single-family ONLY
+my_model <- rpart(PARTY_HOUSE ~ IS_A_MANSION + POOL_SIZE + POOL_QC, 
+                  data = pool_party_3, 
+                  cost = c(1, 100, 50),
+                  cp = -1, 
+                  minsplit = 2)
 
-# Check out the crosstabulation of zoning and sub class
+drawTreeNodes(my_model)
 
-a %>% 
-  split(.$MS_ZONING) %>% 
-  map(~ tabyl(.x, MS_SUB_CLASS, sort = TRUE))
-
-# get the most common sub classes from the single family zoning categories
-
-sf_zones <- c("Residential_Low_Density", "Residential_Medium_Density")
-
-sf_classes <- a %>% 
-  select(MS_ZONING,MS_SUB_CLASS) %>% 
-  filter(MS_ZONING %in% sf_zones) %>% 
-  group_by(MS_SUB_CLASS) %>% 
-  summarize(N = n()) %>% 
-  arrange(desc(N)) %>% 
-  slice(1:6) %>% 
-  transmute(MS_SUB_CLASS = as.character(MS_SUB_CLASS)) %>% 
-  pull(MS_SUB_CLASS)
+asRules(my_model)
 
 
-a_var_one <- a %>% 
-  mutate(MS_ZONING_CHR = as.character(MS_ZONING),
-         MS_SUB_CLASS_CHR = as.character(MS_SUB_CLASS)) %>% 
-  mutate(SF_LGL = if_else(MS_ZONING_CHR %in% sf_zones & MS_SUB_CLASS_CHR %in% sf_classes,TRUE,FALSE))
-
-glimpse(a_var_one)
-
-# VAR TWO: top-5 most expensive neighborhoods (sale price per lot square foot)
-
-a_var_two <- a_var_one %>% 
-  mutate(PRICE_SQFT = dollar(SALE_PRICE/LOT_AREA),
-         PRICE_SQFT_LOG = log10(SALE_PRICE)/log10(LOT_AREA)) %>% 
-  mutate(PRICE_SQFT = if_else(SF_LGL,PRICE_SQFT,NA_character_),
-         PRICE_SQFT_LOG = if_else(SF_LGL, PRICE_SQFT_LOG, NA_real_)) %>% 
-  mutate(NHOOD_TOP5 = fct_reorder(NEIGHBORHOOD,PRICE_SQFT_LOG, .desc = TRUE,fun = mean, na.rm = TRUE),
-         NHOOD_TOP5 = fct_other(NHOOD_TOP5, keep = levels(NHOOD_TOP5)[1:5])) 
-
-a_var_two %>% 
-  select(NEIGHBORHOOD,
-         NHOOD_TOP5,
-         SALE_PRICE,
-         LOT_AREA,
-         PRICE_SQFT,
-         PRICE_SQFT_LOG) %>% 
-  arrange(NHOOD_TOP5, desc(PRICE_SQFT)) %>% 
-  print(n = 200)
-
-# VAR THREE: have a pool
-
-a_var_two %>% 
-  filter(POOL_AREA > 0 ) %>% 
-  select(NEIGHBORHOOD,
-         NHOOD_TOP5,
-         SALE_PRICE,
-         LOT_AREA,
-         PRICE_SQFT,
-         PRICE_SQFT_LOG,
-         POOL_AREA) %>%  
-  print(n = 200)
-
-# Oh no! All of the top 5 neighborhoods get filtered out when we select for pools - shoot!
