@@ -16,11 +16,28 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 # CREATE MAKE PLANS ----
 
-pub_plan <- drake_plan(
-  acct = make_acct()
+parcels_plan <- make_plan(
+  acct = make_acct(),
+  parcels_pt = make_parcels_pt(acct),
+  parcels_poly = make_parcels_poly(parcels_pt)
 )
 
-master_plan <- rbind(pub_plan)    # rbind all plans together
+suitability_plan <- drake_plan(
+  tax_e = make_tax_e(),
+  water_coverage = make_water(),
+  uga = make_uga(),
+  zoning = make_zoning(),
+  present_use = make_present_use()
+)
+
+utilization_plan <- drake_plan(
+  util_present = make_util_present(),
+  util_potential = make_util_potential()
+)
+
+master_plan <- rbind(parcels_plan,
+                     suitability_plan,
+                     utilization_plan)    # rbind all plans together
 
 
 # COMMAND: MAKE_ACCT ----
