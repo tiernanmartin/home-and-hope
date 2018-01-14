@@ -35,7 +35,7 @@ utilization_plan <- drake_plan(
   util_potential = make_util_potential()
 )
 
-master_plan <- rbind(parcels_plan,
+project_plan <- rbind(parcels_plan,
                      suitability_plan,
                      utilization_plan)    # rbind all plans together
 
@@ -57,5 +57,23 @@ make_acct <- function(){
 }
 
 
+# COMMAND: MAKE_PARCELS_PT ----
+
+# COMMAND: MAKE_PARCELS_POLY ----
+
+# COMMAND: MAKE_TAX_E ----
+
+# COMMAND: MAKE_WATER ----
+
+# COMMAND: MAKE_UGA ----
+
+# COMMAND: MAKE_ZONING ----
+
+# COMMAND: MAKE_PRESENT_USE ----
+
+# COMMAND: MAKE_UTIL_PRESENT ----
+
+# COMMAND: MAKE_UTIL_POTENTIAL ---- 
+
 # RUN PLAN ----
-make(master_plan)
+make(project_plan)
