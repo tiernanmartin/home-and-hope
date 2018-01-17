@@ -1,34 +1,95 @@
 # Setup ----
 
-library(tidyverse)
-library(stringr)
 library(sf)
-library(googledrive)
-library(miscgis)
-library(forcats)
-library(leaflet)
-library(mapview)
-library(miscgis)
-library(htmltools)
+library(googledrive) 
 library(snakecase)
+library(miscgis)
 
+library(tidyverse)
+
+root <- rprojroot::is_rstudio_project
+root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # Access Data ----
 
-# Parcel (tabular)
+# KC Lookup
 
-p_fp <- "./1-data/2-external/EXTR_Parcel_20171013.csv"
+lu_fp <- root_file("1-data/2-external/EXTR_LookUp.csv")
+
+lu_dr_id <- as_id("1-L42pHb7lySqonanSwBbXSH9OZrKHp2A")
+
+lu_load <- lu_fp %>% 
+  make_or_read2(dr_id = lu_dr_id,
+                get_expr = {
+                  # Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
+                },
+                make_expr = {
+                  drive_read(dr_id = lu_dr_id,
+                             .tempfile = FALSE,
+                             path = lu_fp,
+                             read_fun = read_csv)
+                },
+                read_expr = {read_csv(lu_fp)}
+                )
+  
+lu <- rename_all(lu_load, to_screaming_snake_case) 
+
+pu <-  lu %>%  
+  filter(LU_TYPE == 102) %>% 
+  select(PRESENTUSE = LU_ITEM,
+         PRESENTUSE_DESC = LU_DESCRIPTION)
 
 
-p_load <- 
-  make_or_read(p_fp,
-               {
-                 zip_dir <- "./1-data/2-external"
+# Real Property Account
+
+acct_fp <- root_file("1-data/2-external/kc_real_prop_acct_extract.rds")
+
+acct_dr_id <- as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh")
+
+acct_load <- acct_fp %>% 
+  make_or_read2(dr_id = acct_dr_id,
+                get_expr = {
+                  realprop <- read.socrata("https://data.kingcounty.gov/resource/mmfz-e8xr.csv",
+                                           email = "FAKE_NAME@FAKE_EMAIL.COM",
+                                           password = "FAKE_PASSWORD" # CHANGE TO REAL BEFORE RUNNING
+                  )
+                  
+                  r <- realprop %>% 
+                    rename_all(to_screaming_snake_case) 
+                  
+                  r_fp <- root_file("./1-data/2-external/kc_real_prop_acct_extract.rds")
+                  
+                  drive_folder_id <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                  
+                  write_rds(r,r_fp, compress = "gz")
+                  
+                  drive_upload(media = r_fp, path = drive_folder_id)
+                  
+                  # drive_update(as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh"), r_fp)
+                },
+                make_expr = {
+                  drive_read(dr_id = acct_dr_id,path = acct_fp,.tempfile = FALSE,read_fun = read_rds)
+                },
+                read_expr = {read_rds(acct_fp)})
+
+
+# Parcel 
+
+p_fp <- root_file("./1-data/2-external/EXTR_Parcel_20171013.csv")
+
+p_dr_id <- as_id("0B5Pp4V6eCkhraF9jOTl3bURiMkU")
+
+
+p_load <- p_fp %>% 
+  make_or_read2(dr_id = p_dr_id,
+                get_expr = { # Source: ftp://ftp.kingcounty.gov/gis-web/GISData/public_parcels_SHP.zip}
+                },
+                make_expr = {
+                  zip_dir <- "./1-data/2-external"
                  
                  target_name <- "EXTR_Parcel_20171013.csv"
-                 
-                 dr_id <- as_id("0B5Pp4V6eCkhraF9jOTl3bURiMkU")
                  
                  drive_read_zip(
                    dr_id = dr_id,
@@ -37,61 +98,36 @@ p_load <-
                    read_fun = read_csv,
                    target_name = target_name
                  ) 
-               },
-               {
-                 read_csv(p_fp)
-               }) 
+                 
+                },
+                read_expr = { read_csv(p_fp)})
 
-
-p <- 
-  p_load %>% 
-  rename_all(to_screaming_snake_case) 
+p <- rename_all(p_load, to_screaming_snake_case) 
 
 rm(p_load)
 gc(verbose = FALSE)
 
+# Tax Reason
 
+tr_fp <- root_file("./1-data/3-interim/kc-tax-reason.rds")
 
-# Real Property Account
+tr_dr_id <- as_id("0B5Pp4V6eCkhrQzdjY0hKVUhOR3M")
 
-acct_fp <- "./1-data/2-external/EXTR_RPAcctl_20171013.csv"
-
-acct_load <- 
-  make_or_read(acct_fp,
-               {
-                 dr_id <- "0B5Pp4V6eCkhreGt2djZCTnFUeFU"
-                 
-                 zip_dir <- "./1-data/2-external"
-                 
-                 target_name <- "EXTR_RPAcctl_20171013.csv"
-                 
-                 drive_read_zip(dr_id = dr_id,
-                                .tempdir = FALSE,
-                                dir_path = zip_dir,
-                                read_fun = read_csv,
-                                target_name = target_name)
-                 
-               },
-               {read_csv(acct_fp)}) 
-
-acct <- rename_all(acct_load, to_screaming_snake_case)
-
-tr_fp <- "./1-data/3-interim/kc-tax-reason.rds"
-
-tax_reason <- 
-  make_or_read(tr_fp,
-               {
-                 dr_id <- as_id("0B5Pp4V6eCkhrQzdjY0hKVUhOR3M")
-                 
-                 drive_read(dr_id = dr_id,
+tax_reason <- tr_fp %>% 
+  make_or_read2(dr_id = tr_dr_id,
+                get_expr = {
+                  # source: 
+                },
+                make_expr = {
+                  drive_read(dr_id = dr_id,
                             .tempfile = FALSE,
                             path = tr_fp,
-                            read_fun = read_rds)
-                 
-               },
-               {read_rds(tr_fp)})
+                            read_fun = read_rds)},
+                read_expr =  {read_rds(tr_fp)})
 
 ts_fp <- "./1-data/3-interim/kc-tax-status.rds"
+
+# Tax Status
 
 tax_status <- 
   make_or_read(ts_fp,
@@ -105,15 +141,6 @@ tax_status <-
                  
                },
                {read_rds(ts_fp)})
-
-acct <- 
-  acct_load %>% 
-  rename_all(to_screaming_snake_case) 
-
-rm(acct_load)
-gc(verbose = FALSE)
-
-
 
 # Parcel (spatial)
 
