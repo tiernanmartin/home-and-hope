@@ -1,19 +1,12 @@
 # Setup ----
 
 library(igraph)
-library(tidyverse)
-library(stringr)
 library(sf)
 library(googledrive)
-library(miscgis)
-library(forcats)
-library(leaflet)
-library(mapview)
-library(miscgis)
+library(miscgis) 
 library(snakecase)
 library(magrittr)
 library(rprojroot)
-library(knitr) 
 library(lubridate)
 library(RColorBrewer) 
 library(RSocrata)
@@ -22,6 +15,7 @@ library(widyr)
 library(ggrepel)
 library(ggraph)
 
+library(tidyverse)
 
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
@@ -30,11 +24,35 @@ htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # Load data ----
 
-# Public parcels from KC GIS
+# This data is from a special dataset created by the King County 
+# Assessor office (or maybe the GIS Dept?) to facilitate
+# the analysis of public land
 
-#NOTE: change this to the Google Drive process
+pub_fp <- root_file("1-data/2-external/public_parcels")
 
-pub_fp <- root_file("1-data/2-external/public_parcels/")
+soda_api_endpoint <- "https://data.kingcounty.gov/resource/pdft-6nx2.json"
+
+pub_load <- RSocrata::read.socrata(url = soda_api_endpoint,email = "FAKE",password = "FAKE")
+
+pub <- pub_load %>%  
+  as_tibble %>% 
+  select(major,
+         minor,
+         pin,
+         TaxpayerName = taxpayer_na,
+         districtName = district_na,
+         PropName = prop_name,
+         LandGeneralUse = land_genera,
+         LandCurrentZoning = land_curren,
+         LandPresentUse = land_presen,
+         sq_ft_lot,
+         land_issues,
+         eRealPropertyLink = e_real_prope,
+         bus_buff_750,
+         bus_buf_qtr_m
+         ) %>% 
+  rename_all(to_screaming_snake_case)
+  
 
 pub <- read_sf(dsn = pub_fp, stringsAsFactors = FALSE)
 
