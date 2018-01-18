@@ -7,6 +7,7 @@ library(snakecase)
 library(magrittr)
 library(rprojroot) 
 library(RSocrata)
+library(glue)
 library(tidyverse) 
 
 
@@ -16,24 +17,27 @@ options(httr_oob_default=TRUE)
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 # MAKE PLANS ----
 
-lookup_plan <- make_plan( 
+lookup_plan <- drake_plan( 
   lu = make_lu(),
+  prop_type = make_prop_type(),
   tax_status = make_tax_status(),
   tax_reason = make_tax_reason()
-  
 )
-  
-parcels_plan <- make_plan(
+
+parcel_plan <- drake_plan(
+  pub_parcel = make_pub_parcel(),
   acct = make_acct(),
-  parcel_sf = make_parcel_df(acct, tax_status,tax_reason)
+  parcel_df = make_parcel_df(),
+  parcel_sf = make_parcel_sf(),
+  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, acct, parcel_df, parcel_sf)
 )
 
 suitability_plan <- drake_plan(
-  tax_e = make_tax_e(),
-  water_coverage = make_water(),
-  uga = make_uga(),
-  zoning = make_zoning(),
-  present_use = make_present_use(),
+  tax_e = make_tax_e(parcel_ready, pub_parcel),
+  water_coverage = make_water(parcel_ready),
+  uga = make_uga(parcel_ready),
+  zoning = make_zoning(parcel_ready),
+  present_use = make_present_use(parcel_ready),
   parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, uga, zoning, present_use)
 )
 
@@ -43,10 +47,12 @@ utilization_plan <- drake_plan(
   parcel_utilization = make_parcel_utilization(parcel_sf, util_present, util_potential)
 )
 
-project_plan <- rbind(lookup_plan,
-                      parcels_plan,
-                      suitability_plan,
-                      utilization_plan)    # rbind all plans together
+
+project_plan <- rbind(
+  lookup_plan,
+  parcel_plan,
+  suitability_plan,
+  utilization_plan)    # rbind all plans together 
 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
@@ -62,18 +68,75 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 
 # COMMAND: MAKE_LU ----
 
+make_lu <- function(){
+  
+  lu_fp <- root_file("1-data/2-external/EXTR_LookUp.csv")
+  
+  lu_dr_id <- as_id("1-L42pHb7lySqonanSwBbXSH9OZrKHp2A")
+  
+  lu_load <- 
+    make_or_read2(fp = lu_fp,
+                  dr_id = lu_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
+                    },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  lu <- rename_all(lu_load, to_screaming_snake_case)
+}
+
 # COMMAND: MAKE_TAX_STATUS ----
+
+make_tax_status <- function(){
+  
+  tax_s_fp <- root_file("1-data/1-raw/tax_status.txt")
+  
+  tax_s_dr_id <- as_id("1xY6l2FRF2a-6Ugk2_qzPo3aA7a35hw8a")
+  
+  tax_s_load <- 
+    make_or_read2(fp = tax_s_fp,
+                  dr_id = tax_s_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    string <- "T = Taxable; X = Exempt; O = Operating"
+                    
+                    writeLines(string, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_download(file = dr_id, path = fp) 
+                    read_lines(fp)
+                  },
+                  read_expr = function(fp){read_lines(fp)})
+  
+  tax_status <- 
+    tax_s_load %>% 
+    str_c(collapse = "\n") %>% 
+    parse_lu_string(col_sep = "\\s=\\s",row_sep = ";\\s",join_name = "TAX_STATUS","TAX_STATUS_DESC")
+  
+}
 
 # COMMAND: MAKE_TAX_REASON ----
 
 make_tax_reason <- function(){
+   
   tax_r_fp <- root_file("1-data/1-raw/tax_reason.txt")
   
-  tax_r_dr_id <- as_id("118oisrou6ieTP2WXpg8IE1dtmsybRhkT")
+  tax_r_dr_id <- as_id("1S9YyHFwTDYrMnM0WGZEHiFrgEUpAfqWL")
   
-  tax_reason_load <- tax_r_fp %>% 
-    make_or_read2(dr_id = tax_r_dr_id,
-                  get_expr = {
+  tax_reason_load <-  
+    make_or_read2(fp = tax_r_fp,
+                  dr_id = tax_r_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
                     
                     string <- "
 FS = senior citizen exemption
@@ -85,25 +148,122 @@ HI = home improvement exemption
 HP = historic property exemption
 MX = more than one reason applies
 "
-                    writeLines(string, tax_r_fp)
+                    writeLines(string, fp)
                     
                     drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
                     
-                    # drive_upload(media = tax_r_fp, path = drive_folder)
-                    
-                    drive_update(tax_r_dr_id, tax_r_fp)
+                    drive_upload(media = fp, path = drive_folder) 
                   },
-                  make_expr = {
-                    drive_read(dr_id = tax_r_dr_id,path = tax_r_fp,.tempfile = FALSE,read_fun = readLines,con = tax_r_fp)
+                  make_expr = function(fp, dr_id){ 
+                    drive_download(file = dr_id, path = fp) 
+                    read_lines(tax_r_fp)
                   },
-                  read_expr = {readLines(tax_r_fp)})
+                  read_expr = function(fp){read_lines(fp)})
   
   tax_reason <- 
     tax_reason_load %>% 
     str_c(collapse = "\n") %>% 
     parse_lu_string(col_sep = "\\s=\\s", row_sep = "\n",join_name = "TAX_REASON","TAX_REASON_DESC")
+} 
+
+
+# COMMAND: MAKE_PROP_TYPE ----
+
+make_prop_type <- function(){
+  
+  pt_fp <- root_file("1-data/1-raw/prop_type.txt")
+  
+  pt_dr_id <- as_id("1nJp_t4hvf1sy9flwmKLnWKnZvdLQs2XN")
+  
+  pt_load <- 
+    make_or_read2(fp = pt_fp,
+                  dr_id = pt_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    string <- "
+C = Commercial
+K = Condominium
+M = Coal & Mineral Rights
+N = Mining
+R = Residential
+T = Timber
+U = Undivided Interest
+X = Exempt
+"
+                    writeLines(string, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder) 
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_download(file = dr_id, path = fp) 
+                    read_lines(fp)
+                  },
+                  read_expr = function(fp){read_lines(fp)})
+  
+  prop_type <- pt_load %>% 
+    str_c(collapse = "\n") %>% 
+    parse_lu_string(col_sep = "\\s=\\s", row_sep = "\n",join_name = "PROP_TYPE","PROP_TYPE_DESC")
+  
 }
 
+
+# COMMAND: MAKE_PUB_PARCEL ----
+
+make_pub_parcel <- function(){ 
+  pub_fp <-  root_file("1-data/2-external/kc-public-parcels.csv")
+  
+  pub_dr_id <- as_id("1ERHvVa9K6F-lk1L8X47Oy1sdw_s2t9kv")
+  
+  pub_load <- 
+    make_or_read2(fp = pub_fp,
+                  dr_id = pub_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                     soda_api_endpoint <- "https://data.kingcounty.gov/resource/pdft-6nx2.json"
+
+                    pub_load <- RSocrata::read.socrata(url = soda_api_endpoint,email = "FAKE@FAKE_EMAIL.COM",password = "FAKE_PASSWORD") # CHANGE THIS TO RE-DOWNLOAD
+
+                    pub <- pub_load %>%
+                      as_tibble %>%
+                      select(major,
+                             minor,
+                             pin,
+                             TaxpayerName = taxpayer_na,
+                             districtName = district_na,
+                             PropName = prop_name,
+                             LandGeneralUse = land_genera,
+                             LandCurrentZoning = land_curren,
+                             LandPresentUse = land_presen,
+                             sq_ft_lot,
+                             land_issues,
+                             eRealPropertyLink = e_real_prope,
+                             bus_buff_750,
+                             bus_buf_qtr_m
+                      ) %>%
+                      rename_all(to_screaming_snake_case)
+
+                    write_csv(pub, fp)
+
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+
+                    drive_upload(fp, drive_folder)
+                    },
+                  make_expr = function(fp, dr_id){ 
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  pub_parcel <- rename_all(pub_load, to_screaming_snake_case) 
+  
+  rm(pub_load)
+  gc(verbose = FALSE)
+  
+  return(pub_parcel)
+}
 
 # COMMAND: MAKE_ACCT ----
 
@@ -113,36 +273,191 @@ make_acct <- function(){
   
   acct_dr_id <- as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh")
   
-  acct <- acct_fp %>% 
-    make_or_read2(dr_id = acct_dr_id,
-                  get_expr = {
+  acct <- 
+    make_or_read2(fp = acct_fp,
+                  dr_id = acct_dr_id,
+                  get_expr = function(fp){
                     realprop <- read.socrata("https://data.kingcounty.gov/resource/mmfz-e8xr.csv",
                                              email = "FAKE_NAME@FAKE_EMAIL.COM",
                                              password = "FAKE_PASSWORD" # CHANGE TO REAL BEFORE RUNNING
                     )
                     
                     r <- realprop %>% 
-                      rename_all(to_screaming_snake_case) 
-                    
-                    r_fp <- root_file("./1-data/2-external/kc_real_prop_acct_extract.rds")
+                      rename_all(to_screaming_snake_case)  
                     
                     drive_folder_id <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
                     
-                    write_rds(r,r_fp, compress = "gz")
+                    write_rds(r, fp, compress = "gz")
                     
-                    # drive_upload(media = r_fp, path = drive_folder_id)
+                    drive_upload(media = fp, path = drive_folder_id)
                     
-                    drive_update(as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh"), r_fp)
                   },
-                  make_expr = {
-                    drive_read(dr_id = acct_dr_id,path = acct_fp,.tempfile = FALSE,read_fun = read_rds)
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,path = fp,.tempfile = FALSE,read_fun = read_rds)
                   },
-                  read_expr = {read_rds(acct_fp)})
+                  read_expr = function(fp){read_rds(fp)})
   
 }
 
-# COMMAND: MAKE_PARCELS_SF ----
+
+# COMMAND: MAKE_PARCEL_DF ----
+make_parcel_df <- function(){
+  
+  p_fp <- root_file("./1-data/2-external/EXTR_Parcel_20171013.csv")
+  
+  p_dr_id <- as_id("0B5Pp4V6eCkhraF9jOTl3bURiMkU")
+  
+  p_load <-  
+    make_or_read2(fp = p_fp,
+                  dr_id = p_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){ # Source: http://aqua.kingcounty.gov/extranet/assessor/Parcel.zip
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- "./1-data/2-external"
+                    
+                    target_name <- "EXTR_Parcel_20171013.csv"
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){ read_csv(p_fp)})
+  
+  parcel_df <- rename_all(p_load, to_screaming_snake_case) 
+  
+  rm(p_load)
+  gc(verbose = FALSE)
+  
+  return(parcel_df)
+}
+# COMMAND: MAKE_PARCEL_SF ----
  
+make_parcel_sf <- function(){
+  
+  p_sf_fp <- "./1-data/2-external/parcel"
+  
+  P_sf_dr_id <- as_id("0B5Pp4V6eCkhrRnM4bHFmWTBTQnM")
+  
+  p_sf_load <- 
+    make_or_read2(fp = p_sf_fp, 
+                  dr_id = P_sf_dr_id, 
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/parcel_SHP.zip
+                  },
+                  make_expr = function(fp,dr_id){
+                    zip_dir <- "./1-data/2-external"
+                    
+                    target_name <- "parcel"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE,
+                                   layer = "parcel",
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){st_read(fp, layer = "parcel", stringsAsFactors = FALSE)}
+    )
+  
+  parcel_sf <-
+    p_sf_load %>%
+    rename_if(not_sfc, to_screaming_snake_case)
+  
+  rm(p_sf_load)
+  gc(verbose = FALSE)
+  
+  return(parcel_sf)
+}
+
+# COMMAND: MAKE_PARCEL_READY ----
+
+make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel_df, parcel_sf){
+  
+  # MAKE P_SF_READY
+  
+  p_sf_ready <- parcel_sf %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    select(PIN) %>% 
+    drop_na() 
+  
+  # MAKE P_READY
+  
+  present_use <- lu %>% 
+    filter(LU_TYPE == 102) %>% 
+    select(PRESENT_USE = LU_ITEM,
+           PRESENT_USE_DESC = LU_DESCRIPTION)
+  
+  p_ready <- parcel_df %>% 
+   mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    left_join(prop_type, by = "PROP_TYPE") %>% 
+    left_join(present_use, by = "PRESENT_USE") %>% 
+    select(PIN,
+           PROP_NAME,
+           PROP_TYPE = PROP_TYPE_DESC, 
+           DISTRICT_NAME,
+           CURRENT_ZONING,
+           PRESENT_USE = PRESENT_USE_DESC,
+           SQ_FT_LOT,
+           ACCESS,
+           TOPOGRAPHY,
+           RESTRICTIVE_SZ_SHAPE,
+           PCNT_UNUSABLE,
+           CONTAMINATION,
+           HISTORIC_SITE:OTHER_PROBLEMS 
+    )
+     
+  # MAKE ACCT_READY
+  
+  acct_frmt <- acct %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    rename(TAX_STATUS = TAXSTAT,
+           TAX_REASON = TAXVALREASON) %>% 
+    left_join(tax_status, by = "TAX_STATUS") %>% 
+    left_join(tax_reason, by = "TAX_REASON") %>%  
+    select(PIN, 
+           TAXPAYER_NAME = TAXPAYERNAME,
+           BILL_YR = BILLYR,
+           TAX_STATUS = TAX_STATUS_DESC,
+           TAX_REASON = TAX_REASON_DESC,
+           APPR_IMPS_VAL = APPRIMPSVAL,
+           APPR_LAND_VAL = APPRLANDVAL, 
+           TAXABLE_IMPS_VAL = TAXABLEIMPSVAL,
+           TAXABLE_LAND_VAL = TAXABLELANDVAL
+    )
+  
+  acct_ready <- acct_frmt %>% 
+    miscgis::subset_duplicated("PIN") %>% 
+    group_by(PIN) %>% 
+    drop_na %>% 
+    ungroup %>% 
+    bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>% 
+    arrange(PIN)
+  
+  # MAKE PARCEL_READY
+  
+  obj_list <- list(acct_ready,p_ready,p_sf_ready)
+  
+  parcel_ready <- obj_list %>% 
+    reduce(.f = inner_join, by = "PIN") %>% 
+    st_as_sf()
+  
+  return(parcel_ready)
+}
+
 # COMMAND: MAKE_TAX_E ----
 
 # COMMAND: MAKE_WATER ----
@@ -161,4 +476,4 @@ make_acct <- function(){
 
 # COMMAND: MAKE_PARCEL_UTILIZATION----
 # RUN PROJECT PLAN ----
-make(project_plan)
+# make(project_plan)
