@@ -492,6 +492,32 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel
 
 # COMMAND: MAKE_WATERBODIES ----
 
+make_waterbodies <- function(){
+  
+  w_fp <- root_file("./1-data/2-external/waterbodies-kc.gpkg")
+  
+  w_dr_id <- as_id("1OF2Z0sNWBmdDdZ4lPgUoolVELd7HCyWL")
+  
+  w_load <- 
+    make_or_read2(fp = w_fp,
+                  dr_id = w_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE 1: ArcGIS: https://www.arcgis.com/home/item.html?id=b5a20ceaa6114e28b688d4236b417b2b
+                    # SOURCE 2: Ecology: http://www.ecy.wa.gov/services/gis/data/data.htm
+                  },
+                  make_expr = function(fp, dr_id){drive_read(dr_id = dr_id, .tempfile = FALSE, path = fp, read_fun = read_sf)},
+                  read_expr = function(fp){read_sf(fp, stringsAsFactors = TRUE)})
+  
+  waterbodies <- w_load %>% 
+    st_set_crs(4326) %>% 
+    st_union() %>% 
+    st_transform(2926) %>% 
+    st_make_valid() 
+
+  return(waterbodies)
+}
+
 # COMMAND: MAKE_UGA ----
 
 # COMMAND: MAKE_ZONING ----
@@ -519,6 +545,69 @@ make_tax_e <- function(parcel_ready, pub_parcel){
 }
 
 # COMMAND: MAKE_WATER_COVERAGE ----
+
+make_water_coverage <- function(parcel_ready, waterbodies){
+  
+  wc_fp <- root_file("")
+  
+  wc_dr_id <- as_id("")
+  
+  wc_load <- 
+    make_or_read2(fp = wc_fp,
+                  dr_id = wc_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # actual_process <- function(){
+                    #   
+                    #   # NOTE: This the is the actual operation, but it's long-running,
+                    #   #       so I use a shortcut for the first iteration of the project.
+                    #   
+                    #   water_coverage <- parcel_ready %>% 
+                    #   slice(1:1000) %>% 
+                    #   select(PIN) %>% 
+                    #   mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = waterbodies, crs = 2926)) %>%
+                    #   mutate(WATER_OVERLAP_LGL = WATER_OVERLAP_PCT > 0) %>% 
+                    #   st_set_geometry(NULL)
+                    # 
+                    # drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc") 
+                    # 
+                    # write_csv(water_coverage, fp) #CHANGE TO fp
+                    # 
+                    # drive_upload(fp, drive_folder) 
+                    # }
+                    
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg"),
+                               .tempfile = FALSE,
+                               path = root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"),
+                               read_fun = read_sf)
+                    
+                  },
+                  read_expr = function(fp){read_sf(root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"))})
+  
+  wc_join <- wc_load %>% 
+    transmute(PIN, 
+              CRIT_SUIT_WATER_OVERLAP_PCT = WATER_OVERLAP_PCT,
+              CRIT_SUIT_WATER_OVERLAP_LGL = as.logical(WATER_OVERLAP_LGL)) %>%  
+    st_set_geometry(NULL)
+  
+  water_coverage <- parcel_ready %>% 
+    left_join(wc_join, by = "PIN") %>% 
+    mutate(CRIT_SUIT_WATER_OVERLAP_PCT = if_else(is.na(CRIT_SUIT_WATER_OVERLAP_PCT),0,CRIT_SUIT_WATER_OVERLAP_PCT),
+           CRIT_SUIT_WATER_OVERLAP_LGL = if_else(CRIT_SUIT_WATER_OVERLAP_LGL,TRUE,FALSE,FALSE)) %>% 
+    select(PIN,
+           CRIT_SUIT_WATER_OVERLAP_PCT,
+           CRIT_SUIT_WATER_OVERLAP_LGL) %>% 
+    st_set_geometry(NULL)
+  
+  return(water_coverage)
+  
+}
+
 
 # COMMAND: MAKE_WITHIN_UGA ----
 
