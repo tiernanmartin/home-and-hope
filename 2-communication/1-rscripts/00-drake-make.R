@@ -1,6 +1,7 @@
 # SETUP ----
 library(drake)
 library(sf)
+library(lwgeom)
 library(googledrive)
 library(miscgis)  
 library(snakecase)
@@ -15,6 +16,7 @@ root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+
 # MAKE PLANS ----
 
 lookup_plan <- drake_plan( 
@@ -32,11 +34,17 @@ parcel_plan <- drake_plan(
   parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, acct, parcel_df, parcel_sf)
 )
 
+miscellaneous_plan <- drake_plan(
+  waterbodies = make_waterbodies(),
+  uga = make_uga(),
+  zoning = make_zoning()
+)
+
 suitability_plan <- drake_plan(
   tax_e = make_tax_e(parcel_ready, pub_parcel),
-  water_coverage = make_water(parcel_ready),
-  uga = make_uga(parcel_ready),
-  zoning = make_zoning(parcel_ready),
+  water_coverage = make_water_coverage(parcel_ready, waterbodies),
+  within_uga = make_within_uga(parcel_ready, uga),
+  developable_zoning = make_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
   parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, uga, zoning, present_use)
 )
@@ -64,6 +72,28 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
     map_chr(c) %>% 
     map_df(~.x %>% str_split(pattern = col_sep) %>% as.data.frame %>% t %>% as_data_frame ) %>%  
     set_names(c(join_name,long_name))
+}
+
+
+# FUNCTION: ST_INTERSECT_AREA ----
+st_intersect_area <- function(x, y, crs){ 
+  
+  x_sfc <- x %>% 
+    st_sfc %>% 
+    st_set_crs(crs)
+  
+  area_x <- x_sfc %>% st_area() %>% as.double()
+  
+  area_xy <- st_intersection(x_sfc, y) %>% st_area %>% as.double()
+  
+  if(is_empty(area_xy)){return(as.double(0))}
+  
+  overlap_pct <- area_xy %>% 
+    divide_by(area_x) %>% 
+    as.double() %>% 
+    round(2)
+  
+  return(overlap_pct)
 }
 
 # COMMAND: MAKE_LU ----
@@ -460,6 +490,12 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel
   return(parcel_ready)
 }
 
+# COMMAND: MAKE_WATERBODIES ----
+
+# COMMAND: MAKE_UGA ----
+
+# COMMAND: MAKE_ZONING ----
+
 # COMMAND: MAKE_TAX_E ----
 
 make_tax_e <- function(parcel_ready, pub_parcel){
@@ -482,11 +518,11 @@ make_tax_e <- function(parcel_ready, pub_parcel){
   return(tax_e)
 }
 
-# COMMAND: MAKE_WATER ----
+# COMMAND: MAKE_WATER_COVERAGE ----
 
-# COMMAND: MAKE_UGA ----
+# COMMAND: MAKE_WITHIN_UGA ----
 
-# COMMAND: MAKE_ZONING ----
+# COMMAND: MAKE_DEVELOPABLE_ZONING ----
 
 # COMMAND: MAKE_PRESENT_USE ----
 
