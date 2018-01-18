@@ -337,6 +337,7 @@ make_parcel_df <- function(){
   
   return(parcel_df)
 }
+
 # COMMAND: MAKE_PARCEL_SF ----
  
 make_parcel_sf <- function(){
@@ -460,6 +461,26 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel
 }
 
 # COMMAND: MAKE_TAX_E ----
+
+make_tax_e <- function(parcel_ready, pub_parcel){
+  
+  pub_join <- pub_parcel %>% 
+    select(PIN) %>% 
+    mutate(CRIT_SUIT_OWNER_PUBLIC = TRUE)
+  
+  tax_e <- parcel_ready %>% 
+    left_join(pub_join, by = "PIN") %>% 
+    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(CRIT_SUIT_OWNER_PUBLIC,TRUE,FALSE,FALSE),
+           CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+           CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
+    select(PIN,
+           CRIT_SUIT_OWNER_PUBLIC,
+           CRIT_SUIT_OWNER_NONPROFIT,
+           CRIT_SUIT_OWNER_TAX_E) %>% 
+    st_set_geometry(NULL)
+  
+  return(tax_e)
+}
 
 # COMMAND: MAKE_WATER ----
 
