@@ -71,7 +71,7 @@ make_lu <- function(){
     make_or_read2(fp = lu_fp,
                   dr_id = lu_dr_id,
                   skip_get_expr = TRUE,
-                  get_expr = {# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
+                  get_expr = function(fp){# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
                     },
                   make_expr = function(fp, dr_id){
                     drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
@@ -110,6 +110,11 @@ make_tax_status <- function(){
                   },
                   read_expr = function(fp){read_lines(fp)})
   
+  tax_status <- 
+    tax_s_load %>% 
+    str_c(collapse = "\n") %>% 
+    parse_lu_string(col_sep = "\\s=\\s",row_sep = ";\\s",join_name = "TAX_REASON","TAX_REASON_DESC")
+  
 }
 
 # COMMAND: MAKE_TAX_REASON ----
@@ -118,7 +123,7 @@ make_tax_reason <- function(){
    
   tax_r_fp <- root_file("1-data/1-raw/tax_reason.txt")
   
-  tax_r_dr_id <- as_id("")
+  tax_r_dr_id <- as_id("1S9YyHFwTDYrMnM0WGZEHiFrgEUpAfqWL")
   
   tax_reason_load <-  
     make_or_read2(fp = tax_r_fp,
