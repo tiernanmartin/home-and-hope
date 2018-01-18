@@ -7,6 +7,7 @@ library(snakecase)
 library(magrittr)
 library(rprojroot) 
 library(RSocrata)
+library(glue)
 library(tidyverse) 
 
 
@@ -63,17 +64,48 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 
 # COMMAND: MAKE_TAX_STATUS ----
 
+make_tax_status <- function(){
+  
+  tax_s_fp <- root_file("1-data/1-raw/tax_status.txt")
+  
+  tax_s_dr_id <- as_id("1xY6l2FRF2a-6Ugk2_qzPo3aA7a35hw8a")
+  
+  tax_s_load <- 
+    make_or_read2(fp = tax_s_fp,
+                  dr_id = tax_s_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    string <- "T = Taxable; X = Exempt; O = Operating"
+                    
+                    writeLines(string, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_download(file = dr_id, path = fp) 
+                    read_lines(fp)
+                  },
+                  read_expr = function(fp){read_lines(fp)})
+  
+}
+
 # COMMAND: MAKE_TAX_REASON ----
 
 make_tax_reason <- function(){
    
   tax_r_fp <- root_file("1-data/1-raw/tax_reason.txt")
   
-  tax_r_dr_id <- as_id("118oisrou6ieTP2WXpg8IE1dtmsybRhkT")
+  tax_r_dr_id <- as_id("")
   
-  tax_reason_load <- tax_r_fp %>% 
-    make_or_read2(dr_id = tax_r_dr_id,
-                  get_expr = {
+  tax_reason_load <-  
+    make_or_read2(fp = tax_r_fp,
+                  dr_id = tax_r_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
                     
                     string <- "
 FS = senior citizen exemption
@@ -85,19 +117,17 @@ HI = home improvement exemption
 HP = historic property exemption
 MX = more than one reason applies
 "
-                    writeLines(string, tax_r_fp)
+                    writeLines(string, fp)
                     
                     drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
                     
-                    # drive_upload(media = tax_r_fp, path = drive_folder)
-                    
-                    drive_update(tax_r_dr_id, tax_r_fp)
+                    drive_upload(media = fp, path = drive_folder) 
                   },
-                  make_expr = { 
+                  make_expr = function(fp, dr_id){ 
                     drive_download(file = tax_r_dr_id, path = tax_r_fp) 
                     read_lines(tax_r_fp)
                   },
-                  read_expr = {read_lines(tax_r_fp)})
+                  read_expr = function(fp){read_lines(tax_r_fp)})
   
   tax_reason <- 
     tax_reason_load %>% 
@@ -113,31 +143,29 @@ make_acct <- function(){
   
   acct_dr_id <- as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh")
   
-  acct <- acct_fp %>% 
-    make_or_read2(dr_id = acct_dr_id,
-                  get_expr = {
+  acct <- 
+    make_or_read2(fp = acct_fp,
+                  dr_id = acct_dr_id,
+                  get_expr = function(fp){
                     realprop <- read.socrata("https://data.kingcounty.gov/resource/mmfz-e8xr.csv",
                                              email = "FAKE_NAME@FAKE_EMAIL.COM",
                                              password = "FAKE_PASSWORD" # CHANGE TO REAL BEFORE RUNNING
                     )
                     
                     r <- realprop %>% 
-                      rename_all(to_screaming_snake_case) 
-                    
-                    r_fp <- root_file("./1-data/2-external/kc_real_prop_acct_extract.rds")
+                      rename_all(to_screaming_snake_case)  
                     
                     drive_folder_id <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
                     
-                    write_rds(r,r_fp, compress = "gz")
+                    write_rds(r, fp, compress = "gz")
                     
-                    # drive_upload(media = r_fp, path = drive_folder_id)
+                    drive_upload(media = fp, path = drive_folder_id)
                     
-                    drive_update(as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh"), r_fp)
                   },
-                  make_expr = {
-                    drive_read(dr_id = acct_dr_id,path = acct_fp,.tempfile = FALSE,read_fun = read_rds)
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,path = fp,.tempfile = FALSE,read_fun = read_rds)
                   },
-                  read_expr = {read_rds(acct_fp)})
+                  read_expr = function(fp){read_rds(fp)})
   
 }
 
