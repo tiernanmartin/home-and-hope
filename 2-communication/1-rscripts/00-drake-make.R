@@ -25,6 +25,7 @@ lookup_plan <- drake_plan(
 )
 
 parcel_plan <- drake_plan(
+  pub_parcel = make_pub_parcel(),
   acct = make_acct(),
   parcel_df = make_parcel_df(),
   parcel_sf = make_parcel_sf(),
@@ -208,6 +209,60 @@ X = Exempt
   
 }
 
+
+# COMMAND: MAKE_PUB_PARCEL ----
+
+make_pub_parcel <- function(){ 
+  pub_fp <-  root_file("1-data/2-external/kc-public-parcels.csv")
+  
+  pub_dr_id <- as_id("1ERHvVa9K6F-lk1L8X47Oy1sdw_s2t9kv")
+  
+  pub_load <- 
+    make_or_read2(fp = pub_fp,
+                  dr_id = pub_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                     soda_api_endpoint <- "https://data.kingcounty.gov/resource/pdft-6nx2.json"
+
+                    pub_load <- RSocrata::read.socrata(url = soda_api_endpoint,email = "FAKE@FAKE_EMAIL.COM",password = "FAKE_PASSWORD") # CHANGE THIS TO RE-DOWNLOAD
+
+                    pub <- pub_load %>%
+                      as_tibble %>%
+                      select(major,
+                             minor,
+                             pin,
+                             TaxpayerName = taxpayer_na,
+                             districtName = district_na,
+                             PropName = prop_name,
+                             LandGeneralUse = land_genera,
+                             LandCurrentZoning = land_curren,
+                             LandPresentUse = land_presen,
+                             sq_ft_lot,
+                             land_issues,
+                             eRealPropertyLink = e_real_prope,
+                             bus_buff_750,
+                             bus_buf_qtr_m
+                      ) %>%
+                      rename_all(to_screaming_snake_case)
+
+                    write_csv(pub, fp)
+
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+
+                    drive_upload(fp, drive_folder)
+                    },
+                  make_expr = function(fp, dr_id){ 
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  pub_parcel <- rename_all(pub_load, to_screaming_snake_case) 
+  
+  rm(pub_load)
+  gc(verbose = FALSE)
+  
+  return(pub_parcel)
+}
 
 # COMMAND: MAKE_ACCT ----
 
