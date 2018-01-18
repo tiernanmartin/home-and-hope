@@ -21,9 +21,8 @@ lookup_plan <- drake_plan(
   lu = make_lu(),
   tax_status = make_tax_status(),
   tax_reason = make_tax_reason()
-  
 )
-  
+
 parcels_plan <- drake_plan(
   acct = make_acct(),
   parcel_sf = make_parcel_df(acct, tax_status,tax_reason)
@@ -61,6 +60,26 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 }
 
 # COMMAND: MAKE_LU ----
+
+make_lu <- function(){
+  
+  lu_fp <- root_file("1-data/2-external/EXTR_LookUp.csv")
+  
+  lu_dr_id <- as_id("1-L42pHb7lySqonanSwBbXSH9OZrKHp2A")
+  
+  lu_load <- 
+    make_or_read2(fp = lu_fp,
+                  dr_id = lu_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = {# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
+                    },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  lu <- rename_all(lu_load, to_screaming_snake_case)
+}
 
 # COMMAND: MAKE_TAX_STATUS ----
 
