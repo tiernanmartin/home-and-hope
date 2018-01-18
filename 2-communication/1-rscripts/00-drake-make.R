@@ -81,7 +81,7 @@ make_lu <- function(){
                   get_expr = function(fp){# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
                     },
                   make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp, read_fun = read_csv)
                   },
                   read_expr = function(fp){read_csv(fp)})
   
@@ -111,7 +111,7 @@ make_tax_status <- function(){
                     drive_upload(media = fp, path = drive_folder)
                     
                   },
-                  make_expr = function(fp, dr_id){
+                  make_expr = function(fp, dr_id){  
                     drive_download(file = dr_id, path = fp) 
                     read_lines(fp)
                   },
@@ -154,7 +154,7 @@ MX = more than one reason applies
                     
                     drive_upload(media = fp, path = drive_folder) 
                   },
-                  make_expr = function(fp, dr_id){ 
+                  make_expr = function(fp, dr_id){  
                     drive_download(file = dr_id, path = fp) 
                     read_lines(tax_r_fp)
                   },
@@ -198,7 +198,7 @@ X = Exempt
                     drive_upload(media = fp, path = drive_folder) 
                     
                   },
-                  make_expr = function(fp, dr_id){
+                  make_expr = function(fp, dr_id){ 
                     drive_download(file = dr_id, path = fp) 
                     read_lines(fp)
                   },
@@ -276,6 +276,7 @@ make_acct <- function(){
   acct <- 
     make_or_read2(fp = acct_fp,
                   dr_id = acct_dr_id,
+                  skip_get_expr = TRUE,
                   get_expr = function(fp){
                     realprop <- read.socrata("https://data.kingcounty.gov/resource/mmfz-e8xr.csv",
                                              email = "FAKE_NAME@FAKE_EMAIL.COM",
