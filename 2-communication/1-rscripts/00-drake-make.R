@@ -43,9 +43,10 @@ utilization_plan <- drake_plan(
   parcel_utilization = make_parcel_utilization(parcel_sf, util_present, util_potential)
 )
 
-project_plan <- rbind(parcels_plan,
-                     suitability_plan,
-                     utilization_plan)    # rbind all plans together
+project_plan <- rbind(lookup_plan,
+                      parcels_plan,
+                      suitability_plan,
+                      utilization_plan)    # rbind all plans together
 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
