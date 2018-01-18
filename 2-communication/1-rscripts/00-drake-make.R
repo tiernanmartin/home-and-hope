@@ -24,7 +24,7 @@ lookup_plan <- drake_plan(
   tax_reason = make_tax_reason()
 )
 
-parcels_plan <- drake_plan(
+parcel_plan <- drake_plan(
   acct = make_acct(),
   parcel_df = make_parcel_df(),
   parcel_sf = make_parcel_sf(),
@@ -320,6 +320,85 @@ make_parcel_sf <- function(){
 }
 
 # COMMAND: MAKE_PARCEL_READY ----
+
+make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel_df, parcel_sf){
+  
+  # MAKE P_SF_READY
+  
+  p_sf_ready <- parcel_sf %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    select(PIN) %>% 
+    drop_na() 
+  
+  # MAKE P_READY
+  
+  present_use <- lu %>% 
+    filter(LU_TYPE == 102) %>% 
+    select(PRESENT_USE = LU_ITEM,
+           PRESENT_USE_DESC = LU_DESCRIPTION)
+  
+  p_ready <- parcel_df %>% 
+   mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    left_join(prop_type, by = "PROP_TYPE") %>% 
+    left_join(present_use, by = "PRESENT_USE") %>% 
+    select(PIN,
+           PROP_NAME,
+           PROP_TYPE = PROP_TYPE_DESC, 
+           DISTRICT_NAME,
+           CURRENT_ZONING,
+           PRESENT_USE = PRESENT_USE_DESC,
+           SQ_FT_LOT,
+           ACCESS,
+           TOPOGRAPHY,
+           RESTRICTIVE_SZ_SHAPE,
+           PCNT_UNUSABLE,
+           CONTAMINATION,
+           HISTORIC_SITE:OTHER_PROBLEMS 
+    )
+     
+  # MAKE ACCT_READY
+  
+  acct_frmt <- acct %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>% 
+    rename(TAX_STATUS = TAXSTAT,
+           TAX_REASON = TAXVALREASON) %>% 
+    left_join(tax_status, by = "TAX_STATUS") %>% 
+    left_join(tax_reason, by = "TAX_REASON") %>%  
+    select(PIN, 
+           TAXPAYER_NAME = TAXPAYERNAME,
+           BILL_YR = BILLYR,
+           TAX_STATUS = TAX_STATUS_DESC,
+           TAX_REASON = TAX_REASON_DESC,
+           APPR_IMPS_VAL = APPRIMPSVAL,
+           APPR_LAND_VAL = APPRLANDVAL, 
+           TAXABLE_IMPS_VAL = TAXABLEIMPSVAL,
+           TAXABLE_LAND_VAL = TAXABLELANDVAL
+    )
+  
+  acct_ready <- acct_frmt %>% 
+    miscgis::subset_duplicated("PIN") %>% 
+    group_by(PIN) %>% 
+    drop_na %>% 
+    ungroup %>% 
+    bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>% 
+    arrange(PIN)
+  
+  # MAKE PARCEL_READY
+  
+  obj_list <- list(acct_ready,p_ready,p_sf_ready)
+  
+  parcel_ready <- obj_list %>% 
+    reduce(.f = inner_join, by = "PIN") %>% 
+    st_as_sf()
+  
+  return(parcel_ready)
+}
 
 # COMMAND: MAKE_TAX_E ----
 
