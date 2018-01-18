@@ -75,6 +75,11 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 }
 
 
+# FUNCTION: ST_INTERSECTS_ANY ----
+st_intersects_any <- function(x,y){
+  st_intersects(x,y) %>% 
+    map_lgl(~ length(.x)>0)
+}
 # FUNCTION: ST_INTERSECT_AREA ----
 st_intersect_area <- function(x, y, crs){ 
   
