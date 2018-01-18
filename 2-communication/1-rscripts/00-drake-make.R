@@ -520,6 +520,38 @@ make_waterbodies <- function(){
 
 # COMMAND: MAKE_UGA ----
 
+make_uga <- function(){
+  
+  uga_fp <- root_file("1-data/2-external/uga")
+  
+  uga_dr_id <- as_id("0B5Pp4V6eCkhrZGQ0Q0h5aHNUVW8")
+  
+  uga_load <- 
+    make_or_read2(fp = uga_fp,
+                  dr_id = uga_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){},
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external/uga")
+                    
+                    target_name <- "uga"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE,
+                                   layer = "uga",
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp, stringsAsFactors = FALSE)})
+  
+  uga <- rename_if(uga_load, not_sfc,to_screaming_snake_case)
+  
+  return(uga)
+}
+
 # COMMAND: MAKE_ZONING ----
 
 # COMMAND: MAKE_TAX_E ----
