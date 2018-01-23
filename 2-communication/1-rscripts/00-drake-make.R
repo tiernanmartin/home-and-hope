@@ -483,14 +483,9 @@ make_parcel_sf <- function(parcel_sf_poly){
 make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel_df, parcel_sf){
   
   # MAKE P_SF_READY
-  
-  p_sf_ready <- parcel_sf %>% 
-    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
-           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
-           PIN = str_c(MAJOR,MINOR)) %>% 
-    select(PIN) %>% 
-    drop_na() 
-  
+
+  p_sf_ready <- parcel_sf
+    
   # MAKE P_READY
   
   present_use <- lu %>% 
