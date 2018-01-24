@@ -58,13 +58,12 @@ r <- r_load %>%
 # parcel filtered by: uga, zoning, waterbody overlap
 # parcel with: DEVELOPABLE_PCT
 
-p_id <- as_id("1O3QRkE7SmW3AxlWSdecARBW7MQ1TmHnH")
+p_id <- as_id("1NnrCncI9_oOSr9EobFVL3pHqX202MDm0")
 
-p <- drive_read(p_id, TRUE, read_fun = read_sf, stringsAsFactors = FALSE) 
-
-p %<>% 
-  st_set_crs(2926) %>% 
+p <- p_id %>% 
+  drive_read(TRUE, read_fun = read_sf, stringsAsFactors = FALSE) %>% 
   st_transform(4326)
+
 
 url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Dashboard.aspx?ParcelNbr="
 
@@ -128,6 +127,9 @@ p_join <- p_nest %>%
   left_join(r, by = "PIN") %>% 
   select(-data,everything(),data)
 
+url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Dashboard.aspx?ParcelNbr="
+
+
 p_util <- p_join %>% 
   mutate(LOT_SIZE = case_when(
     SQ_FT_LOT < city_block_sqft/8 ~  "less than 1/8 block",
@@ -153,9 +155,19 @@ p_util <- p_join %>%
       BLDG_NET_SQ_FT < MAX_UTILIZATION_SF ~ TRUE,
       TRUE ~ NA)
   ) %>% 
+  mutate(PIN = map_chr(PIN, ~ a(href = str_c(url,.x),target="_blank",.x) %>% as.character),
+         UTILIZATION = factor(case_when(
+           UNDER_UTILIZED_LGL ~ "Under-utilized",
+           !UNDER_UTILIZED_LGL ~ "Fully-utilized",
+           TRUE ~ "Not developable"),
+           levels = c("Not developable",
+                      "Fully-utilized",
+                      "Under-utilized"))
+  ) %>% 
   select(PROP_NAME,
          KCTP_NAME,
          PIN,
+         UTILIZATION,
          UNDER_UTILIZED_LGL,
          BLDG_NET_SQ_FT,
          NBR_BLDGS,
@@ -179,4 +191,4 @@ st_write(p_util_ready,dsn = p_util_fp, driver = "GPKG",layer_options = c("OVERWR
 
 drive_upload(p_util_fp, path = drive_folder, name = "p_utilization.gpkg")
 
-drive_update(as_id("15B9sduv0IBIA2giXnGR8sVigus73qvcc"), p_util_fp)
+drive_update(as_id("1DH-dDsayRq27tJsYruKAZMu2w1JZUlc5"), p_util_fp)
