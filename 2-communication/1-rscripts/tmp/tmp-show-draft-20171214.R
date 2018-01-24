@@ -54,7 +54,21 @@ p_sf <-
                       "Fully-utilized",
                       "Under-utilized"))
   ) %>% 
-  select(PROP_NAME:PIN,UTILIZATION,everything(),UNDER_UTILIZED_LGL)
+  select(PROP_NAME:PIN,UTILIZATION,everything(),UNDER_UTILIZED_LGL) 
+
+# p_sf_save <- p_sf %>% 
+#   mutate_if(is.logical,as.character) %>% 
+#   mutate_if(is.factor, as.character)
+# 
+# gpkg_fp <- "./1-data/4-ready/site-intentory-20180118.gpkg"
+# 
+# shp_fp <- "./1-data/4-ready/site-intentory-20180118.shp"
+# 
+# st_write(p_sf_save, gpkg_fp)
+# 
+# st_write(p_sf_save, shp_fp)
+
+
 
 # View Data ----
 

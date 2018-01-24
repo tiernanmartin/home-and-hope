@@ -1,6 +1,7 @@
 # SETUP ----
 library(drake)
 library(sf)
+library(lwgeom)
 library(googledrive)
 library(miscgis)  
 library(snakecase)
@@ -15,6 +16,7 @@ root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE) 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+
 # MAKE PLANS ----
 
 lookup_plan <- drake_plan( 
@@ -28,15 +30,24 @@ parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
   acct = make_acct(),
   parcel_df = make_parcel_df(),
-  parcel_sf = make_parcel_sf(),
+  parcel_sf_poly = make_parcel_sf_poly(),
+  parcel_sf = make_parcel_sf(parcel_sf_poly),
   parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, acct, parcel_df, parcel_sf)
+)
+
+uga_plan <- drake_plan(uga = make_uga()) # TEMPORARY - REMOVE THIS PLAN
+
+miscellaneous_plan <- drake_plan(
+  waterbodies = make_waterbodies(),
+  uga = make_uga(),
+  zoning = make_zoning()
 )
 
 suitability_plan <- drake_plan(
   tax_e = make_tax_e(parcel_ready, pub_parcel),
-  water_coverage = make_water(parcel_ready),
-  uga = make_uga(parcel_ready),
-  zoning = make_zoning(parcel_ready),
+  water_coverage = make_water_coverage(parcel_ready, waterbodies),
+  within_uga = make_within_uga(parcel_ready, uga),
+  developable_zoning = make_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
   parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, uga, zoning, present_use)
 )
@@ -47,11 +58,12 @@ utilization_plan <- drake_plan(
   parcel_utilization = make_parcel_utilization(parcel_sf, util_present, util_potential)
 )
 
+
 project_plan <- rbind(
   lookup_plan,
   parcel_plan,
   suitability_plan,
-  utilization_plan)    # rbind all plans together
+  utilization_plan)    # rbind all plans together 
 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
@@ -63,6 +75,33 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
     map_chr(c) %>% 
     map_df(~.x %>% str_split(pattern = col_sep) %>% as.data.frame %>% t %>% as_data_frame ) %>%  
     set_names(c(join_name,long_name))
+}
+
+
+# FUNCTION: ST_INTERSECTS_ANY ----
+st_intersects_any <- function(x,y){
+  st_intersects(x,y) %>% 
+    map_lgl(~ length(.x)>0)
+}
+# FUNCTION: ST_INTERSECT_AREA ----
+st_intersect_area <- function(x, y, crs){ 
+  
+  x_sfc <- x %>% 
+    st_sfc %>% 
+    st_set_crs(crs)
+  
+  area_x <- x_sfc %>% st_area() %>% as.double()
+  
+  area_xy <- st_intersection(x_sfc, y) %>% st_area %>% as.double()
+  
+  if(is_empty(area_xy)){return(as.double(0))}
+  
+  overlap_pct <- area_xy %>% 
+    divide_by(area_x) %>% 
+    as.double() %>% 
+    round(2)
+  
+  return(overlap_pct)
 }
 
 # COMMAND: MAKE_LU ----
@@ -80,7 +119,7 @@ make_lu <- function(){
                   get_expr = function(fp){# Source: http://aqua.kingcounty.gov/extranet/assessor/Lookup.zip
                     },
                   make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp, read_fun = read_csv)
                   },
                   read_expr = function(fp){read_csv(fp)})
   
@@ -110,7 +149,7 @@ make_tax_status <- function(){
                     drive_upload(media = fp, path = drive_folder)
                     
                   },
-                  make_expr = function(fp, dr_id){
+                  make_expr = function(fp, dr_id){  
                     drive_download(file = dr_id, path = fp) 
                     read_lines(fp)
                   },
@@ -153,7 +192,7 @@ MX = more than one reason applies
                     
                     drive_upload(media = fp, path = drive_folder) 
                   },
-                  make_expr = function(fp, dr_id){ 
+                  make_expr = function(fp, dr_id){  
                     drive_download(file = dr_id, path = fp) 
                     read_lines(tax_r_fp)
                   },
@@ -197,7 +236,7 @@ X = Exempt
                     drive_upload(media = fp, path = drive_folder) 
                     
                   },
-                  make_expr = function(fp, dr_id){
+                  make_expr = function(fp, dr_id){ 
                     drive_download(file = dr_id, path = fp) 
                     read_lines(fp)
                   },
@@ -275,6 +314,7 @@ make_acct <- function(){
   acct <- 
     make_or_read2(fp = acct_fp,
                   dr_id = acct_dr_id,
+                  skip_get_expr = TRUE,
                   get_expr = function(fp){
                     realprop <- read.socrata("https://data.kingcounty.gov/resource/mmfz-e8xr.csv",
                                              email = "FAKE_NAME@FAKE_EMAIL.COM",
@@ -335,17 +375,18 @@ make_parcel_df <- function(){
   
   return(parcel_df)
 }
-# COMMAND: MAKE_PARCEL_SF ----
+
+# COMMAND: MAKE_PARCEL_SF_POLY ----
  
-make_parcel_sf <- function(){
+make_parcel_sf_poly <- function(){
   
-  p_sf_fp <- "./1-data/2-external/parcel"
+  p_sf_poly_fp <- "./1-data/2-external/parcel"
   
-  P_sf_dr_id <- as_id("0B5Pp4V6eCkhrRnM4bHFmWTBTQnM")
+  p_sf_poly_dr_id <- as_id("0B5Pp4V6eCkhrRnM4bHFmWTBTQnM")
   
-  p_sf_load <- 
-    make_or_read2(fp = p_sf_fp, 
-                  dr_id = P_sf_dr_id, 
+  p_sf_poly_load <- 
+    make_or_read2(fp = p_sf_poly_fp, 
+                  dr_id = p_sf_poly_dr_id, 
                   skip_get_expr = TRUE,
                   get_expr = function(fp){
                     # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/parcel_SHP.zip
@@ -366,14 +407,75 @@ make_parcel_sf <- function(){
                   read_expr = function(fp){st_read(fp, layer = "parcel", stringsAsFactors = FALSE)}
     )
   
-  parcel_sf <-
-    p_sf_load %>%
+  parcel_sf_poly <-
+    p_sf_poly_load %>%
     rename_if(not_sfc, to_screaming_snake_case)
   
-  rm(p_sf_load)
+  rm(p_sf_poly_load)
   gc(verbose = FALSE)
   
-  return(parcel_sf)
+  return(parcel_sf_poly)
+}
+
+# COMMAND: MAKE_PARCEL_SF ----
+ 
+make_parcel_sf <- function(parcel_sf_poly){
+  
+  p_sf_fp <- root_file("1-data/3-interim/kc-parcel-geoms-sf.rds")
+  
+  p_sf_dr_id <- as_id("1zo1KQxPtonVaVkJzWVSQ3KgJ_dRe6BLP")
+  
+  p_sf <- 
+    make_or_read2(fp = p_sf_fp, 
+                  dr_id = p_sf_dr_id, 
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    
+                    p_sf_2926 <- st_transform(parcel_sf_poly, 2926)
+                    
+                    p_sf_2926$geom_pt <- st_centroid(st_geometry(p_sf_2926))
+                    
+                    p_sf_ready <- p_sf_2926 %>% 
+                      mutate(MAJOR = str_pad(MAJOR, 6, "left", "0"),
+                             MINOR = str_pad(MINOR, 4, "left", "0")) %>% 
+                      transmute(PIN = str_c(MAJOR,MINOR),
+                                geom_pt) %>% 
+                      drop_na() %>% 
+                      st_transform(4326) %>% 
+                      st_set_geometry("geometry")
+                    
+                    write_rds(p_sf_ready, fp)  # save as rds to keep second geometry
+                    
+                    zip_fp <- root_file("1-data/3-interim/kc-parcel-geoms-sf.zip")
+                    
+                    zip_pithy(zip_fp, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(media = zip_fp,path = drive_folder)
+                    
+                    # drive_update(file = as_id("1zo1KQxPtonVaVkJzWVSQ3KgJ_dRe6BLP"),media = zip_fp)
+                    
+                    
+                  },
+                  make_expr = function(fp,dr_id){
+                    zip_dir <- "./1-data/2-external"
+                    
+                    target_name <- "kc-parcel-geoms-sf"
+                    
+                    p_sf <- drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = read_rds,
+                                   target_name = target_name,
+                                   .tempdir = FALSE,
+                                   layer = "parcel",
+                                   stringsAsFactors = FALSE)
+                    
+                  },
+                  read_expr = function(fp){read_rds(fp)}
+    )
+  
+  return(p_sf)
 }
 
 # COMMAND: MAKE_PARCEL_READY ----
@@ -381,14 +483,9 @@ make_parcel_sf <- function(){
 make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel_df, parcel_sf){
   
   # MAKE P_SF_READY
-  
-  p_sf_ready <- parcel_sf %>% 
-    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
-           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
-           PIN = str_c(MAJOR,MINOR)) %>% 
-    select(PIN) %>% 
-    drop_na() 
-  
+
+  p_sf_ready <- parcel_sf
+    
   # MAKE P_READY
   
   present_use <- lu %>% 
@@ -457,13 +554,212 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel
   return(parcel_ready)
 }
 
-# COMMAND: MAKE_TAX_E ----
+# COMMAND: MAKE_WATERBODIES ----
 
-# COMMAND: MAKE_WATER ----
+make_waterbodies <- function(){
+  
+  w_fp <- root_file("./1-data/2-external/waterbodies-kc.gpkg")
+  
+  w_dr_id <- as_id("1OF2Z0sNWBmdDdZ4lPgUoolVELd7HCyWL")
+  
+  w_load <- 
+    make_or_read2(fp = w_fp,
+                  dr_id = w_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE 1: ArcGIS: https://www.arcgis.com/home/item.html?id=b5a20ceaa6114e28b688d4236b417b2b
+                    # SOURCE 2: Ecology: http://www.ecy.wa.gov/services/gis/data/data.htm
+                  },
+                  make_expr = function(fp, dr_id){drive_read(dr_id = dr_id, .tempfile = FALSE, path = fp, read_fun = read_sf)},
+                  read_expr = function(fp){read_sf(fp, stringsAsFactors = TRUE)})
+  
+  waterbodies <- w_load %>% 
+    st_set_crs(4326) %>% 
+    st_union() %>% 
+    st_transform(2926) %>% 
+    st_make_valid() 
+
+  return(waterbodies)
+}
 
 # COMMAND: MAKE_UGA ----
 
+make_uga <- function(){
+  
+  uga_fp <- root_file("1-data/2-external/uga")
+  
+  uga_dr_id <- as_id("0B5Pp4V6eCkhrZGQ0Q0h5aHNUVW8")
+  
+  uga_load <- 
+    make_or_read2(fp = uga_fp,
+                  dr_id = uga_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){},
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external/uga")
+                    
+                    target_name <- "uga"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE,
+                                   layer = "uga",
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp, stringsAsFactors = FALSE)})
+  
+  uga <- rename_if(uga_load, not_sfc,to_screaming_snake_case)
+  
+  return(uga)
+}
+
 # COMMAND: MAKE_ZONING ----
+
+# COMMAND: MAKE_TAX_E ----
+
+make_tax_e <- function(parcel_ready, pub_parcel){
+  
+  pub_join <- pub_parcel %>% 
+    select(PIN) %>% 
+    mutate(CRIT_SUIT_OWNER_PUBLIC = TRUE)
+  
+  tax_e <- parcel_ready %>% 
+    left_join(pub_join, by = "PIN") %>% 
+    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(CRIT_SUIT_OWNER_PUBLIC,TRUE,FALSE,FALSE),
+           CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+           CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
+    select(PIN,
+           CRIT_SUIT_OWNER_PUBLIC,
+           CRIT_SUIT_OWNER_NONPROFIT,
+           CRIT_SUIT_OWNER_TAX_E) %>% 
+    st_set_geometry(NULL)
+  
+  return(tax_e)
+}
+
+# COMMAND: MAKE_WATER_COVERAGE ----
+
+make_water_coverage <- function(parcel_ready, waterbodies){
+  
+  wc_fp <- root_file("")
+  
+  wc_dr_id <- as_id("")
+  
+  wc_load <- 
+    make_or_read2(fp = wc_fp,
+                  dr_id = wc_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # actual_process <- function(){
+                    #   
+                    #   # NOTE: This the is the actual operation, but it's long-running,
+                    #   #       so I use a shortcut for the first iteration of the project.
+                    #   
+                    #   water_coverage <- parcel_ready %>% 
+                    #   slice(1:1000) %>% 
+                    #   select(PIN) %>% 
+                    #   mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = waterbodies, crs = 2926)) %>%
+                    #   mutate(WATER_OVERLAP_LGL = WATER_OVERLAP_PCT > 0) %>% 
+                    #   st_set_geometry(NULL)
+                    # 
+                    # drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc") 
+                    # 
+                    # write_csv(water_coverage, fp) #CHANGE TO fp
+                    # 
+                    # drive_upload(fp, drive_folder) 
+                    # }
+                    
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg"),
+                               .tempfile = FALSE,
+                               path = root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"),
+                               read_fun = read_sf)
+                    
+                  },
+                  read_expr = function(fp){read_sf(root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"))})
+  
+  wc_join <- wc_load %>% 
+    transmute(PIN, 
+              CRIT_SUIT_WATER_OVERLAP_PCT = WATER_OVERLAP_PCT,
+              CRIT_SUIT_WATER_OVERLAP_LGL = as.logical(WATER_OVERLAP_LGL)) %>%  
+    st_set_geometry(NULL)
+  
+  water_coverage <- parcel_ready %>% 
+    left_join(wc_join, by = "PIN") %>% 
+    mutate(CRIT_SUIT_WATER_OVERLAP_PCT = if_else(is.na(CRIT_SUIT_WATER_OVERLAP_PCT),0,CRIT_SUIT_WATER_OVERLAP_PCT),
+           CRIT_SUIT_WATER_OVERLAP_LGL = if_else(CRIT_SUIT_WATER_OVERLAP_LGL,TRUE,FALSE,FALSE)) %>% 
+    select(PIN,
+           CRIT_SUIT_WATER_OVERLAP_PCT,
+           CRIT_SUIT_WATER_OVERLAP_LGL) %>% 
+    st_set_geometry(NULL)
+  
+  return(water_coverage)
+  
+}
+
+
+# COMMAND: MAKE_WITHIN_UGA ----
+
+make_within_uga <- function(parcel_ready, uga){
+  
+  w_uga_fp <- root_file("./1-data/3-interim/parcel_within_uga.csv")
+  
+  w_uga_dr_id <- as_id("")
+  
+  w_uga_load <- 
+    make_or_read2(fp = w_uga_fp,
+                  dr_id = w_uga_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    
+                    # actual_process <- function(){
+                    # 
+                    # # NOTE: This the is the actual operation, but it's long-running,
+                    # #       so I use a shortcut for the first iteration of the project.
+                    # uga_subdivide <- st_subdivide(uga, 100)
+                    # 
+                    # p_centroid <- parcel_ready %>%  
+                    #   mutate(geom_centroid = st_sfc(map(geometry, st_centroid, of_largest_polygon = TRUE))) 
+                    #   
+                    # st_geometry(p_centroid) <- st_sfc(p_centroid$geom_centroid)
+                    # 
+                    # p_uga_sf <- 
+                    #   tibble(UGA_LGL = st_intersects_any(st_transform(p_centroid, 2926), st_transform(uga_subdivide, 2926))) %>% 
+                    #   bind_cols(p_centroid) 
+                    # # more may be needed here (it's super slow)
+                    # }
+                    
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = as_id("1zbTXAE2OapKtxJduXL2Oltn9OqSxaakP"),
+                               .tempfile = FALSE,
+                               path = root_file("1-data/3-interim/pub-uga-zng-sf.rds"),
+                               read_fun = read_rds)
+                  },
+                  read_expr = function(fp){read_rds(root_file("1-data/3-interim/pub-uga-zng-sf.rds"))})
+    
+  w_uga_join <- w_uga_load %>% 
+    select(PIN) %>% 
+    mutate(CRIT_SUIT_WITHIN_UGA = TRUE) %>% 
+    st_drop_geometry()
+  
+  within_uga <- parcel_ready %>% 
+    left_join(w_uga_join, by = "PIN") %>% 
+    mutate(CRIT_SUIT_WITHIN_UGA = if_else(CRIT_SUIT_WITHIN_UGA,TRUE,FALSE,FALSE)) %>% 
+    st_drop_geometry()
+  
+}
+
+# COMMAND: MAKE_DEVELOPABLE_ZONING ----
 
 # COMMAND: MAKE_PRESENT_USE ----
 
