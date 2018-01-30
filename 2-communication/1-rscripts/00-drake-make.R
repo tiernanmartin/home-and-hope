@@ -749,53 +749,47 @@ make_water_coverage <- function(parcel_ready, waterbodies){
 
 make_within_uga <- function(parcel_ready, uga){
   
-  w_uga_fp <- root_file("./1-data/3-interim/parcel_within_uga.csv")
+    w_uga_fp <- root_file("1-data/3-interim/parcel_within_uga.csv")
   
-  w_uga_dr_id <- as_id("")
+  w_uga_dr_id <- as_id("1PiYMzfdmRUN7vxlDxNM8ucL3t4A8zMg4")
   
   w_uga_load <- 
     make_or_read2(fp = w_uga_fp,
                   dr_id = w_uga_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){ 
                     
+                      p_ready_pt <- parcel_ready %>% 
+                        st_set_geometry("geom_pt") %>% 
+                        st_transform(2926)
+                      
+                      uga_2926 <- st_transform(uga, 2926)
                     
-                    # actual_process <- function(){
-                    # 
-                    # # NOTE: This the is the actual operation, but it's long-running,
-                    # #       so I use a shortcut for the first iteration of the project.
-                    # uga_subdivide <- st_subdivide(uga, 100)
-                    # 
-                    # p_centroid <- parcel_ready %>%  
-                    #   mutate(geom_centroid = st_sfc(map(geometry, st_centroid, of_largest_polygon = TRUE))) 
-                    #   
-                    # st_geometry(p_centroid) <- st_sfc(p_centroid$geom_centroid)
-                    # 
-                    # p_uga_sf <- 
-                    #   tibble(UGA_LGL = st_intersects_any(st_transform(p_centroid, 2926), st_transform(uga_subdivide, 2926))) %>% 
-                    #   bind_cols(p_centroid) 
-                    # # more may be needed here (it's super slow)
-                    # }
-                    
+                      uga_subdivide <- st_subdivide(uga_2926, 100) 
+                      
+                      # ~ 20 min. operation
+                      p_ready_pt$CRIT_SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
+                      
+                      p_ready_within_uga <- p_ready_pt %>% 
+                        st_drop_geometry() %>% 
+                        select(PIN, CRIT_SUIT_WITHIN_UGA)
+                      
+                    write_csv(p_ready_within_uga, fp)
+
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+
+                    drive_upload(fp, drive_folder)
                     
                   },
                   make_expr = function(fp, dr_id){
-                    drive_read(dr_id = as_id("1zbTXAE2OapKtxJduXL2Oltn9OqSxaakP"),
+                    drive_read(dr_id = dr_id,
                                .tempfile = FALSE,
-                               path = root_file("1-data/3-interim/pub-uga-zng-sf.rds"),
-                               read_fun = read_rds)
+                               path = fp,
+                               read_fun = read_csv)
                   },
-                  read_expr = function(fp){read_rds(root_file("1-data/3-interim/pub-uga-zng-sf.rds"))})
+                  read_expr = function(fp){read_csv(fp)})
     
-  w_uga_join <- w_uga_load %>% 
-    select(PIN) %>% 
-    mutate(CRIT_SUIT_WITHIN_UGA = TRUE) %>% 
-    st_drop_geometry()
-  
-  within_uga <- parcel_ready %>% 
-    left_join(w_uga_join, by = "PIN") %>% 
-    mutate(CRIT_SUIT_WITHIN_UGA = if_else(CRIT_SUIT_WITHIN_UGA,TRUE,FALSE,FALSE)) %>% 
-    st_drop_geometry()
+return(w_uga_load)
   
 }
 
