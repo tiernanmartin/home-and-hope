@@ -35,8 +35,6 @@ parcel_plan <- drake_plan(
   parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, acct, parcel_df, parcel_sf)
 )
 
-uga_plan <- drake_plan(uga = make_uga()) # TEMPORARY - REMOVE THIS PLAN
-
 miscellaneous_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
@@ -597,7 +595,10 @@ make_uga <- function(){
     make_or_read2(fp = uga_fp,
                   dr_id = uga_dr_id,
                   skip_get_expr = TRUE,
-                  get_expr = function(fp){},
+                  get_expr = function(fp){
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/urban_growth_SHP.zip
+                    # METADATA: http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=urban_growth
+                  },
                   make_expr = function(fp, dr_id){
                     
                     zip_dir <- root_file("1-data/2-external/uga")
