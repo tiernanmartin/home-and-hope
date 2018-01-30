@@ -32,7 +32,7 @@ parcel_plan <- drake_plan(
   parcel_df = make_parcel_df(),
   parcel_sf_poly = make_parcel_sf_poly(),
   parcel_sf = make_parcel_sf(parcel_sf_poly),
-  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, acct, parcel_df, parcel_sf)
+  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_df, parcel_sf)
 )
 
 miscellaneous_plan <- drake_plan(
@@ -481,8 +481,8 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel_df, parcel_sf){
-  
+make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, acct, parcel_df, parcel_sf){
+   
   # MAKE P_SF_READY
 
   p_sf_ready <- parcel_sf
@@ -494,15 +494,22 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, acct, parcel
     select(PRESENT_USE = LU_ITEM,
            PRESENT_USE_DESC = LU_DESCRIPTION)
   
+  pub_parcel_ready <- pub_parcel %>% 
+    transmute(PIN,
+              ASSESSOR_PUB_LIST_LGL = TRUE)
+  
   p_ready <- parcel_df %>% 
    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
            MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
            PIN = str_c(MAJOR,MINOR)) %>% 
     left_join(prop_type, by = "PROP_TYPE") %>% 
     left_join(present_use, by = "PRESENT_USE") %>% 
+    left_join(pub_parcel_ready, by = "PIN") %>% 
+    mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>% 
     select(PIN,
            PROP_NAME,
            PROP_TYPE = PROP_TYPE_DESC, 
+           ASSESSOR_PUB_LIST_LGL,
            DISTRICT_NAME,
            CURRENT_ZONING,
            PRESENT_USE = PRESENT_USE_DESC,
@@ -660,13 +667,8 @@ make_zoning <- function(){
 
 make_tax_e <- function(parcel_ready, pub_parcel){
   
-  pub_join <- pub_parcel %>% 
-    select(PIN) %>% 
-    mutate(CRIT_SUIT_OWNER_PUBLIC = TRUE)
-  
-  tax_e <- parcel_ready %>% 
-    left_join(pub_join, by = "PIN") %>% 
-    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(CRIT_SUIT_OWNER_PUBLIC,TRUE,FALSE,FALSE),
+  tax_e <- parcel_ready %>%  
+    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
            CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
            CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
     select(PIN,
