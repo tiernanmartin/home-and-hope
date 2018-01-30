@@ -428,7 +428,7 @@ make_parcel_sf <- function(parcel_sf_poly){
   p_sf <- 
     make_or_read2(fp = p_sf_fp, 
                   dr_id = p_sf_dr_id, 
-                  skip_get_expr = FALSE,
+                  skip_get_expr = TRUE,
                   get_expr = function(fp){
                     
                     p_sf_2926 <- st_transform(parcel_sf_poly, 2926)
