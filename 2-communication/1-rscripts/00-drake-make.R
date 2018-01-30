@@ -423,12 +423,12 @@ make_parcel_sf <- function(parcel_sf_poly){
   
   p_sf_fp <- root_file("1-data/3-interim/kc-parcel-geoms-sf.rds")
   
-  p_sf_dr_id <- as_id("1zo1KQxPtonVaVkJzWVSQ3KgJ_dRe6BLP")
+  p_sf_dr_id <- as_id("1vuc_LDus5BsxRJOX7PjhF62O9ZCezk6v")
   
   p_sf <- 
     make_or_read2(fp = p_sf_fp, 
                   dr_id = p_sf_dr_id, 
-                  skip_get_expr = TRUE,
+                  skip_get_expr = FALSE,
                   get_expr = function(fp){
                     
                     p_sf_2926 <- st_transform(parcel_sf_poly, 2926)
@@ -442,7 +442,8 @@ make_parcel_sf <- function(parcel_sf_poly){
                                 geom_pt) %>% 
                       drop_na() %>% 
                       st_transform(4326) %>% 
-                      st_set_geometry("geometry")
+                      st_set_geometry("geometry") %>% 
+                      st_sf
                     
                     write_rds(p_sf_ready, fp)  # save as rds to keep second geometry
                     
@@ -454,7 +455,7 @@ make_parcel_sf <- function(parcel_sf_poly){
                     
                     drive_upload(media = zip_fp,path = drive_folder)
                     
-                    # drive_update(file = as_id("1zo1KQxPtonVaVkJzWVSQ3KgJ_dRe6BLP"),media = zip_fp)
+                    # drive_update(file = as_id("1vuc_LDus5BsxRJOX7PjhF62O9ZCezk6v"),media = zip_fp)
                     
                     
                   },
@@ -469,10 +470,12 @@ make_parcel_sf <- function(parcel_sf_poly){
                                    target_name = target_name,
                                    .tempdir = FALSE,
                                    layer = "parcel",
-                                   stringsAsFactors = FALSE)
+                                   stringsAsFactors = FALSE) %>% 
+                      as_tibble %>% 
+                      st_sf()
                     
                   },
-                  read_expr = function(fp){read_rds(fp)}
+                  read_expr = function(fp){read_rds(fp) %>%  as_tibble %>%  st_sf()}
     )
   
   return(p_sf)
