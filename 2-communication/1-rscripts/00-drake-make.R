@@ -622,6 +622,40 @@ make_uga <- function(){
 
 # COMMAND: MAKE_ZONING ----
 
+make_zoning <- function(){
+  
+  zoning_fp <- root_file("1-data/2-external/zoning_kc_consol_20")
+  
+  zoning_dr_id <- as_id("0B5Pp4V6eCkhrOTUwT29WQl9STVk")
+  
+  zoning_load <- 
+    make_or_read2(fp = zoning_fp,
+                  dr_id = zoning_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/zoning_kc_consol_20_SHP.zip
+                    # METADATA: http://www5.kingcounty.gov/sdc/Metadata.aspx?Layer=zoning_kc_consol_20
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external/")
+                    
+                    target_name <- "zoning_kc_consol_20"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE,
+                                   layer = "zoning_kc_consol_20",
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp, stringsAsFactors = FALSE)})
+  
+  zoning <- rename_if(zoning_load, not_sfc,to_screaming_snake_case)
+  
+  return(zoning)
+}
 # COMMAND: MAKE_TAX_E ----
 
 make_tax_e <- function(parcel_ready, pub_parcel){
