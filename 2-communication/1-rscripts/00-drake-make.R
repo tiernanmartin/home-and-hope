@@ -77,16 +77,15 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 
 
 # FUNCTION: ST_INTERSECTS_ANY ----
-st_intersects_any <- function(x,y){
-  st_intersects(x,y) %>% 
-    map_lgl(~ length(.x)>0)
+st_intersects_any <- function(x, y) {
+  sapply(st_intersects(x, y), function(x) length(x)> 0)
 }
 # FUNCTION: ST_INTERSECT_AREA ----
-st_intersect_area <- function(x, y, crs){ 
-  
+st_intersect_area <- function(x, y){ 
+  # browser()
   x_sfc <- x %>% 
     st_sfc %>% 
-    st_set_crs(crs)
+    st_set_crs(st_crs(y)) 
   
   area_x <- x_sfc %>% st_area() %>% as.double()
   
@@ -95,7 +94,7 @@ st_intersect_area <- function(x, y, crs){
   if(is_empty(area_xy)){return(as.double(0))}
   
   overlap_pct <- area_xy %>% 
-    divide_by(area_x) %>% 
+    magrittr::divide_by(area_x) %>% 
     as.double() %>% 
     round(2)
   
@@ -765,7 +764,8 @@ make_within_uga <- function(parcel_ready, uga){
                       
                       uga_2926 <- st_transform(uga, 2926)
                     
-                      uga_subdivide <- st_subdivide(uga_2926, 100) 
+                      uga_subdivide <- st_subdivide(uga_2926, 100) %>% 
+                        st_collection_extract()
                       
                       # ~ 20 min. operation
                       p_ready_pt$CRIT_SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
