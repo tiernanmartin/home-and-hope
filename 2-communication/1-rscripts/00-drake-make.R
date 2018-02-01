@@ -41,13 +41,23 @@ miscellaneous_plan <- drake_plan(
   zoning = make_zoning() 
 )
 
+suitability_criteria_plan(
+  criteria_is_tax_exempt = make_criteria_is_tax_exempt(),
+  criteria_max_pct_underwater = make_criteria_max_pct_underwater(),
+  criteria_is_within_uga = criteria_is_within_uga(),
+  criteria_is_developable_zoning = make_criteria_is_developable_zoning(),
+  criteria_is_developable_present_use = make_criteria_is_developable_present_use(),
+  suitability_criteria = make_suitability_criteria(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use)
+  
+)
+
 suitability_plan <- drake_plan(
   tax_e = make_tax_e(parcel_ready, pub_parcel),
   water_coverage = make_water_coverage(parcel_ready, waterbodies),
   within_uga = make_within_uga(parcel_ready, uga),
   developable_zoning = make_developable_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
-  parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, uga, zoning, present_use)
+  parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, within_uga, developable_zoning, present_use, suitability_criteria)
 )
 
 utilization_plan <- drake_plan(
@@ -666,6 +676,41 @@ make_zoning <- function(){
   
   return(zoning)
 }
+# COMMAND: MAKE_CRITERIA_IS_TAX_EXEMPT ----
+
+make_criteria_is_tax_exempt <- function(){
+  
+}
+
+# COMMAND: MAKE_CRITERIA_MAX_PCT_UNDERWATER----
+
+make_criteria_max_pct_underwater <- function(){
+  
+}
+
+# COMMAND: MAKE_CRITERIA_IS_WITHIN_UGA ----
+
+make_criteria_is_within_uga <- function(){
+  
+}
+
+# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_ZONING ----
+
+make_criteria_is_developable_zoning <- function(){
+  
+}
+# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_PRESENT_USE ----
+
+make_criteria_is_developable_present_use <- function(){
+  
+}
+
+# COMMAND: MAKE_SUITABILITY_CRITERIA ----
+
+make_suitability_criteria <- function(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use){
+  
+}
+
 # COMMAND: MAKE_TAX_E ----
 
 make_tax_e <- function(parcel_ready, pub_parcel){
