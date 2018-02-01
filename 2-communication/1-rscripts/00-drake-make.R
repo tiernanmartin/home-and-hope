@@ -82,10 +82,10 @@ st_intersects_any <- function(x, y) {
 }
 # FUNCTION: ST_INTERSECT_AREA ----
 st_intersect_area <- function(x, y){ 
-  # browser()
+  
   x_sfc <- x %>% 
-    st_sfc %>% 
-    st_set_crs(st_crs(y)) 
+    st_geometry %>% 
+    st_transform(st_crs(y)) 
   
   area_x <- x_sfc %>% st_area() %>% as.double()
   
@@ -580,11 +580,7 @@ make_waterbodies <- function(){
                   make_expr = function(fp, dr_id){drive_read(dr_id = dr_id, .tempfile = FALSE, path = fp, read_fun = read_sf)},
                   read_expr = function(fp){read_sf(fp, stringsAsFactors = TRUE)})
   
-  waterbodies <- w_load %>% 
-    st_set_crs(4326) %>% 
-    st_union() %>% 
-    st_transform(2926) %>% 
-    st_make_valid() 
+  waterbodies <- st_transform(w_load,2926) 
 
   return(waterbodies)
 }
@@ -683,63 +679,75 @@ make_tax_e <- function(parcel_ready, pub_parcel){
 
 make_water_coverage <- function(parcel_ready, waterbodies){
   
-  wc_fp <- root_file("")
+  wc_fp <- root_file("1-data/3-interim/parcel_water_coverage.csv")
   
-  wc_dr_id <- as_id("")
+  wc_dr_id <- as_id("11DOvF2Sa4Fb7Ms7uMrBf3gDK8sy7qd8x")
   
   wc_load <- 
     make_or_read2(fp = wc_fp,
                   dr_id = wc_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){ 
                     
-                    # actual_process <- function(){
-                    #   
-                    #   # NOTE: This the is the actual operation, but it's long-running,
-                    #   #       so I use a shortcut for the first iteration of the project.
-                    #   
-                    #   water_coverage <- parcel_ready %>% 
-                    #   slice(1:1000) %>% 
-                    #   select(PIN) %>% 
-                    #   mutate(WATER_OVERLAP_PCT = map_dbl(geometry, st_intersect_area, y = waterbodies, crs = 2926)) %>%
-                    #   mutate(WATER_OVERLAP_LGL = WATER_OVERLAP_PCT > 0) %>% 
-                    #   st_set_geometry(NULL)
-                    # 
-                    # drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc") 
-                    # 
-                    # write_csv(water_coverage, fp) #CHANGE TO fp
-                    # 
-                    # drive_upload(fp, drive_folder) 
-                    # }
+                    # Convert to EPSG 2926 
+                    p_ready_poly <- parcel_ready %>%  
+                      select(PIN) %>% 
+                      st_transform(2926)
+                    
+                    # Filter waterbodies to include only those larger than 1/2 sq km
+                    
+                    min_sq_km <- 0.5
+                    
+                    tolerance <- 5
+                    
+                    wtr <- st_transform(waterbodies, 2926) %>%  
+                      filter( AREA_SQ_KM > min_sq_km) %>% 
+                      st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
+                    
+                    p_water <- p_ready_poly 
+                    
+                    # ~ 3 min. operation
+                    
+                    p_water$CRIT_SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
+                    
+                    intersect_idx <- which(p_water$CRIT_SUIT_WATER_OVERLAP_LGL)
+                    
+                    p_water$CRIT_SUIT_WATER_OVERLAP_PCT <- as.double(0)
+                    
+                    wtr_union <- st_union(wtr)
+                    
+                    # ~ 2 min. operation
+                    
+                    p_water[intersect_idx,"CRIT_SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
+                                                                                              y = wtr_union)
+                    
+                    
+                    p_water_ready <- p_water %>% 
+                      st_drop_geometry() %>% 
+                      select(PIN,  
+                             CRIT_SUIT_WATER_OVERLAP_LGL,
+                             CRIT_SUIT_WATER_OVERLAP_PCT)
+                    
+                    write_csv(p_water_ready, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(fp, drive_folder)
+                    
                     
                     
                   },
                   make_expr = function(fp, dr_id){
-                    
-                    drive_read(dr_id = as_id("1jrEAX7ogq1RdNU-hfrC-tntF66b6NcKg"),
+                    drive_read(dr_id = dr_id,
                                .tempfile = FALSE,
-                               path = root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"),
-                               read_fun = read_sf)
-                    
+                               path = fp,
+                               read_fun = read_csv)
                   },
-                  read_expr = function(fp){read_sf(root_file("./1-data/3-interim/p-water-overlap-0-50-sf.gpkg"))})
+                  read_expr = function(fp){read_csv(fp)})
   
-  wc_join <- wc_load %>% 
-    transmute(PIN, 
-              CRIT_SUIT_WATER_OVERLAP_PCT = WATER_OVERLAP_PCT,
-              CRIT_SUIT_WATER_OVERLAP_LGL = as.logical(WATER_OVERLAP_LGL)) %>%  
-    st_set_geometry(NULL)
+  water_coverage <- wc_load
   
-  water_coverage <- parcel_ready %>% 
-    left_join(wc_join, by = "PIN") %>% 
-    mutate(CRIT_SUIT_WATER_OVERLAP_PCT = if_else(is.na(CRIT_SUIT_WATER_OVERLAP_PCT),0,CRIT_SUIT_WATER_OVERLAP_PCT),
-           CRIT_SUIT_WATER_OVERLAP_LGL = if_else(CRIT_SUIT_WATER_OVERLAP_LGL,TRUE,FALSE,FALSE)) %>% 
-    select(PIN,
-           CRIT_SUIT_WATER_OVERLAP_PCT,
-           CRIT_SUIT_WATER_OVERLAP_LGL) %>% 
-    st_set_geometry(NULL)
-  
-  return(water_coverage)
+  return(wc_load)
   
 }
 
