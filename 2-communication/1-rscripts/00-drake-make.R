@@ -811,6 +811,57 @@ return(w_uga_load)
 
 # COMMAND: MAKE_DEVELOPABLE_ZONING ----
 
+make_developable_zoning <- function(parcel_ready, zoning){
+  
+  dz_fp <- root_file("1-data/3-interim/parcel_consolidated_zoning.csv")
+  
+  dz_dr_id <- as_id("1cunvaGmjw9AN-jJzjZESRL35i7BiKt_C")
+  
+  dz_load <- 
+    make_or_read2(fp = dz_fp,
+                  dr_id = dz_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){ 
+                    
+                    p_pt <- parcel_ready %>% 
+                      st_set_geometry("geom_pt") %>% 
+                      st_transform(2926) %>% 
+                      select(PIN)
+                    
+                    zng <- zoning %>% st_transform(2926) %>% 
+                      st_subdivide(max_vertices = 100) %>% 
+                      st_collection_extract() 
+                    
+                    p_zng <- p_pt
+                     
+                    p_zng$CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
+                    
+                    p_dz_ready <- st_drop_geometry(p_zng)
+                      
+                    
+                    write_csv(p_dz_ready, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(fp, drive_folder)
+                    
+                    
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  developable_zoning <- dz_load
+  
+  return(developable_zoning)
+  
+}
+
 # COMMAND: MAKE_PRESENT_USE ----
 
 # COMMAND: MAKE_PARCEL_SUITABILITY ----
