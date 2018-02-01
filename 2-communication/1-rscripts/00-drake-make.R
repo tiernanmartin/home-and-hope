@@ -38,14 +38,14 @@ parcel_plan <- drake_plan(
 miscellaneous_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
-  zoning = make_zoning()
+  zoning = make_zoning() 
 )
 
 suitability_plan <- drake_plan(
   tax_e = make_tax_e(parcel_ready, pub_parcel),
   water_coverage = make_water_coverage(parcel_ready, waterbodies),
   within_uga = make_within_uga(parcel_ready, uga),
-  developable_zoning = make_zoning(parcel_ready, zoning),
+  developable_zoning = make_developable_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
   parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, uga, zoning, present_use)
 )
