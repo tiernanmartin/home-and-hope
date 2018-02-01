@@ -78,7 +78,7 @@ parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){
 
 # FUNCTION: ST_INTERSECTS_ANY ----
 st_intersects_any <- function(x, y) {
-  sapply(st_intersects(x, y), function(x) length(x)> 0)
+  sapply(st_intersects(x, y), function(z) length(z)> 0)
 }
 # FUNCTION: ST_INTERSECT_AREA ----
 st_intersect_area <- function(x, y){ 
@@ -99,6 +99,14 @@ st_intersect_area <- function(x, y){
     round(2)
   
   return(overlap_pct)
+}
+
+# FUNCTION: ST_OVER ----
+
+st_over <- function(x,y,col){
+  idx <- sapply(st_intersects(x,y), function(z) if (length(z)==0) NA_integer_ else z[1])
+  
+  y[idx,col][[1]]
 }
 
 # COMMAND: MAKE_LU ----
