@@ -697,7 +697,74 @@ make_criteria_within_uga <- function(){
 
 make_criteria_developable_zoning <- function(){
   
+  dz_fp <- root_file("1-data/1-raw/criteria_developable_zoning.csv")
+  
+  dz_dr_id <- as_id("1SLuAYmeADdiyb_IpCevwJSfnP1sCGcW0")
+  
+  dz_load <- 
+    make_or_read2(fp = dz_fp,
+                  dr_id = dz_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    
+                    tbl <- tribble(
+                           ~CONSOL_20,                                                     ~DEV_ASSUMPTION,
+          "Central Business District",  "high rise construction, mixed-income, ~150 affordable apartments",
+                 "General Commercial",                                               "six story mixed use",
+                  "General Mixed Use",                                               "six story mixed use",
+                  "Historic District",                                      "no assumption for this class",
+   "Mixed Use Commercial/Residential",                                               "six story mixed use",
+                   "Mobile Home Park",                                      "no assumption for this class",
+           "Multi-Family Residential",                                              "six story affordable",
+           "Public Use/Institutional",                                      "no assumption for this class",
+          "Single-Family Residential",                                  "one unit per 5000 SF of lot size",
+                       "Undesignated",                                      "no assumption for this class",
+                                   NA,                                      "no assumption for this class"
+  )
+                    
+                    # Use `list_zoning()` to inspect the zoning categories and their status
+                    list_zoning <- function(){
+                      df_in <- parcel_ready %>% 
+                        st_drop_geometry() %>%  
+                        left_join(developable_zoning, by = "PIN")%>% 
+                        inner_join(tbl, by = "CONSOL_20") %>% 
+                        count(CONSOL_20,sort = T) %>% 
+                        left_join(tbl, by = "CONSOL_20") %>% 
+                        mutate(STATUS = "Included")
+                      
+                      df_out <- parcel_ready %>% 
+                        st_drop_geometry() %>%  
+                        left_join(developable_zoning, by = "PIN")%>% 
+                        anti_join(tbl, by = "CONSOL_20") %>% 
+                        count(CONSOL_20,sort = T) %>% 
+                        mutate(STATUS = "Excluded")
+                      
+                      bind_rows(df_in, df_out) %>% 
+                        select(STATUS,everything()) %>% print(n = Inf)
+                    }
+                    
+                    
+                    
+                    write_csv(tbl, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){  
+                    drive_download(file = dr_id, path = fp) 
+                    read_csv(fp)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  criteria_developable_zoning <-  dz_load
+  
+  return(criteria_developable_zoning)
+  
 }
+
 # COMMAND: MAKE_CRITERIA_UNDEVELOPABLE_PRESENT_USE ----
 
 make_criteria_undevelopable_present_use <- function(){
@@ -758,7 +825,7 @@ make_criteria_undevelopable_present_use <- function(){
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
+make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
   
 }
 
