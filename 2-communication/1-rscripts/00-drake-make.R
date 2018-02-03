@@ -51,12 +51,12 @@ suitability_criteria_plan(
 )
 
 suitability_plan <- drake_plan(
-  tax_e = make_tax_e(parcel_ready, pub_parcel),
+  tax_exempt = make_tax_exempt(parcel_ready),
   water_coverage = make_water_coverage(parcel_ready, waterbodies),
   within_uga = make_within_uga(parcel_ready, uga),
   developable_zoning = make_developable_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
-  parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, within_uga, developable_zoning, present_use, suitability_criteria)
+  parcel_suitability = make_suitability(parcel_sf, tax_exempt, water_coverage, within_uga, developable_zoning, present_use, suitability_criteria)
 )
 
 utilization_plan <- drake_plan(
@@ -69,6 +69,8 @@ utilization_plan <- drake_plan(
 project_plan <- rbind(
   lookup_plan,
   parcel_plan,
+  miscellaneous_plan,
+  suitability_plan,
   suitability_plan,
   utilization_plan)    # rbind all plans together 
 
@@ -679,6 +681,40 @@ make_zoning <- function(){
 
 make_criteria_tax_exempt <- function(){
   
+  tax_e_fp <- root_file("1-data/1-raw/criteria_tax_exempt.csv")
+  
+  tax_e_dr_id <- as_id("1DNMejNSvPDtlEQgJ5dzqRC9X_xg58HmA")
+  
+  tax_e_load <- 
+    make_or_read2(fp = tax_e_fp,
+                  dr_id = tax_e_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    
+                    tbl <- tribble(
+                           ~CRIT_SUIT_OWNER_TAX_E,
+                           TRUE
+                           )
+                    
+                    
+                    write_csv(tbl, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){  
+                    drive_download(file = dr_id, path = fp) 
+                    read_csv(fp)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  criteria_tax_exempt <-  tax_e_load
+  
+  return(criteria_tax_exempt)
+  
 }
 
 # COMMAND: MAKE_CRITERIA_MAX_PCT_UNDERWATER----
@@ -829,23 +865,49 @@ make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_pct_unde
   
 }
 
-# COMMAND: MAKE_TAX_E ----
+# COMMAND: MAKE_TAX_EXEMPT ----
 
-make_tax_e <- function(parcel_ready, pub_parcel){
+make_tax_exempt <- function(parcel_ready){
   
-  tax_e <- parcel_ready %>%  
-    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
-           CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
-           CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
-    select(PIN,
-           CRIT_SUIT_OWNER_PUBLIC,
-           CRIT_SUIT_OWNER_NONPROFIT,
-           CRIT_SUIT_OWNER_TAX_E) %>% 
-    st_set_geometry(NULL)
+  tax_e_fp <- root_file("1-data/3-interim/parcel_tax_exempt.csv")
   
-  return(tax_e)
+  tax_e_dr_id <- as_id("1O3c1q1Mzh-KfUDYKTkwrrh2cEvu-I1l9")
+  
+  tax_e_load <- 
+    make_or_read2(fp = tax_e_fp,
+                  dr_id = tax_e_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    tax_e <- parcel_ready %>%  
+                      st_drop_geometry() %>% 
+                      mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
+                             CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+                             CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
+                      select(PIN,
+                             CRIT_SUIT_OWNER_PUBLIC,
+                             CRIT_SUIT_OWNER_NONPROFIT,
+                             CRIT_SUIT_OWNER_TAX_E) 
+                    
+                    write_csv(tax_e,fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  
+  tax_exempt <- tax_e_load
+  
+  return(tax_exempt)
 }
-
 # COMMAND: MAKE_WATER_COVERAGE ----
 
 make_water_coverage <- function(parcel_ready, waterbodies){
