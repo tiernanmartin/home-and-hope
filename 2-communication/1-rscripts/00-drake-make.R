@@ -703,6 +703,58 @@ make_criteria_is_developable_zoning <- function(){
 
 make_criteria_is_developable_present_use <- function(){
   
+  dp_fp <- root_file("1-data/1-raw/developable_presentuse.csv")
+  
+  dp_dr_id <- as_id("1MbHCUcogzwIG0gD-MUUTgvyPgzoKrMZI")
+  
+  dp_load <- 
+    make_or_read2(fp = dp_fp,
+                  dr_id = dp_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # Use `list_uses()` to explore the present use categories
+                    
+                    list_uses <- function(){
+                      parcel_ready %>% 
+                        st_drop_geometry() %>% 
+                        count(PRESENT_USE, sort = TRUE) %>% 
+                        print(n = Inf)
+                    }
+                    
+                    tbl <- tribble(
+                      ~ PRESENT_USE,
+                      "Park, Public(Zoo/Arbor)",
+                      "Mortuary/Cemetery/Crematory",
+                      "Open Space Tmbr Land/Greenbelt",
+                      "Open Space(Curr Use-RCW 84.34)",
+                      "Mining/Quarry/Ore Processing",
+                      "Farm",
+                      "Reserve/Wilderness Area",
+                      "Open Space(Agric-RCW 84.34)",
+                      "Forest Land(Desig-RCW 84.33)",
+                      "Forest Land(Class-RCW 84.33)",
+                      "Tideland, 1st Class",
+                      "Tideland, 2nd Class"
+                    )
+                    
+                    write_csv(tbl, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){  
+                    drive_download(file = dr_id, path = fp) 
+                    read_csv(fp)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  developable_presentuse <-  dp_load
+  
+  return(developable_presentuse)
+  
 }
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
