@@ -42,13 +42,12 @@ miscellaneous_plan <- drake_plan(
 )
 
 suitability_criteria_plan(
-  criteria_is_tax_exempt = make_criteria_is_tax_exempt(),
+  criteria_tax_exempt = make_criteria_tax_exempt(),
   criteria_max_pct_underwater = make_criteria_max_pct_underwater(),
-  criteria_is_within_uga = criteria_is_within_uga(),
-  criteria_is_developable_zoning = make_criteria_is_developable_zoning(),
-  criteria_is_developable_present_use = make_criteria_is_developable_present_use(),
-  suitability_criteria = make_suitability_criteria(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use)
-  
+  criteria_within_uga = criteria_within_uga(),
+  criteria_developable_zoning = make_criteria_developable_zoning(),
+  criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
+  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
 )
 
 suitability_plan <- drake_plan(
@@ -676,9 +675,9 @@ make_zoning <- function(){
   
   return(zoning)
 }
-# COMMAND: MAKE_CRITERIA_IS_TAX_EXEMPT ----
+# COMMAND: MAKE_CRITERIA_TAX_EXEMPT ----
 
-make_criteria_is_tax_exempt <- function(){
+make_criteria_tax_exempt <- function(){
   
 }
 
@@ -688,24 +687,24 @@ make_criteria_max_pct_underwater <- function(){
   
 }
 
-# COMMAND: MAKE_CRITERIA_IS_WITHIN_UGA ----
+# COMMAND: MAKE_CRITERIA_WITHIN_UGA ----
 
-make_criteria_is_within_uga <- function(){
+make_criteria_within_uga <- function(){
   
 }
 
-# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_ZONING ----
+# COMMAND: MAKE_CRITERIA_DEVELOPABLE_ZONING ----
 
-make_criteria_is_developable_zoning <- function(){
+make_criteria_developable_zoning <- function(){
   
 }
-# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_PRESENT_USE ----
+# COMMAND: MAKE_CRITERIA_UNDEVELOPABLE_PRESENT_USE ----
 
-make_criteria_is_developable_present_use <- function(){
+make_criteria_undevelopable_present_use <- function(){
   
-  dp_fp <- root_file("1-data/1-raw/developable_presentuse.csv")
+  dp_fp <- root_file("1-data/1-raw/criteria_undevelopable_presentuse.csv")
   
-  dp_dr_id <- as_id("1MbHCUcogzwIG0gD-MUUTgvyPgzoKrMZI")
+  dp_dr_id <- as_id("1nsrVqtRhwKM2v0Dy0a2VqXkQG2XwRgZt")
   
   dp_load <- 
     make_or_read2(fp = dp_fp,
@@ -751,15 +750,15 @@ make_criteria_is_developable_present_use <- function(){
                   },
                   read_expr = function(fp){read_csv(fp)})
   
-  developable_presentuse <-  dp_load
+  criteria_undevelopable_presentuse <-  dp_load
   
-  return(developable_presentuse)
+  return(criteria_undevelopable_presentuse)
   
 }
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use){
+make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
   
 }
 
