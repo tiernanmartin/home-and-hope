@@ -9,6 +9,7 @@ library(magrittr)
 library(rprojroot) 
 library(RSocrata)
 library(glue)
+library(fuzzyjoin)
 library(tidyverse) 
 
 
@@ -43,16 +44,16 @@ miscellaneous_plan <- drake_plan(
 
 suitability_criteria_plan(
   criteria_tax_exempt = make_criteria_tax_exempt(),
-  criteria_max_pct_underwater = make_criteria_max_pct_underwater(),
+  criteria_max_water_overlap_pct = make_criteria_max_water_overlap_pct(),
   criteria_within_uga = criteria_within_uga(),
   criteria_developable_zoning = make_criteria_developable_zoning(),
   criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
-  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
+  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
 )
 
 suitability_plan <- drake_plan(
   tax_exempt = make_tax_exempt(parcel_ready),
-  water_coverage = make_water_coverage(parcel_ready, waterbodies),
+  water_overlap = make_water_overlap(parcel_ready, waterbodies),
   within_uga = make_within_uga(parcel_ready, uga),
   developable_zoning = make_developable_zoning(parcel_ready, zoning),
   present_use = make_present_use(parcel_ready),
@@ -717,9 +718,9 @@ make_criteria_tax_exempt <- function(){
   
 }
 
-# COMMAND: MAKE_CRITERIA_MAX_PCT_UNDERWATER----
+# COMMAND: MAKE_CRITERIA_MAX_WATER_OVERLAP_PCT----
 
-make_criteria_max_pct_underwater <- function(){
+make_criteria_max_water_overlap_pct <- function(){
   
 }
 
@@ -908,9 +909,9 @@ make_tax_exempt <- function(parcel_ready){
   
   return(tax_exempt)
 }
-# COMMAND: MAKE_WATER_COVERAGE ----
+# COMMAND: MAKE_WATER_OVERLAP ----
 
-make_water_coverage <- function(parcel_ready, waterbodies){
+make_water_overlap <- function(parcel_ready, waterbodies){
   
   wc_fp <- root_file("1-data/3-interim/parcel_water_coverage.csv")
   
@@ -978,9 +979,9 @@ make_water_coverage <- function(parcel_ready, waterbodies){
                   },
                   read_expr = function(fp){read_csv(fp)})
   
-  water_coverage <- wc_load
+  water_overlap <- wc_load
   
-  return(wc_load)
+  return(water_overlap)
   
 }
 
