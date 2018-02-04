@@ -61,14 +61,14 @@ suitability_plan <- drake_plan(
 )
 
 building_plan <- drake_plan(
-  building_residential <- make_building_residential(),
-  building_apartment <- make_building_apartment(),
-  building_commercial <- make_building_commercial(),
-  building <- make_building(parcel_ready, building_residential,building_apartment,building_commercial)
+  building_residential = make_building_residential(),
+  building_apartment = make_building_apartment(),
+  building_commercial = make_building_commercial(),
+  building = make_building(parcel_ready, building_residential,building_apartment,building_commercial)
 )
 
-utilization_criteria_plan <- drake_plan(
-  criteria_utilization <- make_criteria_utilization()
+utilization_criteria_plan <-  drake_plan(
+  criteria_utilization = make_criteria_utilization()
 )
 
 utilization_plan <- drake_plan(
@@ -78,7 +78,7 @@ utilization_plan <- drake_plan(
 )
 
 inventory_plan <- drake_plan(
-  inventory <- make_inventory(suitability, suitability_criteria, utilization, criteria_utilization)
+  inventory = make_inventory(suitability, suitability_criteria, utilization, criteria_utilization)
 )
 
 project_plan <- rbind(
@@ -528,10 +528,11 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
     ungroup %>% 
     bind_rows(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
     arrange(PIN) %>% 
-    mutate(geom_pt = st_sfc(geom_pt),
-           geometry = st_sfc(geometry)) %>% 
-    st_sf %>% 
+    mutate(geom_pt = st_sfc(geom_pt) %>% st_set_crs(st_crs(parcel_sf)),
+           geometry = st_sfc(geometry) %>% st_set_crs(st_crs(parcel_sf))) %>% 
+    st_sf %>%
     st_set_geometry("geometry")
+    
     
   # MAKE P_READY
   
@@ -605,7 +606,7 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
   parcel_ready <- obj_list %>% 
     reduce(.f = inner_join, by = "PIN") %>% 
     st_as_sf()
-  
+
   return(parcel_ready)
 }
 
@@ -973,116 +974,61 @@ make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_water_ov
 
 make_suitability_tax_exempt <- function(parcel_ready){
   
-  tax_e_fp <- root_file("1-data/3-interim/parcel_tax_exempt.csv")
-  
-  tax_e_dr_id <- as_id("15Rp0XJbgGBc6gcGiYSqJDQfQsBXnGQTr")
-  
-  tax_e_load <- 
-    make_or_read2(fp = tax_e_fp,
-                  dr_id = tax_e_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    tax_e <- parcel_ready %>%  
-                      st_drop_geometry() %>% 
-                      mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
-                             SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
-                             SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT) %>% 
-                      select(PIN,
-                             SUIT_OWNER_PUBLIC,
-                             SUIT_OWNER_NONPROFIT,
-                             SUIT_OWNER_TAX_E) 
-                    
-                    write_csv(tax_e,fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  
-  tax_exempt <- tax_e_load
+  tax_exempt <- parcel_ready %>%  
+    st_drop_geometry() %>% 
+    mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
+           SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+           SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT) %>% 
+    select(PIN,
+           SUIT_OWNER_PUBLIC,
+           SUIT_OWNER_NONPROFIT,
+           SUIT_OWNER_TAX_E) 
   
   return(tax_exempt)
 }
 # COMMAND: MAKE_SUITABILITY_WATER_OVERLAP ----
 
 make_suitability_water_overlap <- function(parcel_ready, waterbodies){
+  # Convert to EPSG 2926 
+  p_ready_poly <- parcel_ready %>%  
+    select(PIN) %>% 
+    st_transform(2926)
   
-  wc_fp <- root_file("1-data/3-interim/parcel_water_overlap.csv")
+  # Filter waterbodies to include only those larger than 1/2 sq km
   
-  wc_dr_id <- as_id("1sx3_l37wIhM15DV0WC447I2BjBVSDZj9")
+  min_sq_km <- 0.5
   
-  wc_load <- 
-    make_or_read2(fp = wc_fp,
-                  dr_id = wc_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){ 
-                    
-                    # Convert to EPSG 2926 
-                    p_ready_poly <- parcel_ready %>%  
-                      select(PIN) %>% 
-                      st_transform(2926)
-                    
-                    # Filter waterbodies to include only those larger than 1/2 sq km
-                    
-                    min_sq_km <- 0.5
-                    
-                    tolerance <- 5
-                    
-                    wtr <- st_transform(waterbodies, 2926) %>%  
-                      filter( AREA_SQ_KM > min_sq_km) %>% 
-                      st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
-                    
-                    p_water <- p_ready_poly 
-                    
-                    # ~ 3 min. operation
-                    
-                    p_water$SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
-                    
-                    intersect_idx <- which(p_water$SUIT_WATER_OVERLAP_LGL)
-                    
-                    p_water$SUIT_WATER_OVERLAP_PCT <- as.double(0)
-                    
-                    wtr_union <- st_union(wtr)
-                    
-                    # ~ 2 min. operation
-                    
-                    p_water[intersect_idx,"SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
-                                                                                              y = wtr_union)
-                    
-                    
-                    p_water_ready <- p_water %>% 
-                      st_drop_geometry() %>% 
-                      select(PIN, 
-                             SUIT_WATER_OVERLAP_LGL,
-                             SUIT_WATER_OVERLAP_PCT)
-                    
-                    write_csv(p_water_ready, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(fp, drive_folder)
-                    
-                    
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+  tolerance <- 5
   
-  water_overlap <- wc_load
+  wtr <- st_transform(waterbodies, 2926) %>%  
+    filter( AREA_SQ_KM > min_sq_km) %>% 
+    st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
+  
+  p_water <- p_ready_poly 
+  
+  # ~ 3 min. operation
+  
+  p_water$SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
+  
+  intersect_idx <- which(p_water$SUIT_WATER_OVERLAP_LGL)
+  
+  p_water$SUIT_WATER_OVERLAP_PCT <- as.double(0)
+  
+  wtr_union <- st_union(wtr)
+  
+  # ~ 2 min. operation
+  
+  p_water[intersect_idx,"SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
+                                                                       y = wtr_union)
+  
+  
+  p_water_ready <- p_water %>% 
+    st_drop_geometry() %>% 
+    select(PIN, 
+           SUIT_WATER_OVERLAP_LGL,
+           SUIT_WATER_OVERLAP_PCT)
+  
+  water_overlap <- p_water_ready
   
   return(water_overlap)
   
@@ -1093,48 +1039,23 @@ make_suitability_water_overlap <- function(parcel_ready, waterbodies){
 
 make_suitability_within_uga <- function(parcel_ready, uga){
   
-    w_uga_fp <- root_file("1-data/3-interim/parcel_within_uga.csv")
+  p_ready_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926)
   
-  w_uga_dr_id <- as_id("15ReDJciNi4yRyYMcxaLpNJzCnpX5fJVD")
+  uga_2926 <- st_transform(uga, 2926)
   
-  w_uga_load <- 
-    make_or_read2(fp = w_uga_fp,
-                  dr_id = w_uga_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){ 
-                    
-                      p_ready_pt <- parcel_ready %>% 
-                        st_set_geometry("geom_pt") %>% 
-                        st_transform(2926)
-                      
-                      uga_2926 <- st_transform(uga, 2926)
-                    
-                      uga_subdivide <- st_subdivide(uga_2926, 100) %>% 
-                        st_collection_extract()
-                      
-                      # ~ 20 min. operation
-                      p_ready_pt$SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
-                      
-                      p_ready_within_uga <- p_ready_pt %>% 
-                        st_drop_geometry() %>% 
-                        select(PIN, SUIT_WITHIN_UGA)
-                      
-                    write_csv(p_ready_within_uga, fp)
-
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-
-                    drive_upload(fp, drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-    
-return(w_uga_load)
+  uga_subdivide <- st_subdivide(uga_2926, 100) %>% 
+    st_collection_extract()
+  
+  # ~ 20 min. operation
+  p_ready_pt$SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
+  
+  p_ready_within_uga <- p_ready_pt %>% 
+    st_drop_geometry() %>% 
+    select(PIN, SUIT_WITHIN_UGA)
+  
+  return(p_ready_within_uga)
   
 }
 
@@ -1142,50 +1063,22 @@ return(w_uga_load)
 
 make_suitability_developable_zoning <- function(parcel_ready, zoning){
   
-  dz_fp <- root_file("1-data/3-interim/parcel_consolidated_zoning.csv")
+  p_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
   
-  dz_dr_id <- as_id("1kraujFbCFVSiOZXr-i0U_Zqueui8sh6F")
+  zng <- zoning %>% st_transform(2926) %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
   
-  dz_load <- 
-    make_or_read2(fp = dz_fp,
-                  dr_id = dz_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){ 
-                    
-                    p_pt <- parcel_ready %>% 
-                      st_set_geometry("geom_pt") %>% 
-                      st_transform(2926) %>% 
-                      select(PIN)
-                    
-                    zng <- zoning %>% st_transform(2926) %>% 
-                      st_subdivide(max_vertices = 100) %>% 
-                      st_collection_extract() 
-                    
-                    p_zng <- p_pt
-                     
-                    p_zng$SUIT_ZONING_CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
-                    
-                    p_dz_ready <- st_drop_geometry(p_zng)
-                      
-                    
-                    write_csv(p_dz_ready, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(fp, drive_folder)
-                    
-                    
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+  p_zng <- p_pt
   
-  developable_zoning <- dz_load
+  p_zng$SUIT_ZONING_CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
+  
+  p_dz_ready <- st_drop_geometry(p_zng)
+  
+  developable_zoning <- p_dz_ready
   
   return(developable_zoning)
   
@@ -1195,37 +1088,13 @@ make_suitability_developable_zoning <- function(parcel_ready, zoning){
 
 make_suitability_present_use <- function(parcel_ready){
   
-  pres_use_fp <- root_file("1-data/3-interim/parcel_present_use.csv")
-  
-  pres_use_dr_id <- as_id("1l13owEhvbtrbRbPLE8HElsdwzovnhTr9")
-  
-  pres_use_load <- 
-    make_or_read2(fp = pres_use_fp,
-                  dr_id = pres_use_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    pres_use <- parcel_ready %>%  
-                      st_drop_geometry() %>% 
-                      transmute(PIN,
-                                SUIT_PRESENT_USE = PRESENT_USE)
-                    
-                    write_csv(pres_use,fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+  pres_use <- parcel_ready %>%  
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              SUIT_PRESENT_USE = PRESENT_USE)
   
   
-  present_use <- pres_use_load
+  present_use <- pres_use
   
   return(present_use)
 }
