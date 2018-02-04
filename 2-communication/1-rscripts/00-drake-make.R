@@ -42,38 +42,47 @@ miscellaneous_plan <- drake_plan(
   zoning = make_zoning() 
 )
 
-suitability_criteria_plan(
+suitability_criteria_plan <- drake_plan(
   criteria_tax_exempt = make_criteria_tax_exempt(),
   criteria_max_water_overlap_pct = make_criteria_max_water_overlap_pct(),
-  criteria_within_uga = criteria_within_uga(),
+  criteria_within_uga = make_criteria_within_uga(),
   criteria_developable_zoning = make_criteria_developable_zoning(),
   criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
   suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
 )
 
 suitability_plan <- drake_plan(
-  tax_exempt = make_tax_exempt(parcel_ready),
-  water_overlap = make_water_overlap(parcel_ready, waterbodies),
-  within_uga = make_within_uga(parcel_ready, uga),
-  developable_zoning = make_developable_zoning(parcel_ready, zoning),
-  present_use = make_present_use(parcel_ready),
-  parcel_suitability = make_suitability(parcel_sf, tax_exempt, water_coverage, within_uga, developable_zoning, present_use, suitability_criteria)
+  suitability_tax_exempt = make_suitability_tax_exempt(parcel_ready),
+  suitability_water_overlap = make_suitability_water_overlap(parcel_ready, waterbodies),
+  suitability_within_uga = make_suitability_within_uga(parcel_ready, uga),
+  suitability_developable_zoning = make_suitability_developable_zoning(parcel_ready, zoning),
+  suitability_present_use = make_suitability_present_use(parcel_ready),
+  suitability = make_suitability(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
+)
+
+utilization_criteria_plan <- drake_plan(
+  criteria_utilization <- make_criteria_utilization()
 )
 
 utilization_plan <- drake_plan(
-  util_present = make_util_present(),
-  util_potential = make_util_potential(),
-  parcel_utilization = make_parcel_utilization(parcel_sf, util_present, util_potential)
+  utillization_present = make_util_present(),
+  utillization_potential = make_util_potential(),
+  utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
 )
 
+inventory_plan <- drake_plan(
+  inventory <- make_inventory(suitability, suitability_criteria, utilization, criteria_utilization)
+)
 
 project_plan <- rbind(
   lookup_plan,
   parcel_plan,
   miscellaneous_plan,
+  suitability_criteria_plan,
   suitability_plan,
-  suitability_plan,
-  utilization_plan)    # rbind all plans together 
+  utilization_criteria_plan,
+  utilization_plan,
+  inventory_plan)   
 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
@@ -722,12 +731,81 @@ make_criteria_tax_exempt <- function(){
 
 make_criteria_max_water_overlap_pct <- function(){
   
+  crit_wtr_overlap_fp <- root_file("1-data/3-interim/criteria_max_water_overlap_pct.csv")
+  
+  crit_wtr_overlap_dr_id <- as_id("1HH5_ISy45qd55Qwydcc8aQPHXqd5IuqH")
+  
+  crit_wtr_overlap_load <- 
+    make_or_read2(fp = crit_wtr_overlap_fp,
+                  dr_id = crit_wtr_overlap_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    crit_wtr_overlap <- tribble(
+                           ~CRIT_SUIT_WATER_OVERLAP_PCT,
+                           0.5
+                           )
+                    
+                    write_csv(crit_wtr_overlap,fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  
+  criteria_max_water_overlap_pct <- crit_wtr_overlap_load
+  
+  return(criteria_max_water_overlap_pct)
 }
+
 
 # COMMAND: MAKE_CRITERIA_WITHIN_UGA ----
 
 make_criteria_within_uga <- function(){
   
+  crit_within_uga_fp <- root_file("1-data/3-interim/criteria_within_uga.csv")
+  
+  crit_within_uga_dr_id <- as_id("1oNzLydH3ywKFkj0q-NzBhFST22pJeMJG")
+  
+  crit_within_uga_load <- 
+    make_or_read2(fp = crit_within_uga_fp,
+                  dr_id = crit_within_uga_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    crit_within_uga <- tribble(
+                           ~CRIT_SUIT_WITHIN_UGA_LGL,
+                           TRUE
+                           )
+                    
+                    write_csv(crit_within_uga,fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  
+  criteria_within_uga <- crit_within_uga_load
+  
+  return(criteria_within_uga)
 }
 
 # COMMAND: MAKE_CRITERIA_DEVELOPABLE_ZONING ----
@@ -862,17 +940,23 @@ make_criteria_undevelopable_present_use <- function(){
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_pct_underwater, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
-  
+make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
+  tibble(
+    "criteria_tax_exempt" = map_lgl(criteria_tax_exempt,1),
+    "criteria_max_water_overlap_pct" = map_dbl(criteria_max_water_overlap_pct,1),
+    "criteria_within_uga" = map_lgl(criteria_within_uga,1),
+    "criteria_developable_zoning" = list(criteria_developable_zoning),
+    "criteria_undevelopable_present_use" = list(criteria_undevelopable_present_use)
+  )
 }
 
-# COMMAND: MAKE_TAX_EXEMPT ----
+# COMMAND: MAKE_SUITABILITY_TAX_EXEMPT ----
 
-make_tax_exempt <- function(parcel_ready){
+make_suitability_tax_exempt <- function(parcel_ready){
   
   tax_e_fp <- root_file("1-data/3-interim/parcel_tax_exempt.csv")
   
-  tax_e_dr_id <- as_id("1O3c1q1Mzh-KfUDYKTkwrrh2cEvu-I1l9")
+  tax_e_dr_id <- as_id("15Rp0XJbgGBc6gcGiYSqJDQfQsBXnGQTr")
   
   tax_e_load <- 
     make_or_read2(fp = tax_e_fp,
@@ -881,13 +965,13 @@ make_tax_exempt <- function(parcel_ready){
                   get_expr = function(fp){
                     tax_e <- parcel_ready %>%  
                       st_drop_geometry() %>% 
-                      mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
-                             CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
-                             CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
+                      mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
+                             SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+                             SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT) %>% 
                       select(PIN,
-                             CRIT_SUIT_OWNER_PUBLIC,
-                             CRIT_SUIT_OWNER_NONPROFIT,
-                             CRIT_SUIT_OWNER_TAX_E) 
+                             SUIT_OWNER_PUBLIC,
+                             SUIT_OWNER_NONPROFIT,
+                             SUIT_OWNER_TAX_E) 
                     
                     write_csv(tax_e,fp)
                     
@@ -909,18 +993,18 @@ make_tax_exempt <- function(parcel_ready){
   
   return(tax_exempt)
 }
-# COMMAND: MAKE_WATER_OVERLAP ----
+# COMMAND: MAKE_SUITABILITY_WATER_OVERLAP ----
 
-make_water_overlap <- function(parcel_ready, waterbodies){
+make_suitability_water_overlap <- function(parcel_ready, waterbodies){
   
-  wc_fp <- root_file("1-data/3-interim/parcel_water_coverage.csv")
+  wc_fp <- root_file("1-data/3-interim/parcel_water_overlap.csv")
   
-  wc_dr_id <- as_id("11DOvF2Sa4Fb7Ms7uMrBf3gDK8sy7qd8x")
+  wc_dr_id <- as_id("1sx3_l37wIhM15DV0WC447I2BjBVSDZj9")
   
   wc_load <- 
     make_or_read2(fp = wc_fp,
                   dr_id = wc_dr_id,
-                  skip_get_expr = TRUE,
+                  skip_get_expr = FALSE,
                   get_expr = function(fp){ 
                     
                     # Convert to EPSG 2926 
@@ -942,25 +1026,25 @@ make_water_overlap <- function(parcel_ready, waterbodies){
                     
                     # ~ 3 min. operation
                     
-                    p_water$CRIT_SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
+                    p_water$SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
                     
-                    intersect_idx <- which(p_water$CRIT_SUIT_WATER_OVERLAP_LGL)
+                    intersect_idx <- which(p_water$SUIT_WATER_OVERLAP_LGL)
                     
-                    p_water$CRIT_SUIT_WATER_OVERLAP_PCT <- as.double(0)
+                    p_water$SUIT_WATER_OVERLAP_PCT <- as.double(0)
                     
                     wtr_union <- st_union(wtr)
                     
                     # ~ 2 min. operation
                     
-                    p_water[intersect_idx,"CRIT_SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
+                    p_water[intersect_idx,"SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
                                                                                               y = wtr_union)
                     
                     
                     p_water_ready <- p_water %>% 
                       st_drop_geometry() %>% 
-                      select(PIN,  
-                             CRIT_SUIT_WATER_OVERLAP_LGL,
-                             CRIT_SUIT_WATER_OVERLAP_PCT)
+                      select(PIN, 
+                             SUIT_WATER_OVERLAP_LGL,
+                             SUIT_WATER_OVERLAP_PCT)
                     
                     write_csv(p_water_ready, fp)
                     
@@ -986,18 +1070,18 @@ make_water_overlap <- function(parcel_ready, waterbodies){
 }
 
 
-# COMMAND: MAKE_WITHIN_UGA ----
+# COMMAND: MAKE_SUITABILITY_WITHIN_UGA ----
 
-make_within_uga <- function(parcel_ready, uga){
+make_suitability_within_uga <- function(parcel_ready, uga){
   
     w_uga_fp <- root_file("1-data/3-interim/parcel_within_uga.csv")
   
-  w_uga_dr_id <- as_id("1PiYMzfdmRUN7vxlDxNM8ucL3t4A8zMg4")
+  w_uga_dr_id <- as_id("15ReDJciNi4yRyYMcxaLpNJzCnpX5fJVD")
   
   w_uga_load <- 
     make_or_read2(fp = w_uga_fp,
                   dr_id = w_uga_dr_id,
-                  skip_get_expr = TRUE,
+                  skip_get_expr = FALSE,
                   get_expr = function(fp){ 
                     
                       p_ready_pt <- parcel_ready %>% 
@@ -1010,11 +1094,11 @@ make_within_uga <- function(parcel_ready, uga){
                         st_collection_extract()
                       
                       # ~ 20 min. operation
-                      p_ready_pt$CRIT_SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
+                      p_ready_pt$SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
                       
                       p_ready_within_uga <- p_ready_pt %>% 
                         st_drop_geometry() %>% 
-                        select(PIN, CRIT_SUIT_WITHIN_UGA)
+                        select(PIN, SUIT_WITHIN_UGA)
                       
                     write_csv(p_ready_within_uga, fp)
 
@@ -1035,18 +1119,18 @@ return(w_uga_load)
   
 }
 
-# COMMAND: MAKE_DEVELOPABLE_ZONING ----
+# COMMAND: MAKE_SUITABILITY_DEVELOPABLE_ZONING ----
 
-make_developable_zoning <- function(parcel_ready, zoning){
+make_suitability_developable_zoning <- function(parcel_ready, zoning){
   
   dz_fp <- root_file("1-data/3-interim/parcel_consolidated_zoning.csv")
   
-  dz_dr_id <- as_id("1cunvaGmjw9AN-jJzjZESRL35i7BiKt_C")
+  dz_dr_id <- as_id("1kraujFbCFVSiOZXr-i0U_Zqueui8sh6F")
   
   dz_load <- 
     make_or_read2(fp = dz_fp,
                   dr_id = dz_dr_id,
-                  skip_get_expr = TRUE,
+                  skip_get_expr = FALSE,
                   get_expr = function(fp){ 
                     
                     p_pt <- parcel_ready %>% 
@@ -1060,7 +1144,7 @@ make_developable_zoning <- function(parcel_ready, zoning){
                     
                     p_zng <- p_pt
                      
-                    p_zng$CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
+                    p_zng$SUIT_ZONING_CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
                     
                     p_dz_ready <- st_drop_geometry(p_zng)
                       
@@ -1088,14 +1172,98 @@ make_developable_zoning <- function(parcel_ready, zoning){
   
 }
 
-# COMMAND: MAKE_PRESENT_USE ----
+# COMMAND: MAKE_SUITABILITY_PRESENT_USE ----
 
-# COMMAND: MAKE_PARCEL_SUITABILITY ----
+make_suitability_present_use <- function(parcel_ready){
+  
+  pres_use_fp <- root_file("1-data/3-interim/parcel_present_use.csv")
+  
+  pres_use_dr_id <- as_id("1l13owEhvbtrbRbPLE8HElsdwzovnhTr9")
+  
+  pres_use_load <- 
+    make_or_read2(fp = pres_use_fp,
+                  dr_id = pres_use_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    pres_use <- parcel_ready %>%  
+                      st_drop_geometry() %>% 
+                      transmute(PIN,
+                                SUIT_PRESENT_USE = PRESENT_USE)
+                    
+                    write_csv(pres_use,fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(media = fp, path = drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  
+  present_use <- pres_use_load
+  
+  return(present_use)
+}
 
-# COMMAND: MAKE_UTIL_PRESENT ----
+# COMMAND: MAKE_SUITABILITY ----
+make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_criteria){
+  
+  suitability <- list(parcel_ready, 
+                      suitability_tax_exempt, 
+                      suitability_water_overlap, 
+                      suitability_within_uga, 
+                      suitability_developable_zoning, 
+                      suitability_present_use, 
+                      suitability_criteria) %>% 
+    reduce(left_join, by = "PIN")
+  
+  return(suitability)
+  
+}
+# COMMAND: MAKE_CRITERIA_UTILIZATION ----
 
-# COMMAND: MAKE_UTIL_POTENTIAL ---- 
+make_criteria_utilization <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
 
-# COMMAND: MAKE_PARCEL_UTILIZATION----
+# COMMAND: MAKE_UTILILIZATION_PRESENT ----
+
+make_utillization_present <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
+# COMMAND: MAKE_UTILILIZATION_POTENTIAL ---- 
+make_utillization_potential <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+# COMMAND: MAKE_UTILILIZATION ----
+make_utillization <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
+# COMMAND: MAKE_INVENTORY ----
+
+# params <- 
+#   tibble(
+#     "DF" = list(df),
+#     "CRITERIA" = list(crit_tbl),
+#     "BY" = list(c(
+#       "GROUP" = "crit_group",
+#       "VS" = "crit_vs",
+#       "MPG" = "crit_mpg",
+#       "CYL" = "crit_cyl")),
+#     "MATCH_FUN" = list(c(`%in%`,`==`, `>`, `<=`))
+#   )
+
 # RUN PROJECT PLAN ----
 # make(project_plan)
