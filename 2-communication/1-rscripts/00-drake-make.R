@@ -60,13 +60,20 @@ suitability_plan <- drake_plan(
   suitability = make_suitability(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
 )
 
+building_plan <- drake_plan(
+  building_residential <- make_building_residential(),
+  building_apartment <- make_building_apartment(),
+  building_commercial <- make_building_commercial(),
+  building <- make_building(parcel_ready, building_residential,building_apartment,building_commercial)
+)
+
 utilization_criteria_plan <- drake_plan(
   criteria_utilization <- make_criteria_utilization()
 )
 
 utilization_plan <- drake_plan(
-  utillization_present = make_util_present(),
-  utillization_potential = make_util_potential(),
+  utillization_present = make_util_present(parcel_ready, building),
+  utillization_potential = make_util_potential(parcel_ready, criteria_developable_zoning),
   utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
 )
 
@@ -1212,7 +1219,7 @@ make_suitability_present_use <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_SUITABILITY ----
-make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_criteria){
+make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use){
   
   suitability <- list(parcel_ready, 
                       suitability_tax_exempt, 
@@ -1226,6 +1233,34 @@ make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_w
   return(suitability)
   
 }
+# COMMAND: MAKE_BUILDING_RESIDENTIAL ----
+
+make_building_residential <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
+# COMMAND: MAKE_BUILDING_APARTMENT ----
+
+make_building_apartment <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
+# COMMAND: MAKE_BUILDING_COMMERCIAL ----
+
+make_building_commercial <- function(){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
+# COMMAND: MAKE_BUILDING ----
+
+make_building <- function(parcel_ready, building_residential,building_apartment,building_commercial){
+  stop("Tiernan: you haven't defined this function yet!")
+  # nothing here yet
+}
+
 # COMMAND: MAKE_CRITERIA_UTILIZATION ----
 
 make_criteria_utilization <- function(){
@@ -1264,6 +1299,10 @@ make_utillization <- function(){
 #       "CYL" = "crit_cyl")),
 #     "MATCH_FUN" = list(c(`%in%`,`==`, `>`, `<=`))
 #   )
+
+# pmap_df(params, 
+#      ~fuzzy_semi_join(..1, unnest(..2), ..3, ..4)
+#      )
 
 # RUN PROJECT PLAN ----
 # make(project_plan)
