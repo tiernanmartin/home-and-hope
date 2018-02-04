@@ -520,7 +520,18 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
    
   # MAKE P_SF_READY
 
-  p_sf_ready <- parcel_sf
+  p_sf_ready <- parcel_sf %>% 
+    miscgis::subset_duplicated("PIN") %>% 
+    group_by(PIN) %>% 
+    drop_na %>%  # remove any duplicates PIN records with NAs
+    slice(1) %>%  # take the first record and discard the rest
+    ungroup %>% 
+    bind_rows(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
+    arrange(PIN) %>% 
+    mutate(geom_pt = st_sfc(geom_pt),
+           geometry = st_sfc(geometry)) %>% 
+    st_sf %>% 
+    st_set_geometry("geometry")
     
   # MAKE P_READY
   
@@ -581,7 +592,8 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
   acct_ready <- acct_frmt %>% 
     miscgis::subset_duplicated("PIN") %>% 
     group_by(PIN) %>% 
-    drop_na %>% 
+    drop_na %>% # remove any duplicates PIN records with NAs
+    slice(1) %>%  # take the first record and discard the rest
     ungroup %>% 
     bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>% 
     arrange(PIN)
@@ -1226,8 +1238,7 @@ make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_w
                       suitability_water_overlap, 
                       suitability_within_uga, 
                       suitability_developable_zoning, 
-                      suitability_present_use, 
-                      suitability_criteria) %>% 
+                      suitability_present_use) %>% 
     reduce(left_join, by = "PIN")
   
   return(suitability)
