@@ -80,7 +80,7 @@ utilization_criteria_plan <-  drake_plan(
 )
 
 utilization_plan <- drake_plan(
-  utillization_present = make_util_present(parcel_ready, building),
+  utillization_present = make_utilization_present(parcel_ready, building),
   utillization_potential = make_util_potential(parcel_ready, development_assumptions_lot, criteria_developable_zoning),
   utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
 )
@@ -1400,10 +1400,18 @@ make_utilization_criteria <- function(criteria_underutilized){
 
 # COMMAND: MAKE_UTILILIZATION_PRESENT ----
 
-make_utillization_present <- function(){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_utillization_present <- function(parcel_ready, building){
+  
+  util_present <- parcel_ready %>% 
+    select(PIN) %>% 
+    left_join(building, by = "PIN") %>% 
+    mutate(UTIL_PRESENT = BLDG_NET_SQ_FT)
+  
+  utillization_present <- util_present
+  
+  return(utillization_present)
 }
+
 
 # COMMAND: MAKE_UTILILIZATION_POTENTIAL ---- 
 make_utillization_potential <- function(){
