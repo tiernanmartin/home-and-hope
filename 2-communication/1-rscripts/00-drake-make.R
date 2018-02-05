@@ -75,7 +75,8 @@ building_plan <- drake_plan(
 )
 
 utilization_criteria_plan <-  drake_plan(
-  criteria_utilization = make_criteria_utilization(criteria_developable_zoning)
+  criteria_underutilized = make_criteria_underutilized(),
+  utilization_criteria = make_utilization_criteria(criteria_underutilized)
 )
 
 utilization_plan <- drake_plan(
@@ -92,8 +93,10 @@ project_plan <- rbind(
   lookup_plan,
   parcel_plan,
   miscellaneous_plan,
+  development_assumptions_plan,
   suitability_criteria_plan,
   suitability_plan,
+  building_plan,
   utilization_criteria_plan,
   utilization_plan,
   inventory_plan)   
@@ -1374,11 +1377,25 @@ make_building <- function(building_residential, building_apartment, building_con
   building <- bldg_all_sum
 }
 
-# COMMAND: MAKE_CRITERIA_UTILIZATION ----
+# COMMAND: MAKE_CRITERIA_UNDERUTILIZED ----
 
-make_criteria_utilization <- function(criteria_developable_zoning){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_criteria_underutilized <- function(){
+  criteria_underutilized <- tribble(
+                           ~ CRIT_UTIL_UNDERUTILIZED,
+                           TRUE
+                           )
+  
+  return(criteria_underutilized)
+}
+
+# COMMAND: MAKE_UTILIZATION_CRITERIA ----
+
+make_utilization_criteria <- function(criteria_underutilized){
+  utilization_criteria <- tibble(
+                            "criteria_underutilized" = map_lgl(criteria_underutilized,1)
+                           )
+  
+  return(utilization_criteria)
 }
 
 # COMMAND: MAKE_UTILILIZATION_PRESENT ----
