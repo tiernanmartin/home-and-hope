@@ -52,7 +52,7 @@ suitability_criteria_plan <- drake_plan(
   criteria_tax_exempt = make_criteria_tax_exempt(),
   criteria_max_water_overlap_pct = make_criteria_max_water_overlap_pct(),
   criteria_within_uga = make_criteria_within_uga(),
-  criteria_developable_zoning = make_criteria_developable_zoning(),
+  criteria_developable_zoning = make_criteria_developable_zoning(development_assumptions_zoning),
   criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
   suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
 )
@@ -80,7 +80,7 @@ utilization_criteria_plan <-  drake_plan(
 
 utilization_plan <- drake_plan(
   utillization_present = make_util_present(parcel_ready, building),
-  utillization_potential = make_util_potential(parcel_ready, criteria_developable_zoning),
+  utillization_potential = make_util_potential(parcel_ready, development_assumptions_lot, criteria_developable_zoning),
   utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
 )
 
@@ -780,7 +780,7 @@ make_development_assumptions_lot <- function(city_block_sqft, development_assump
     crossing(LOT_SIZE_DESC = three_lot_types$LOT_SIZE_DESC, 
              CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>% 
     left_join(three_lot_types,  by = "LOT_SIZE_DESC") %>% 
-    left_join(dev_assumptions, by = "CONSOL_20") %>%   
+    left_join(development_assumptions_zoning, by = "CONSOL_20") %>%   
     mutate(LOT_SIZE_TYPE = case_when(is.na(DEVELOPMENT_ASSUMPTION) ~ NA_character_,
                                      !DEVELOPABLE_LGL ~ "undevelopable zoning",
                                      str_detect(DEVELOPMENT_ASSUMPTION,"^no") ~ "potentially developable; no assumption", 
@@ -928,71 +928,13 @@ make_criteria_within_uga <- function(){
 
 # COMMAND: MAKE_CRITERIA_DEVELOPABLE_ZONING ----
 
-make_criteria_developable_zoning <- function(){
+make_criteria_developable_zoning <- function(development_assumptions_zoning){
   
-  dz_fp <- root_file("1-data/1-raw/criteria_developable_zoning.csv")
+  dz <- development_assumptions_zoning %>% 
+    filter(DEVELOPABLE_LGL) %>% 
+    select(CONSOL_20)
   
-  dz_dr_id <- as_id("1SLuAYmeADdiyb_IpCevwJSfnP1sCGcW0")
-  
-  dz_load <- 
-    make_or_read2(fp = dz_fp,
-                  dr_id = dz_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                    
-                    tbl <- tribble(
-                           ~CONSOL_20,                                                     ~DEV_ASSUMPTION,
-          "Central Business District",  "high rise construction, mixed-income, ~150 affordable apartments",
-                 "General Commercial",                                               "six story mixed use",
-                  "General Mixed Use",                                               "six story mixed use",
-                  "Historic District",                                      "no assumption for this class",
-   "Mixed Use Commercial/Residential",                                               "six story mixed use",
-                   "Mobile Home Park",                                      "no assumption for this class",
-           "Multi-Family Residential",                                              "six story affordable",
-           "Public Use/Institutional",                                      "no assumption for this class",
-          "Single-Family Residential",                                  "one unit per 5000 SF of lot size",
-                       "Undesignated",                                      "no assumption for this class",
-                                   NA,                                      "no assumption for this class"
-  )
-                    
-                    # Use `list_zoning()` to inspect the zoning categories and their status
-                    list_zoning <- function(){
-                      df_in <- parcel_ready %>% 
-                        st_drop_geometry() %>%  
-                        left_join(developable_zoning, by = "PIN")%>% 
-                        inner_join(tbl, by = "CONSOL_20") %>% 
-                        count(CONSOL_20,sort = T) %>% 
-                        left_join(tbl, by = "CONSOL_20") %>% 
-                        mutate(STATUS = "Included")
-                      
-                      df_out <- parcel_ready %>% 
-                        st_drop_geometry() %>%  
-                        left_join(developable_zoning, by = "PIN")%>% 
-                        anti_join(tbl, by = "CONSOL_20") %>% 
-                        count(CONSOL_20,sort = T) %>% 
-                        mutate(STATUS = "Excluded")
-                      
-                      bind_rows(df_in, df_out) %>% 
-                        select(STATUS,everything()) %>% print(n = Inf)
-                    }
-                    
-                    
-                    
-                    write_csv(tbl, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){  
-                    drive_download(file = dr_id, path = fp) 
-                    read_csv(fp)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  criteria_developable_zoning <-  dz_load
+  criteria_developable_zoning <-  dz
   
   return(criteria_developable_zoning)
   
