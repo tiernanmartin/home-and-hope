@@ -42,6 +42,12 @@ miscellaneous_plan <- drake_plan(
   zoning = make_zoning() 
 )
 
+development_assumptions_plan <- drake_plan(
+  city_block_sqft = make_city_block_sqft(),
+  development_assumptions_zoning = make_development_assumptions_zoning(),
+  development_assumptions_lot = make_development_assumptions_lot(city_block_sqft, development_assumptions_zoning)
+)
+
 suitability_criteria_plan <- drake_plan(
   criteria_tax_exempt = make_criteria_tax_exempt(),
   criteria_max_water_overlap_pct = make_criteria_max_water_overlap_pct(),
@@ -69,7 +75,7 @@ building_plan <- drake_plan(
 )
 
 utilization_criteria_plan <-  drake_plan(
-  criteria_utilization = make_criteria_utilization()
+  criteria_utilization = make_criteria_utilization(criteria_developable_zoning)
 )
 
 utilization_plan <- drake_plan(
@@ -708,6 +714,97 @@ make_zoning <- function(){
   
   return(zoning)
 }
+
+# COMMAND: MAKE_CITY_BLOCK_SQFT ----
+
+make_city_block_sqft <- function(){as.integer(66000)} 
+
+# COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_ZONING ----
+
+make_development_assumptions_zoning <- function(){
+  
+  dev_assumptions_tbl <- tribble(
+                                 ~CONSOL_20, ~DEVELOPABLE_LGL,                                             ~DEVELOPMENT_ASSUMPTION,
+                "Central Business District",             TRUE,  "high rise construction, mixed-income, ~150 affordable apartments",
+                       "General Commercial",             TRUE,                                               "six story mixed use",
+                        "General Mixed Use",             TRUE,                                               "six story mixed use",
+                        "Historic District",             TRUE,                                      "no assumption for this class",
+         "Mixed Use Commercial/Residential",             TRUE,                                               "six story mixed use",
+                         "Mobile Home Park",             TRUE,                                      "no assumption for this class",
+                 "Multi-Family Residential",             TRUE,                                              "six story affordable",
+                 "Public Use/Institutional",             TRUE,                                      "no assumption for this class",
+                "Single-Family Residential",             TRUE,                                  "one unit per 5000 SF of lot size",
+                             "Undesignated",             TRUE,                                      "no assumption for this class",
+                                         NA,             TRUE,                                      "no assumption for this class",
+                      "Agriculture-Related",            FALSE,                                      "no assumption for this class",
+      "Aviation and Transportation-Related",            FALSE,                                      "no assumption for this class",
+                                   "Forest",            FALSE,                                      "no assumption for this class",
+                 "Industrial/Manufacturing",            FALSE,                                      "no assumption for this class",
+                 "Mineral Resource-Related",            FALSE,                                      "no assumption for this class",
+              "Mixed Use Commercial/Office",            FALSE,                                      "no assumption for this class",
+                     "Office/Business Park",            FALSE,                                      "no assumption for this class",
+        "Park/Golf Course/Trail/Open Space",            FALSE,                                      "no assumption for this class",
+                               "Rural Area",            FALSE,                                      "no assumption for this class",
+                  "Sensitive/Critical Area",            FALSE,                                      "no assumption for this class"
+     )
+  
+  development_assumptions_zoning <- dev_assumptions_tbl
+  
+  return(development_assumptions_zoning)
+
+}
+
+# COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_LOT ----
+
+make_development_assumptions_lot <- function(city_block_sqft, development_assumptions_zoning){
+  
+  three_lot_types <- tribble(
+    ~ LOT_SIZE_DESC, ~LOT_SIZE_THRESHOLD,
+    "less than 1/8 block", city_block_sqft/8,
+    "1/4 block", c(city_block_sqft/8,city_block_sqft/4),
+    "greater than 1/4 block", city_block_sqft/4
+  )
+  
+  lot_dev_params <- tribble(
+                                ~LOT_SIZE_TYPE, ~LOT_COVERAGE_PCT, ~ LOT_STORIES_NBR,
+                                            NA,            NA,              NA,
+                               "undevelopable",            NA,              NA,
+      "potentially developable; no assumption",            NA,              NA,
+                               "single family",          0.75,               2,
+                                       "small",          0.75,               3,
+                                      "medium",          0.75,               7,
+                                       "large",           0.5,               7
+     )
+  
+  lot_dev_assumptions <- 
+    crossing(LOT_SIZE_DESC = three_lot_types$LOT_SIZE_DESC, 
+             CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>% 
+    left_join(three_lot_types,  by = "LOT_SIZE_DESC") %>% 
+    left_join(dev_assumptions, by = "CONSOL_20") %>%   
+    mutate(LOT_SIZE_TYPE = case_when(is.na(DEVELOPMENT_ASSUMPTION) ~ NA_character_,
+                                     !DEVELOPABLE_LGL ~ "undevelopable zoning",
+                                     str_detect(DEVELOPMENT_ASSUMPTION,"^no") ~ "potentially developable; no assumption", 
+                                     str_detect(DEVELOPMENT_ASSUMPTION,"^one") ~ "single family",
+                                     str_detect(LOT_SIZE_DESC,"less") ~ "small",
+                                     str_detect(LOT_SIZE_DESC,"^1") ~ "medium",
+                                     TRUE ~ "large")) %>% 
+    left_join(lot_dev_params, by = "LOT_SIZE_TYPE") %>% 
+    select(CONSOL_20,
+           DEVELOPABLE_LGL,
+           DEVELOPMENT_ASSUMPTION,
+           LOT_SIZE_DESC,
+           LOT_SIZE_THRESHOLD,
+           LOT_SIZE_TYPE,
+           LOT_COVERAGE_PCT,
+           LOT_STORIES_NBR) 
+
+  
+  development_assumptions_lot <- lot_dev_assumptions
+  
+  return(development_assumptions_lot)
+
+}
+
 # COMMAND: MAKE_CRITERIA_TAX_EXEMPT ----
 
 make_criteria_tax_exempt <- function(){
@@ -1337,7 +1434,7 @@ make_building <- function(building_residential, building_apartment, building_con
 
 # COMMAND: MAKE_CRITERIA_UTILIZATION ----
 
-make_criteria_utilization <- function(){
+make_criteria_utilization <- function(criteria_developable_zoning){
   stop("Tiernan: you haven't defined this function yet!")
   # nothing here yet
 }
