@@ -63,8 +63,9 @@ suitability_plan <- drake_plan(
 building_plan <- drake_plan(
   building_residential = make_building_residential(),
   building_apartment = make_building_apartment(),
+  building_condo = make_building_condo(),
   building_commercial = make_building_commercial(),
-  building = make_building(parcel_ready, building_residential,building_apartment,building_commercial)
+  building = make_building(building_residential, building_apartment, building_condo, building_commercial)
 )
 
 utilization_criteria_plan <-  drake_plan(
@@ -1115,30 +1116,223 @@ make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_w
 }
 # COMMAND: MAKE_BUILDING_RESIDENTIAL ----
 
-make_building_residential <- function(){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_building_residential <- function(){ 
+  
+  bldg_res_fp <- root_file(res_fp <- "1-data/2-external/EXTR_ResBldg.csv")
+  
+  bldg_res_dr_id <- as_id("10rz6hc4lEAaaU-0Jcv0iCiVMFBVTc-en")
+  
+  bldg_res_load <- 
+    make_or_read2(fp = bldg_res_fp,
+                  dr_id = bldg_res_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_ResBldg.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  bldg_res <- bldg_res_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(bldg_res)
+  
 }
 
 # COMMAND: MAKE_BUILDING_APARTMENT ----
 
-make_building_apartment <- function(){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_building_apartment <- function(){ 
+  
+  bldg_apt_fp <- root_file(apt_fp <- "1-data/2-external/EXTR_AptComplex.csv")
+  
+  bldg_apt_dr_id <- as_id("11kkudStD4TuoiRqMie-Y4_8tZQJmLPBw")
+  
+  bldg_apt_load <- 
+    make_or_read2(fp = bldg_apt_fp,
+                  dr_id = bldg_apt_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_AptComplex.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_apartment <- bldg_apt_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(building_apartment)
+  
+}
+
+# COMMAND: MAKE_BUILDING_CONDO ----
+
+make_building_condo <- function(){ 
+  
+  bldg_condo_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CondoComplex.csv")
+  
+  bldg_condo_dr_id <- as_id("1avYhRKzHijnc-YZQDGICqWrQNhQoTwnB")
+  
+  bldg_condo_load <- 
+    make_or_read2(fp = bldg_condo_fp,
+                  dr_id = bldg_condo_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_CondoComplex.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_condo <- bldg_condo_load %>% 
+    rename_all(to_screaming_snake_case)
+  
+  return(building_condo)
+  
 }
 
 # COMMAND: MAKE_BUILDING_COMMERCIAL ----
 
-make_building_commercial <- function(){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_building_commercial <- function(){ 
+  
+  bldg_comm_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CommBldg.csv")
+  
+  bldg_comm_dr_id <- as_id("1VT_plwHQve51ldIg3chFUpcTSMD_ZyrN")
+  
+  bldg_comm_load <- 
+    make_or_read2(fp = bldg_comm_fp,
+                  dr_id = bldg_comm_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_CommBldg.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_commercial <- bldg_comm_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(building_commercial)
+  
 }
 
 # COMMAND: MAKE_BUILDING ----
 
-make_building <- function(parcel_ready, building_residential,building_apartment,building_commercial){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_building <- function(building_residential, building_apartment, building_condo, building_commercial){
+  
+  bldg_empty <- tibble(PIN = as.character(""), 
+                       BLDG_NBR = as.integer(""),
+                       BLDG_NET_SQ_FT= as.integer(""),
+                       NBR_LIVING_UNITS = as.integer(""),
+                       NBR_BLDGS = as.integer(""),
+                       BLDG_CAT = as.character("")) %>% 
+    slice(0)
+  
+  comm_join <- building_commercial %>% 
+    transmute(PIN,
+              BLDG_NBR,
+              BLDG_NET_SQ_FT,
+              NBR_BLDGS,
+              BLDG_CAT = "commercial")
+  
+  res_join <- building_residential %>% 
+    transmute(PIN,
+              BLDG_NBR,
+              BLDG_NET_SQ_FT = SQ_FT_TOT_LIVING,
+              NBR_LIVING_UNITS,
+              BLDG_CAT = "residential")
+  
+  apt_join <- building_apartment %>% 
+    transmute(PIN,
+              NBR_BLDGS,
+              NBR_LIVING_UNITS = NBR_UNITS,
+              BLDG_CAT = "apartment")
+  
+  condo_join <- building_condo %>% 
+    transmute(PIN = MAJOR,
+              NBR_LIVING_UNITS = NBR_UNITS,
+              BLDG_CAT = "condo")
+  
+  # Join all bulding objects to the empty tibble
+  bldg_all <- list(bldg_empty, comm_join, res_join, apt_join, condo_join) %>% 
+    reduce(full_join) 
+  
+  # ~ 2 min. operation
+  
+  bldg_all_sum <- bldg_all %>%  
+    mutate(NBR_BLDGS = if_else(BLDG_CAT %in% c("residential", "condo"),as.integer(1),NBR_BLDGS)) %>% 
+    mutate(CAT_LGL = TRUE,
+           COL_NAME = str_c("TYPE",toupper(BLDG_CAT),"LGL", sep = "_")) %>% 
+    spread(COL_NAME, CAT_LGL) %>% 
+    mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.)) %>% 
+    group_by(PIN) %>%  
+    summarise(BLDG_NBR = max(n()),  
+              BLDG_NET_SQ_FT = sum(BLDG_NET_SQ_FT, na.rm = TRUE),
+              BLDG_LIVING_UNITS = sum(NBR_LIVING_UNITS, na.rm = TRUE),
+              BLDG_TYPE_APARTMENT_LGL = any(TYPE_APARTMENT_LGL),
+              BLDG_TYPE_COMMERCIAL_LGL = any(TYPE_COMMERCIAL_LGL),
+              BLDG_TYPE_CONDO_LGL = any(TYPE_CONDO_LGL),
+              BLDG_TYPE_RESIDENTIAL_LGL = any(TYPE_RESIDENTIAL_LGL))
+  
+  
+  building <- bldg_all_sum
 }
 
 # COMMAND: MAKE_CRITERIA_UTILIZATION ----
