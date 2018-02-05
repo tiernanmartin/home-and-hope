@@ -81,7 +81,7 @@ utilization_criteria_plan <-  drake_plan(
 
 utilization_plan <- drake_plan(
   utillization_present = make_utilization_present(parcel_ready, building),
-  utillization_potential = make_util_potential(parcel_ready, development_assumptions_lot, criteria_developable_zoning),
+  utillization_potential = make_utilization_potential(suitability, development_assumptions_lot),
   utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
 )
 
@@ -530,17 +530,12 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
    
   # MAKE P_SF_READY
 
-  p_sf_ready <- parcel_sf %>% 
+  p_sf_ready <-  parcel_sf %>% 
     miscgis::subset_duplicated("PIN") %>% 
-    group_by(PIN) %>% 
-    drop_na %>%  # remove any duplicates PIN records with NAs
+    group_by(PIN) %>%  # remove any duplicates PIN records with NAs
     slice(1) %>%  # take the first record and discard the rest
     ungroup %>% 
-    bind_rows(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
-    arrange(PIN) %>% 
-    mutate(geom_pt = st_sfc(geom_pt) %>% st_set_crs(st_crs(parcel_sf)),
-           geometry = st_sfc(geometry) %>% st_set_crs(st_crs(parcel_sf))) %>% 
-    st_sf %>%
+    rbind(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
     st_set_geometry("geometry")
     
     
@@ -1414,10 +1409,12 @@ make_utillization_present <- function(parcel_ready, building){
 
 
 # COMMAND: MAKE_UTILILIZATION_POTENTIAL ---- 
-make_utillization_potential <- function(){
+
+make_utilization_potential <- function(parcel_ready, development_assumptions_lot){
   stop("Tiernan: you haven't defined this function yet!")
   # nothing here yet
 }
+
 # COMMAND: MAKE_UTILILIZATION ----
 make_utillization <- function(){
   stop("Tiernan: you haven't defined this function yet!")
