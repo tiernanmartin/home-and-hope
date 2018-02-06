@@ -44,8 +44,9 @@ miscellaneous_plan <- drake_plan(
 
 development_assumptions_plan <- drake_plan(
   city_block_sqft = make_city_block_sqft(),
+  lot_types = make_lot_types(city_block_sqft),
   development_assumptions_zoning = make_development_assumptions_zoning(),
-  development_assumptions_lot = make_development_assumptions_lot(city_block_sqft, development_assumptions_zoning)
+  development_assumptions_lot = make_development_assumptions_lot(lot_types, development_assumptions_zoning)
 )
 
 suitability_criteria_plan <- drake_plan(
@@ -63,7 +64,7 @@ suitability_plan <- drake_plan(
   suitability_within_uga = make_suitability_within_uga(parcel_ready, uga),
   suitability_developable_zoning = make_suitability_developable_zoning(parcel_ready, zoning),
   suitability_present_use = make_suitability_present_use(parcel_ready),
-  suitability = make_suitability(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
+  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
 )
 
 building_plan <- drake_plan(
@@ -75,18 +76,19 @@ building_plan <- drake_plan(
 )
 
 utilization_criteria_plan <-  drake_plan(
-  criteria_underutilized = make_criteria_underutilized(),
-  utilization_criteria = make_utilization_criteria(criteria_underutilized)
+  criteria_lot_size = make_criteria_lot_size(city_block_sqft, lot_types)
 )
 
 utilization_plan <- drake_plan(
-  utillization_present = make_utilization_present(parcel_ready, building),
-  utillization_potential = make_utilization_potential(suitability, development_assumptions_lot),
-  utilization = make_parcel_utilization(parcel_ready, utillization_present, utillization_potential)
+  utilization_present = make_utilization_present(parcel_ready, building),
+  utilization_lot_size = make_utilization_lot_size(parcel_ready, criteria_lot_size),
+  utilization_potential = make_utilization_potential(suitability, development_assumptions_lot, utilization_lot_size),
+  utilization = make_utilization(suitability, utilization_present, utilization_potential)
 )
 
 inventory_plan <- drake_plan(
-  inventory = make_inventory(suitability, suitability_criteria, utilization, criteria_utilization)
+  inventory = make_inventory(suitability,  utilization),
+  inventory_suitable = make_inventory_suitable(inventory)
 )
 
 project_plan <- rbind(
@@ -107,6 +109,15 @@ project_plan <- rbind(
   between(x,min(range),max(range))
           
           } 
+
+# FUNCTION: LESSER_OF ----
+lesser_of <- function(x,y){
+  x <- as.double(x)
+  y <- as.double(y)
+  
+  if_else(x<= y, x,y, missing = x)
+  
+  } 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
 parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){ 
@@ -728,11 +739,12 @@ make_city_block_sqft <- function(){as.integer(66000)}
 
 make_lot_types <- function(city_block_sqft){
   lot_types <- tribble(
-    ~ LOT_SIZE_DESC, ~LOT_SIZE_THRESHOLD,
-    "less than 1/8 block", c(0, city_block_sqft/8),
-    "1/4 block", c(city_block_sqft/8+1,city_block_sqft/4),
-    "greater than 1/4 block", c(city_block_sqft/4, 1e8)
-  )
+                ~LOT_SIZE_DESC,
+         "less than 1/8 block",
+                   "1/4 block",
+      "greater than 1/4 block"
+     )
+
   
   return(lot_types)
 }
@@ -774,7 +786,7 @@ make_development_assumptions_zoning <- function(){
 
 # COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_LOT ----
 
-make_development_assumptions_lot <- function(city_block_sqft, development_assumptions_zoning){
+make_development_assumptions_lot <- function(lot_types, development_assumptions_zoning){
   
   
   
@@ -791,8 +803,7 @@ make_development_assumptions_lot <- function(city_block_sqft, development_assump
   
   lot_dev_assumptions <- 
     crossing(LOT_SIZE_DESC = lot_types$LOT_SIZE_DESC, 
-             CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>% 
-    left_join(three_lot_types,  by = "LOT_SIZE_DESC") %>% 
+             CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>%  
     left_join(development_assumptions_zoning, by = "CONSOL_20") %>%   
     mutate(LOT_SIZE_TYPE = case_when(is.na(DEVELOPMENT_ASSUMPTION) ~ NA_character_,
                                      !DEVELOPABLE_LGL ~ "undevelopable zoning",
@@ -805,8 +816,7 @@ make_development_assumptions_lot <- function(city_block_sqft, development_assump
     select(CONSOL_20,
            DEVELOPABLE_LGL,
            DEVELOPMENT_ASSUMPTION,
-           LOT_SIZE_DESC,
-           LOT_SIZE_THRESHOLD,
+           LOT_SIZE_DESC, 
            LOT_SIZE_TYPE,
            LOT_COVERAGE_PCT,
            LOT_STORIES_NBR) 
@@ -1046,7 +1056,7 @@ make_suitability_present_use <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_SUITABILITY ----
-make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use){
+make_suitability <- function(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use){
   
   suitability <- list(parcel_ready, 
                       suitability_tax_exempt, 
@@ -1054,7 +1064,15 @@ make_suitability <- function(parcel_ready, suitability_tax_exempt, suitability_w
                       suitability_within_uga, 
                       suitability_developable_zoning, 
                       suitability_present_use) %>% 
-    reduce(left_join, by = "PIN")
+    reduce(left_join, by = "PIN") %>% 
+    mutate(
+      SUITABLE_OWNER_LGL = if_else(SUIT_OWNER_TAX_E == suitability_criteria[["tax_exempt"]],TRUE,FALSE,FALSE),
+      SUITABLE_WATER_OVERLAP_LGL = if_else(SUIT_WATER_OVERLAP_PCT <= suitability_criteria[["water_overlap"]],TRUE,FALSE,FALSE),
+      SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
+      SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
+      SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
+      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL
+    ) 
   
   return(suitability)
   
@@ -1280,72 +1298,135 @@ make_building <- function(building_residential, building_apartment, building_con
   building <- bldg_all_sum
 }
 
-# COMMAND: MAKE_CRITERIA_UNDERUTILIZED ----
+# COMMAND: MAKE_CRITERIA_LOT_SIZE ----
 
-make_criteria_underutilized <- function(){
-  criteria_underutilized <- tribble(
-                           ~ CRIT_UTIL_UNDERUTILIZED,
-                           TRUE
-                           )
+make_criteria_lot_size <- function(city_block_sqft, lot_types){
+  eight_block <- city_block_sqft/8
   
-  return(criteria_underutilized)
+  quarter_block <- city_block_sqft/4
+  
+  crit_lot_size <- list("breaks" = c(-Inf,eight_block,quarter_block, Inf),
+                      "labels" =  lot_types$LOT_SIZE_DESC)
+  criteria_lot_size <- crit_lot_size
+ 
+   return(criteria_lot_size)
 }
 
 # COMMAND: MAKE_UTILIZATION_CRITERIA ----
 
 make_utilization_criteria <- function(criteria_underutilized){
-  utilization_criteria <- tibble(
-                            "criteria_underutilized" = map_lgl(criteria_underutilized,1)
-                           )
+  utilization_criteria <- c(criteria_lot_size)
   
   return(utilization_criteria)
 }
 
 # COMMAND: MAKE_UTILILIZATION_PRESENT ----
 
-make_utillization_present <- function(parcel_ready, building){
+make_utilization_present <- function(parcel_ready, building){
   
   util_present <- parcel_ready %>% 
+    st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(building, by = "PIN") %>% 
-    mutate(UTIL_PRESENT = BLDG_NET_SQ_FT)
+    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0))
   
-  utillization_present <- util_present
+  utilization_present <- util_present
   
-  return(utillization_present)
+  return(utilization_present)
 }
 
+
+# COMMAND: MAKE_UTILIZATION_LOT_SIZE----
+make_utilization_lot_size <- function(parcel_ready, criteria_lot_size){
+  
+  util_ls <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              LOT_SIZE_DESC = as.character(cut(SQ_FT_LOT,
+                               breaks = criteria_lot_size[["breaks"]],
+                               labels = criteria_lot_size[["labels"]])))
+  
+  utilization_lot_size <- util_ls
+  return(utilization_lot_size)
+  
+}
 
 # COMMAND: MAKE_UTILILIZATION_POTENTIAL ---- 
 
-make_utilization_potential <- function(parcel_ready, development_assumptions_lot){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+make_utilization_potential <- function(suitability, development_assumptions_lot, utilization_lot_size){
+  
+  suit_trim <- suitability %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+           LOT_SQ_FT = SQ_FT_LOT,
+           UTIL_LOT_DEVELOPABLE_PCT = round(1-SUIT_WATER_OVERLAP_PCT,2),
+           CONSOL_20 = SUIT_ZONING_CONSOL_20
+           )
+  
+  util_potential <- suit_trim %>% 
+  left_join(utilization_lot_size, by = "PIN") %>% 
+    left_join(development_assumptions_lot, by = c("CONSOL_20", "LOT_SIZE_DESC")) %>% 
+    rename(UTIL_DEVELOPABLE_LGL = DEVELOPABLE_LGL,
+           UTIL_DEVELOPMENT_ASSUMPTION = DEVELOPMENT_ASSUMPTION) %>% 
+    mutate(UTIL_DEVELOPABLE_ESTIMATE_LGL = if_else(LOT_SIZE_TYPE %in% c("single family","small","medium","large"),
+                              TRUE,
+                              FALSE,
+                              missing = FALSE)) %>% 
+    mutate(UTIL_DEVELOPABLE_LOT_COVERAGE_PCT = lesser_of(LOT_COVERAGE_PCT, UTIL_LOT_DEVELOPABLE_PCT) ) %>% # take the lesser of lot coverage estimate and water overlap 
+    mutate(UTIL_POTENTIAL_UTILIZATION_SQFT = round(LOT_SQ_FT * UTIL_DEVELOPABLE_LOT_COVERAGE_PCT * LOT_STORIES_NBR)) %>%  # this is where the math happens!
+    select(PIN,
+           starts_with("LOT"),
+           starts_with("UTIL"))
+  
+  utilization_potential <- util_potential
+  
+  return(utilization_potential) 
 }
 
 # COMMAND: MAKE_UTILILIZATION ----
-make_utillization <- function(){
-  stop("Tiernan: you haven't defined this function yet!")
-  # nothing here yet
+
+make_utilization <- function(suitability, utilization_present, utilization_potential){
+  
+  util <- suitability %>% 
+    st_drop_geometry() %>% 
+    select(PIN) %>% 
+    left_join(utilization_present, by = "PIN") %>% 
+    left_join(utilization_potential, by = "PIN") %>% 
+    mutate(UTIL_UNDER_UTILIZED_LGL = if_else(UTIL_PRESENT < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA)) %>% 
+    mutate(UTILIZATION = case_when( 
+      !UTIL_UNDER_UTILIZED_LGL ~ "fully-utilized",
+      UTIL_UNDER_UTILIZED_LGL ~ "under-utilized", 
+      TRUE ~ LOT_SIZE_TYPE 
+    ))
+  
+  utilization <- util
+  return(utilization)
+  
 }
 
 # COMMAND: MAKE_INVENTORY ----
 
-# params <- 
-#   tibble(
-#     "DF" = list(df),
-#     "CRITERIA" = list(crit_tbl),
-#     "BY" = list(c(
-#       "GROUP" = "crit_group",
-#       "VS" = "crit_vs",
-#       "MPG" = "crit_mpg",
-#       "CYL" = "crit_cyl")),
-#     "MATCH_FUN" = list(c(`%in%`,`==`, `>`, `<=`))
-#   )
+make_inventory <- function(suitability, utilization){
+  
+  inv <- left_join(suitability,utilization, by = "PIN")
+  
+  inventory <- inv
+  
+  return(inventory)
+  
+}
 
-# pmap_df(params, 
-#      ~fuzzy_semi_join(..1, unnest(..2), ..3, ..4)
-#      )
+# COMMAND: MAKE_INVENTORY_SUITABLE ----
+
+make_inventory_suitable <- function(inventory){
+  
+  inv_suit <- filter(inventory, SUITABLE_LGL)
+  
+  inventory_suitable <- inv_suit
+  
+  return(inventory_suitable)
+  
+}
 
 # RUN PROJECT PLAN ----
-# make(project_plan)
+make(project_plan)
