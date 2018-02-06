@@ -102,6 +102,12 @@ project_plan <- rbind(
   inventory_plan)   
 
 
+# FUNCTION: WITHIN_RANGE ----
+`%within_range%` <- function(x,range){ 
+  between(x,min(range),max(range))
+          
+          } 
+
 # FUNCTION: MAKE_PARSE_LU_STRING ----
 parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){ 
   str_split(string, pattern = row_sep) %>% 
@@ -717,6 +723,20 @@ make_zoning <- function(){
 
 make_city_block_sqft <- function(){as.integer(66000)} 
 
+
+# COMMAND: MAKE_LOT_TYPES ----
+
+make_lot_types <- function(city_block_sqft){
+  lot_types <- tribble(
+    ~ LOT_SIZE_DESC, ~LOT_SIZE_THRESHOLD,
+    "less than 1/8 block", c(0, city_block_sqft/8),
+    "1/4 block", c(city_block_sqft/8+1,city_block_sqft/4),
+    "greater than 1/4 block", c(city_block_sqft/4, 1e8)
+  )
+  
+  return(lot_types)
+}
+
 # COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_ZONING ----
 
 make_development_assumptions_zoning <- function(){
@@ -756,12 +776,7 @@ make_development_assumptions_zoning <- function(){
 
 make_development_assumptions_lot <- function(city_block_sqft, development_assumptions_zoning){
   
-  three_lot_types <- tribble(
-    ~ LOT_SIZE_DESC, ~LOT_SIZE_THRESHOLD,
-    "less than 1/8 block", city_block_sqft/8,
-    "1/4 block", c(city_block_sqft/8,city_block_sqft/4),
-    "greater than 1/4 block", city_block_sqft/4
-  )
+  
   
   lot_dev_params <- tribble(
                                 ~LOT_SIZE_TYPE, ~LOT_COVERAGE_PCT, ~ LOT_STORIES_NBR,
@@ -775,7 +790,7 @@ make_development_assumptions_lot <- function(city_block_sqft, development_assump
      )
   
   lot_dev_assumptions <- 
-    crossing(LOT_SIZE_DESC = three_lot_types$LOT_SIZE_DESC, 
+    crossing(LOT_SIZE_DESC = lot_types$LOT_SIZE_DESC, 
              CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>% 
     left_join(three_lot_types,  by = "LOT_SIZE_DESC") %>% 
     left_join(development_assumptions_zoning, by = "CONSOL_20") %>%   
@@ -807,37 +822,9 @@ make_development_assumptions_lot <- function(city_block_sqft, development_assump
 
 make_criteria_tax_exempt <- function(){
   
-  tax_e_fp <- root_file("1-data/1-raw/criteria_tax_exempt.csv")
+  crit_tax_e <- list("tax_exempt" = TRUE)
   
-  tax_e_dr_id <- as_id("1DNMejNSvPDtlEQgJ5dzqRC9X_xg58HmA")
-  
-  tax_e_load <- 
-    make_or_read2(fp = tax_e_fp,
-                  dr_id = tax_e_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                    
-                    tbl <- tribble(
-                           ~CRIT_SUIT_OWNER_TAX_E,
-                           TRUE
-                           )
-                    
-                    
-                    write_csv(tbl, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){  
-                    drive_download(file = dr_id, path = fp) 
-                    read_csv(fp)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  criteria_tax_exempt <-  tax_e_load
+  criteria_tax_exempt <- crit_tax_e
   
   return(criteria_tax_exempt)
   
@@ -847,38 +834,9 @@ make_criteria_tax_exempt <- function(){
 
 make_criteria_max_water_overlap_pct <- function(){
   
-  crit_wtr_overlap_fp <- root_file("1-data/3-interim/criteria_max_water_overlap_pct.csv")
+  crit_wtr_overlap <- list("water_overlap" = 0.5)
   
-  crit_wtr_overlap_dr_id <- as_id("1HH5_ISy45qd55Qwydcc8aQPHXqd5IuqH")
-  
-  crit_wtr_overlap_load <- 
-    make_or_read2(fp = crit_wtr_overlap_fp,
-                  dr_id = crit_wtr_overlap_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                    crit_wtr_overlap <- tribble(
-                           ~CRIT_SUIT_WATER_OVERLAP_PCT,
-                           0.5
-                           )
-                    
-                    write_csv(crit_wtr_overlap,fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  
-  criteria_max_water_overlap_pct <- crit_wtr_overlap_load
+  criteria_max_water_overlap_pct <- crit_wtr_overlap
   
   return(criteria_max_water_overlap_pct)
 }
@@ -888,38 +846,9 @@ make_criteria_max_water_overlap_pct <- function(){
 
 make_criteria_within_uga <- function(){
   
-  crit_within_uga_fp <- root_file("1-data/3-interim/criteria_within_uga.csv")
+  crit_within_uga <- list("within_uga" = TRUE)
   
-  crit_within_uga_dr_id <- as_id("1oNzLydH3ywKFkj0q-NzBhFST22pJeMJG")
-  
-  crit_within_uga_load <- 
-    make_or_read2(fp = crit_within_uga_fp,
-                  dr_id = crit_within_uga_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                    crit_within_uga <- tribble(
-                           ~CRIT_SUIT_WITHIN_UGA_LGL,
-                           TRUE
-                           )
-                    
-                    write_csv(crit_within_uga,fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  
-  criteria_within_uga <- crit_within_uga_load
+  criteria_within_uga <- crit_within_uga
   
   return(criteria_within_uga)
 }
@@ -930,9 +859,11 @@ make_criteria_developable_zoning <- function(development_assumptions_zoning){
   
   dz <- development_assumptions_zoning %>% 
     filter(DEVELOPABLE_LGL) %>% 
-    select(CONSOL_20)
+    pull(CONSOL_20)
   
-  criteria_developable_zoning <-  dz
+  crit_dz <- list("developable_zoning" = dz)
+  
+  criteria_developable_zoning <-  crit_dz
   
   return(criteria_developable_zoning)
   
@@ -942,55 +873,31 @@ make_criteria_developable_zoning <- function(development_assumptions_zoning){
 
 make_criteria_undevelopable_present_use <- function(){
   
-  dp_fp <- root_file("1-data/1-raw/criteria_undevelopable_presentuse.csv")
-  
-  dp_dr_id <- as_id("1nsrVqtRhwKM2v0Dy0a2VqXkQG2XwRgZt")
-  
-  dp_load <- 
-    make_or_read2(fp = dp_fp,
-                  dr_id = dp_dr_id,
-                  skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                    # Use `list_uses()` to explore the present use categories
-                    
-                    list_uses <- function(){
+   list_uses <- function(){
                       parcel_ready %>% 
                         st_drop_geometry() %>% 
                         count(PRESENT_USE, sort = TRUE) %>% 
                         print(n = Inf)
                     }
-                    
-                    tbl <- tribble(
-                      ~ PRESENT_USE,
-                      "Park, Public(Zoo/Arbor)",
-                      "Mortuary/Cemetery/Crematory",
-                      "Open Space Tmbr Land/Greenbelt",
-                      "Open Space(Curr Use-RCW 84.34)",
-                      "Mining/Quarry/Ore Processing",
-                      "Farm",
-                      "Reserve/Wilderness Area",
-                      "Open Space(Agric-RCW 84.34)",
-                      "Forest Land(Desig-RCW 84.33)",
-                      "Forest Land(Class-RCW 84.33)",
-                      "Tideland, 1st Class",
-                      "Tideland, 2nd Class"
-                    )
-                    
-                    write_csv(tbl, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
-                    
-                    drive_upload(media = fp, path = drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){  
-                    drive_download(file = dr_id, path = fp) 
-                    read_csv(fp)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+   
+   undev_presentuse <- c(
+     "Park, Public(Zoo/Arbor)",
+     "Mortuary/Cemetery/Crematory",
+     "Open Space Tmbr Land/Greenbelt",
+     "Open Space(Curr Use-RCW 84.34)",
+     "Mining/Quarry/Ore Processing",
+     "Farm",
+     "Reserve/Wilderness Area",
+     "Open Space(Agric-RCW 84.34)",
+     "Forest Land(Desig-RCW 84.33)",
+     "Forest Land(Class-RCW 84.33)",
+     "Tideland, 1st Class",
+     "Tideland, 2nd Class"
+   )
+   
+  crit_undev_presentuse <- list( "undevelopable_presentuse" = undev_presentuse) 
   
-  criteria_undevelopable_presentuse <-  dp_load
+  criteria_undevelopable_presentuse <-  crit_undev_presentuse
   
   return(criteria_undevelopable_presentuse)
   
@@ -999,13 +906,14 @@ make_criteria_undevelopable_present_use <- function(){
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
 make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
-  tibble(
-    "criteria_tax_exempt" = map_lgl(criteria_tax_exempt,1),
-    "criteria_max_water_overlap_pct" = map_dbl(criteria_max_water_overlap_pct,1),
-    "criteria_within_uga" = map_lgl(criteria_within_uga,1),
-    "criteria_developable_zoning" = list(criteria_developable_zoning),
-    "criteria_undevelopable_present_use" = list(criteria_undevelopable_present_use)
+  suitability_criteria <- c(
+    criteria_tax_exempt,
+    criteria_max_water_overlap_pct ,
+    criteria_within_uga,
+    criteria_developable_zoning ,
+    criteria_undevelopable_present_use 
   )
+
 }
 
 # COMMAND: MAKE_SUITABILITY_TAX_EXEMPT ----
