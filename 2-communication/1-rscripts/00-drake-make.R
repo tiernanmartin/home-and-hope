@@ -1,5 +1,5 @@
 # SETUP ----
-library(drake)
+library(drake) 
 library(tigris)
 library(sf)
 library(lwgeom)
@@ -94,8 +94,15 @@ filter_plan <- drake_plan(
   filters = make_filters(parcel_ready, filters_census_tract)
 )
 
+helper_plan <- drake_plan(
+  helpers_url_parcel_viewer = make_helpers_url_parcel_viewer(parcel_ready),
+  helpers_url_opp360 = make_helpers_url_opp360(filters_census_tract),
+  helpers = make_helpers(helpers_url_parcel_viewer,helpers_url_opp360)
+  
+)
+
 inventory_plan <- drake_plan(
-  inventory = make_inventory(filters, suitability,  utilization),
+  inventory = make_inventory(filters, helpers, suitability,  utilization),
   inventory_suitable = make_inventory_suitable(inventory)
 )
 
@@ -110,6 +117,7 @@ project_plan <- rbind(
   utilization_criteria_plan,
   utilization_plan,
   filter_plan,
+  helper_plan,
   inventory_plan)   
 
 
@@ -1470,9 +1478,9 @@ make_filters_census_tract <- function(parcel_ready, census_tracts){
 }
 
 # COMMAND: MAKE_FILTERS ----
-make_filters <- function(parcel_ready, filters_census_tract){
+make_filters <- function(parcel_ready, ...){
   
-  filter_list <- list(filters_census_tract) %>% 
+  filter_list <- list(...) %>% 
     reduce(left_join, by = "PIN")
   
   filters <- parcel_ready %>% 
@@ -1485,11 +1493,52 @@ make_filters <- function(parcel_ready, filters_census_tract){
   
 }
 
+
+# COMMAND: MAKE_HELPERS_URL_PARCEL_VIEWER ----
+make_helpers_url_parcel_viewer <- function(parcel_ready){
+  
+  url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr="
+  
+  url_pv <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              HELPERS_URL_PARCEL_VIEWER = str_c(url,PIN,sep = ""))
+  
+ helpers_url_parcel_viewer <- url_pv
+ 
+ return(helpers_url_parcel_viewer)
+  
+  
+}
+
+
+# COMMAND: MAKE_HELPERS_URL_OPP360 ----
+make_helpers_url_opp360 <- function(filters_census_tract){
+  
+  url <- "**placeholer url** for census tract: "
+  
+  url_opp360 <- filters_census_tract %>% 
+    transmute(PIN,
+              HELPERS_URL_OPP360 = str_c(url,CENSUS_TRACT,sep = ""))
+  
+ helpers_url_opp360 <- url_opp360
+ 
+ return(helpers_url_opp360)
+  
+  
+}
+# COMMAND: MAKE_HELPERS ----
+make_helpers <- function(...){
+  
+  helpers <- reduce(list(...), left_join, by = "PIN")
+  
+  return(helpers)
+}
 # COMMAND: MAKE_INVENTORY ----
 
-make_inventory <- function(filters, suitability,  utilization){
+make_inventory <- function(filters, helpers, suitability,  utilization){
   
-  inv <- list(filters, suitability, utilization) %>% 
+  inv <- list(filters, helpers, suitability, utilization) %>% 
     reduce(left_join, by = "PIN")
   
   inventory <- inv
