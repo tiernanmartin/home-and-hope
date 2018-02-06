@@ -91,7 +91,7 @@ utilization_plan <- drake_plan(
 
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
-  filters = make_filters(parcel_ready, filter_census_tract)
+  filters = make_filters(parcel_ready, filters_census_tract)
 )
 
 inventory_plan <- drake_plan(
@@ -1463,16 +1463,16 @@ make_filters_census_tract <- function(parcel_ready, census_tracts){
     st_drop_geometry() %>% 
     select(PIN, CENSUS_TRACT)
   
-  filter_census_tract <- p_ready_tr
+  filters_census_tract <- p_ready_tr
   
-  return(filter_census_tract)
+  return(filters_census_tract)
    
 }
 
 # COMMAND: MAKE_FILTERS ----
-make_filters <- function(parcel_ready, filter_census_tract){
+make_filters <- function(parcel_ready, filters_census_tract){
   
-  filter_list <- list(filter_census_tract) %>% 
+  filter_list <- list(filters_census_tract) %>% 
     reduce(left_join, by = "PIN")
   
   filters <- parcel_ready %>% 
