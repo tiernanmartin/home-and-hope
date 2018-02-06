@@ -1,5 +1,6 @@
 # SETUP ----
 library(drake)
+library(tigris)
 library(sf)
 library(lwgeom)
 library(googledrive)
@@ -15,7 +16,8 @@ library(tidyverse)
 
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
-options(httr_oob_default=TRUE) 
+options(httr_oob_default=TRUE,
+        tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # MAKE PLANS ----
@@ -39,7 +41,8 @@ parcel_plan <- drake_plan(
 miscellaneous_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
-  zoning = make_zoning() 
+  zoning = make_zoning(),
+  census_tracts = make_census_tracts()
 )
 
 development_assumptions_plan <- drake_plan(
@@ -86,8 +89,13 @@ utilization_plan <- drake_plan(
   utilization = make_utilization(suitability, utilization_present, utilization_potential)
 )
 
+filter_plan <- drake_plan(
+  filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
+  filters <- make_filters(parcel_ready, filter_census_tract)
+)
+
 inventory_plan <- drake_plan(
-  inventory = make_inventory(suitability,  utilization),
+  inventory = make_inventory(suitability,  utilization, filters),
   inventory_suitable = make_inventory_suitable(inventory)
 )
 
@@ -101,6 +109,7 @@ project_plan <- rbind(
   building_plan,
   utilization_criteria_plan,
   utilization_plan,
+  filter_plan,
   inventory_plan)   
 
 
@@ -728,6 +737,40 @@ make_zoning <- function(){
   zoning <- rename_if(zoning_load, not_sfc,to_screaming_snake_case)
   
   return(zoning)
+}
+
+# COMMAND: MAKE_CENSUS_TRACTS ----
+make_census_tracts <- function(){
+  
+  tr_fp <- root_file("1-data/2-external/kc_census_tracts.gpkg")
+  
+  tr_dr_id <- as_id("18KYUqhoAgB65HY82mlPGYCN4TcNaRu7J")
+  
+  tr_load <- 
+    make_or_read2(fp = tr_fp,
+                  dr_id = tr_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    tr <- tracts(state = 53, county = "King")
+                    
+                    st_write(tr, fp, driver = "GPKG")
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                  
+                    drive_upload(fp, drive_folder)
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf,stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  census_tracts <- tr_load %>% st_transform(2926)
+  
+  return(census_tracts)
+  
 }
 
 # COMMAND: MAKE_CITY_BLOCK_SQFT ----
@@ -1404,11 +1447,50 @@ make_utilization <- function(suitability, utilization_present, utilization_poten
   
 }
 
+# COMMAND: MAKE_FILTERS_TRACT ----
+make_filters_census_tract <- function(parcel_ready, census_tracts){
+  
+  p_ready_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926)
+  
+  tr_subdivide <- st_subdivide(census_tracts, 100) %>% 
+    st_collection_extract() 
+   
+  p_ready_pt$CENSUS_TRACT <- st_over(p_ready_pt,tr_subdivide, "GEOID") 
+  
+  p_ready_tr <- p_ready_pt %>% 
+    st_drop_geometry() %>% 
+    select(PIN, CENSUS_TRACT)
+  
+  filter_census_tract <- p_ready_tr
+  
+  return(filter_census_tract)
+   
+}
+
+# COMMAND: MAKE_FILTERS ----
+make_filters <- function(parcel_ready, filter_census_tract){
+  
+  filter_list <- list(filter_census_tract) %>% 
+    reduce(left_join, by = "PIN")
+  
+  filters <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    select(PIN) %>% 
+    left_join(filter_list, by = "PIN") 
+  
+  return(filters)
+    
+  
+}
+
 # COMMAND: MAKE_INVENTORY ----
 
-make_inventory <- function(suitability, utilization){
+make_inventory <- function(suitability, utilization, filters){
   
-  inv <- left_join(suitability,utilization, by = "PIN")
+  inv <- list(filters, suitability, utilization) %>% 
+    reduce(left_join, by = "PIN")
   
   inventory <- inv
   
