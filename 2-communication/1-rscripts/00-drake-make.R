@@ -91,11 +91,11 @@ utilization_plan <- drake_plan(
 
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
-  filters <- make_filters(parcel_ready, filter_census_tract)
+  filters = make_filters(parcel_ready, filter_census_tract)
 )
 
 inventory_plan <- drake_plan(
-  inventory = make_inventory(suitability,  utilization, filters),
+  inventory = make_inventory(filters, suitability,  utilization),
   inventory_suitable = make_inventory_suitable(inventory)
 )
 
@@ -1487,7 +1487,7 @@ make_filters <- function(parcel_ready, filter_census_tract){
 
 # COMMAND: MAKE_INVENTORY ----
 
-make_inventory <- function(suitability, utilization, filters){
+make_inventory <- function(filters, suitability,  utilization){
   
   inv <- list(filters, suitability, utilization) %>% 
     reduce(left_join, by = "PIN")
