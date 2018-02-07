@@ -128,11 +128,11 @@ data_dictionary_plan <- drake_plan(
 export_plan <- drake_plan(
   data_dictionary.csv = write_csv(dd, root_file("1-data/4-ready/data_dictionary.csv")),
   inventory_table.csv = write_csv(inventory_table, root_file("1-data/4-ready/inventory_table.csv")),
-  inventory_poly.gpkg = write_gpkg(inventory_poly, root_file("1-data/4-ready/inventory_poly.gpkg")),
-  inventory_point.gpkg = write_gpkg(inventory_point, root_file("1-data/4-ready/inventory_point.gpkg")),
+  inventory_poly.geojson = write_geojson(inventory_poly, root_file("1-data/4-ready/inventory_poly.geojson")),
+  inventory_point.geojson = write_geojson(inventory_point, root_file("1-data/4-ready/inventory_point.geojson")),
   inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
-  inventory_suitable_poly.gpkg = write_gpkg(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.gpkg")),
-  inventory_suitable_point.gpkg = write_gpkg(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.gpkg"))
+  inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.geojson")),
+  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson"))
 )
 
 project_plan <- rbind(
@@ -1609,7 +1609,7 @@ make_inventory_table <- function(inventory){
 make_inventory_poly <- function(inventory){
   
   inventory_poly <- inventory %>% 
-    select(geometry)
+    select(PIN,geometry)
   
   return(inventory_poly)
 }
@@ -1620,7 +1620,7 @@ make_inventory_point <- function(inventory){
   
   inventory_point <- inventory %>% 
     st_set_geometry("geom_pt") %>% 
-    select(geom_pt)
+    select(PIN,geom_pt)
   
   return(inventory_point)
 }
@@ -1641,7 +1641,7 @@ make_inventory_suitable_table <- function(inventory_suitable){
 make_inventory_suitable_poly <- function(inventory_suitable){
   
   inventory_suitable_poly <- inventory_suitable %>% 
-    select(geometry)
+    select(PIN,geometry)
   
   return(inventory_suitable_poly)
 }
@@ -1652,7 +1652,7 @@ make_inventory_suitable_point <- function(inventory_suitable){
   
   inventory_suitable_point <- inventory_suitable %>% 
     st_set_geometry("geom_pt") %>% 
-    select(geom_pt)
+    select(PIN, geom_pt)
   
   return(inventory_suitable_point)
 }
@@ -1995,11 +1995,11 @@ make_dd <- function(...){
   return(dd)
 }
 
-# COMMAND: WRITE_GPKG ----
+# COMMAND: WRITE_GEOJSON ----
 
-write_gpkg <- function(obj, dsn){
+write_geojson <- function(obj, dsn){
   
-  st_write(obj, dsn, driver = "GPKG",layer_options = "OVERWRITE=true")
+  st_write(obj, dsn, driver = "GeoJSON",delete_dsn = TRUE)
   
 }
 
