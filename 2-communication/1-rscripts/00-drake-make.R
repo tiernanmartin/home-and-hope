@@ -104,7 +104,14 @@ helper_plan <- drake_plan(
 
 inventory_plan <- drake_plan(
   inventory = make_inventory(filters, helpers, suitability,  utilization),
-  inventory_suitable = make_inventory_suitable(inventory)
+  inventory_suitable = make_inventory_suitable(inventory), 
+  inventory_table = make_inventory_table(inventory),
+  inventory_poly = make_inventory_poly(inventory),
+  inventory_point = make_inventory_point(inventory), 
+  inventory_suitable_table = make_inventory_suitable_table(inventory_suitable),
+  inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
+  inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
+  
 )
 
 data_dictionary_plan <- drake_plan(
@@ -116,6 +123,16 @@ data_dictionary_plan <- drake_plan(
   dd_data_source = make_dd_data_source(),
   dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev),
   dd = make_dd(dd_field_name_dev, dd_field_name_user, dd_field_format, dd_field_description, dd_data_source, dd_field_tags, dd_dictionary_version)
+)
+
+export_plan <- drake_plan(
+  data_dictionary.csv = write_csv(dd, root_file("1-data/4-ready/data_dictionary.csv")),
+  inventory_table.csv = write_csv(inventory_table, root_file("1-data/4-ready/inventory_table.csv")),
+  inventory_poly.gpkg = write_gpkg(inventory_poly, root_file("1-data/4-ready/inventory_poly.gpkg")),
+  inventory_point.gpkg = write_gpkg(inventory_point, root_file("1-data/4-ready/inventory_point.gpkg")),
+  inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
+  inventory_suitable_poly.gpkg = write_gpkg(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.gpkg")),
+  inventory_suitable_point.gpkg = write_gpkg(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.gpkg"))
 )
 
 project_plan <- rbind(
@@ -131,7 +148,8 @@ project_plan <- rbind(
   filter_plan,
   helper_plan,
   inventory_plan,
-  data_dictionary_plan)   
+  data_dictionary_plan,
+  export_plan)   
 
 
 # FUNCTION: WITHIN_RANGE ----
@@ -1136,7 +1154,8 @@ make_suitability <- function(parcel_ready, suitability_criteria, suitability_tax
       SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
       SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL
-    ) 
+    ) %>% 
+    st_sf
   
   return(suitability)
   
@@ -1552,7 +1571,8 @@ make_helpers <- function(...){
 make_inventory <- function(filters, helpers, suitability,  utilization){
   
   inv <- list(filters, helpers, suitability, utilization) %>% 
-    reduce(left_join, by = "PIN")
+    reduce(left_join, by = "PIN") %>%  
+    st_sf
   
   inventory <- inv
   
@@ -1570,6 +1590,71 @@ make_inventory_suitable <- function(inventory){
   
   return(inventory_suitable)
   
+}
+
+
+# COMMAND: MAKE_INVENTORY_TABLE ----
+
+make_inventory_table <- function(inventory){
+  
+  inventory_table <- inventory %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)
+  
+  return(inventory_table)
+}
+
+# COMMAND: MAKE_INVENTORY_POLY ----
+
+make_inventory_poly <- function(inventory){
+  
+  inventory_poly <- inventory %>% 
+    select(geometry)
+  
+  return(inventory_poly)
+}
+
+# COMMAND: MAKE_INVENTORY_POINT ----
+
+make_inventory_point <- function(inventory){
+  
+  inventory_point <- inventory %>% 
+    st_set_geometry("geom_pt") %>% 
+    select(geom_pt)
+  
+  return(inventory_point)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_TABLE ----
+
+make_inventory_suitable_table <- function(inventory_suitable){
+  
+  inventory_suitable_table <- inventory_suitable %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)
+  
+  return(inventory_suitable_table)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_POLY ----
+
+make_inventory_suitable_poly <- function(inventory_suitable){
+  
+  inventory_suitable_poly <- inventory_suitable %>% 
+    select(geometry)
+  
+  return(inventory_suitable_poly)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_POINT ----
+
+make_inventory_suitable_point <- function(inventory_suitable){
+  
+  inventory_suitable_point <- inventory_suitable %>% 
+    st_set_geometry("geom_pt") %>% 
+    select(geom_pt)
+  
+  return(inventory_suitable_point)
 }
 
 
@@ -1909,5 +1994,15 @@ make_dd <- function(...){
   
   return(dd)
 }
+
+# COMMAND: WRITE_GPKG ----
+
+write_gpkg <- function(obj, dsn){
+  
+  st_write(obj, dsn, driver = "GPKG",layer_options = "OVERWRITE=true")
+  
+}
+
+
 # RUN PROJECT PLAN ----
 make(project_plan)
