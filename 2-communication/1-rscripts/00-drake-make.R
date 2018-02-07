@@ -11,6 +11,7 @@ library(rprojroot)
 library(RSocrata)
 library(glue)
 library(fuzzyjoin)
+library(datapasta)
 library(tidyverse) 
 
 
@@ -106,6 +107,17 @@ inventory_plan <- drake_plan(
   inventory_suitable = make_inventory_suitable(inventory)
 )
 
+data_dictionary_plan <- drake_plan(
+  dd_field_name_dev = make_dd_field_name_dev(inventory), 
+  dd_field_name_user = make_dd_field_name_user(),
+  dd_field_tags = make_dd_field_tags(),
+  dd_field_format = make_dd_field_format(inventory),
+  dd_field_description = make_dd_field_description(dd_field_name_dev),
+  dd_data_source = make_dd_data_source(),
+  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev),
+  dd = make_dd(dd_field_name_dev, dd_field_name_user, dd_field_format, dd_field_description, dd_data_source, dd_field_tags, dd_dictionary_version)
+)
+
 project_plan <- rbind(
   lookup_plan,
   parcel_plan,
@@ -118,7 +130,8 @@ project_plan <- rbind(
   utilization_plan,
   filter_plan,
   helper_plan,
-  inventory_plan)   
+  inventory_plan,
+  data_dictionary_plan)   
 
 
 # FUNCTION: WITHIN_RANGE ----
@@ -1559,5 +1572,342 @@ make_inventory_suitable <- function(inventory){
   
 }
 
+
+# COMMAND: MAKE_DD_FIELD_NAME_DEV ----
+
+make_dd_field_name_dev <- function(inventory){
+  name_dev <- inventory %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc) %>% 
+    names() %>% 
+    {tibble("FIELD_NAME_DEV" = .)}
+  
+  dd_field_name_dev <- name_dev
+  
+  return(dd_field_name_dev)
+}
+
+# COMMAND: MAKE_DD_FIELD_NAME_USER ----
+
+make_dd_field_name_user <- function(){
+  
+  # dpasta(dd_field_name_dev) 
+  
+  dd_field_name_user <-  tribble(
+                        ~FIELD_NAME_DEV, ~ FIELD_NAME_USER,
+                                  "PIN", "Parcel Identification Number",
+                         "CENSUS_TRACT", "Census Tract",
+            "HELPERS_URL_PARCEL_VIEWER", "Link to KC Parcel Viewer",
+                   "HELPERS_URL_OPP360", "Link to Opportunity 360",
+                        "TAXPAYER_NAME", "Taxpayer Name",
+                              "BILL_YR", "Tax Bill Year",
+                           "TAX_STATUS", "Tax Status",
+                           "TAX_REASON", "Tax Status Reason(s)",
+                        "APPR_IMPS_VAL", "Tax Appraised Improvement Value",
+                        "APPR_LAND_VAL", "Tax Appraised Land Value",
+                     "TAXABLE_IMPS_VAL", "Tax Taxable Improvement Value",
+                     "TAXABLE_LAND_VAL", "Tax Taxable Land Value",
+                            "PROP_NAME", "Property Name",
+                            "PROP_TYPE", "Property Type",
+                "ASSESSOR_PUB_LIST_LGL", "T/F: Assessor Public-Ownership List?",
+                        "DISTRICT_NAME", "District Name",
+                       "CURRENT_ZONING", "Current Zoning",
+                          "PRESENT_USE", "Present Use",
+                            "SQ_FT_LOT", "Lot Size (SqFt)",
+                               "ACCESS", "Lot Accessibility Level",
+                           "TOPOGRAPHY", "T/F: Topography?",
+                 "RESTRICTIVE_SZ_SHAPE", "T/F: Restrictive Size/Shape?",
+                        "PCNT_UNUSABLE", "Lot Percent Unusable",
+                        "CONTAMINATION", "T/F: Contaminated?",
+                        "HISTORIC_SITE", "T/F: Historic Site?",
+              "CURRENT_USE_DESIGNATION", "Current Use Designation",
+              "NATIVE_GROWTH_PROT_ESMT", "T/F: Native Growth Protection Estimate",
+                            "EASEMENTS", "T/F :Easements?",
+                    "OTHER_DESIGNATION", "T/F: Other Designations?",
+                    "DEED_RESTRICTIONS", "T/F: Deed Restrictions?",
+             "DEVELOPMENT_RIGHTS_PURCH", "T/F: Development Rights Purchased?",
+                     "COAL_MINE_HAZARD", "T/F: Coal Mine Hazard?",
+                    "CRITICAL_DRAINAGE", "T/F: Critical Drainage?",
+                       "EROSION_HAZARD", "T/F: Erosion Hazard?",
+                      "LANDFILL_BUFFER", "T/F: Within Landfill Buffer?",
+               "HUNDRED_YR_FLOOD_PLAIN", "T/F: Within 100 Year Flood Plain?",
+                       "SEISMIC_HAZARD", "T/F: Seismic Hazard?",
+                     "LANDSLIDE_HAZARD", "T/F: Landslide Hazard?",
+                   "STEEP_SLOPE_HAZARD", "T/F: Steep Slope Hazard?",
+                               "STREAM", "T/F: Stream?",
+                              "WETLAND", "T/F: Wetland?",
+                   "SPECIES_OF_CONCERN", "T/F: Species of Concern?",
+                 "SENSITIVE_AREA_TRACT", "T/F: Sensitive Area Tract?",
+                       "WATER_PROBLEMS", "T/F: Water Problems?",
+                   "TRANSP_CONCURRENCY", "T/F: Transportation Concurrency?",
+                       "OTHER_PROBLEMS", "T/F: Other Problems?",
+                    "SUIT_OWNER_PUBLIC", "T/F: Public Ownership?",
+                 "SUIT_OWNER_NONPROFIT", "T/F: Non-Profit Ownership?",
+                     "SUIT_OWNER_TAX_E", "T/F: Tax-Exempt Ownership?",
+               "SUIT_WATER_OVERLAP_LGL", "T/F: Overlaped by Waterbodies?",
+               "SUIT_WATER_OVERLAP_PCT", "T/F: Percent Overlapped by Waterbodies?",
+                      "SUIT_WITHIN_UGA", "T/F: Within the Urban Growth Area?",
+                "SUIT_ZONING_CONSOL_20", "Zoning (KC Consolidated Categories)",
+                     "SUIT_PRESENT_USE", "Present Use",
+                   "SUITABLE_OWNER_LGL", "T/F: Suitable Ownership?",
+           "SUITABLE_WATER_OVERLAP_LGL", "T/F: Suitable Water Overlap?",
+              "SUITABLE_WITHIN_UGA_LGL", "T/F: Suitable Urban Growth Area Distance?",
+        "SUITABLE_ZONING_CONSOL_20_LGL", "T/F: Suitable Zoning?",
+             "SUITABLE_PRESENT_USE_LGL", "T/F: Suitable Present Use?",
+                         "SUITABLE_LGL", "T/F: Suitable Site?",
+                             "BLDG_NBR", "Number of Buildings",
+                       "BLDG_NET_SQ_FT", "Net Area (SqFt) of Buildings",
+                    "BLDG_LIVING_UNITS", "Net Number of Living Units",
+              "BLDG_TYPE_APARTMENT_LGL", "T/F: Apartment Building On-Site?",
+             "BLDG_TYPE_COMMERCIAL_LGL", "T/F: Commercial Building On-Site?",
+                  "BLDG_TYPE_CONDO_LGL", "T/F: Condo Building On-Site?",
+            "BLDG_TYPE_RESIDENTIAL_LGL", "T/F: Residential Building On-Site?",
+                         "UTIL_PRESENT", "Present Utilization (Sqft)",
+                            "LOT_SQ_FT", "Lot Size (SqFt)",
+                        "LOT_SIZE_DESC", "Lot Size Description",
+                        "LOT_SIZE_TYPE", "Lot Size Devevlopment Type",
+                     "LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
+                      "LOT_STORIES_NBR", "Number of Developable Stories (Assumed)",
+             "UTIL_LOT_DEVELOPABLE_PCT", "Percent Developable (Assumed) and Not Under Water",
+                 "UTIL_DEVELOPABLE_LGL", "T/F: Developable Zoning (KC Consolidated Categories)?",
+          "UTIL_DEVELOPMENT_ASSUMPTION", "Development Scenario (Assumed)",
+        "UTIL_DEVELOPABLE_ESTIMATE_LGL", "T/F: In Zoning With A Development Scenario?",
+    "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
+      "UTIL_POTENTIAL_UTILIZATION_SQFT", "Potential Utilization (Sqft)",
+              "UTIL_UNDER_UTILIZED_LGL", "T/F: Is Potential Utilization Greater than Present?",
+                          "UTILIZATION", "Utilization Category"
+   )
+  
+  
+  
+  return(dd_field_name_user)
+}
+
+# COMMAND: MAKE_DD_FIELD_TAGS ----
+
+make_dd_field_tags <- function(){
+  
+  dd_field_tags <- tribble(
+                                              ~FIELD_NAME_DEV, ~FIELD_TAG_SENSITIVE, ~FIELD_TAG_FILTER, ~FIELD_TAG_TOOLTIP, ~FIELD_TAG_TABLE,
+                                                        "PIN",                FALSE,             FALSE,               TRUE,             TRUE,
+                                               "CENSUS_TRACT",                FALSE,              TRUE,              FALSE,             TRUE,
+                                  "HELPERS_URL_PARCEL_VIEWER",                FALSE,             FALSE,               TRUE,             TRUE,
+                                         "HELPERS_URL_OPP360",                FALSE,             FALSE,               TRUE,             TRUE,
+                                              "TAXPAYER_NAME",                 TRUE,              TRUE,               TRUE,             TRUE,
+                                                    "BILL_YR",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TAX_STATUS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TAX_REASON",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "APPR_IMPS_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                              "APPR_LAND_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                           "TAXABLE_IMPS_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                           "TAXABLE_LAND_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                                  "PROP_NAME",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                                  "PROP_TYPE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                      "ASSESSOR_PUB_LIST_LGL",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "DISTRICT_NAME",                FALSE,              TRUE,              FALSE,             TRUE,
+                                             "CURRENT_ZONING",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                "PRESENT_USE",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                  "SQ_FT_LOT",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                     "ACCESS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TOPOGRAPHY",                FALSE,             FALSE,              FALSE,             TRUE,
+                                       "RESTRICTIVE_SZ_SHAPE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "PCNT_UNUSABLE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "CONTAMINATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "HISTORIC_SITE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                    "CURRENT_USE_DESIGNATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                    "NATIVE_GROWTH_PROT_ESMT",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                  "EASEMENTS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "OTHER_DESIGNATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "DEED_RESTRICTIONS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                   "DEVELOPMENT_RIGHTS_PURCH",                FALSE,             FALSE,              FALSE,             TRUE,
+                                           "COAL_MINE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "CRITICAL_DRAINAGE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "EROSION_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                            "LANDFILL_BUFFER",                FALSE,             FALSE,              FALSE,             TRUE,
+                                     "HUNDRED_YR_FLOOD_PLAIN",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "SEISMIC_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                           "LANDSLIDE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "STEEP_SLOPE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                     "STREAM",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                    "WETLAND",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "SPECIES_OF_CONCERN",                FALSE,             FALSE,              FALSE,             TRUE,
+                                       "SENSITIVE_AREA_TRACT",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "WATER_PROBLEMS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "TRANSP_CONCURRENCY",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "OTHER_PROBLEMS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "SUIT_OWNER_PUBLIC",                FALSE,              TRUE,              FALSE,            FALSE,
+                                       "SUIT_OWNER_NONPROFIT",                FALSE,              TRUE,              FALSE,            FALSE,
+                                           "SUIT_OWNER_TAX_E",                FALSE,             FALSE,              FALSE,            FALSE,
+                                     "SUIT_WATER_OVERLAP_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                     "SUIT_WATER_OVERLAP_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                            "SUIT_WITHIN_UGA",                FALSE,             FALSE,              FALSE,            FALSE,
+                                      "SUIT_ZONING_CONSOL_20",                FALSE,              TRUE,              FALSE,            FALSE,
+                                           "SUIT_PRESENT_USE",                FALSE,             FALSE,              FALSE,            FALSE,
+                                         "SUITABLE_OWNER_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                 "SUITABLE_WATER_OVERLAP_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "SUITABLE_WITHIN_UGA_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                              "SUITABLE_ZONING_CONSOL_20_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "SUITABLE_PRESENT_USE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                               "SUITABLE_LGL",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                   "BLDG_NBR",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "BLDG_NET_SQ_FT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                          "BLDG_LIVING_UNITS",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "BLDG_TYPE_APARTMENT_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "BLDG_TYPE_COMMERCIAL_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                        "BLDG_TYPE_CONDO_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                  "BLDG_TYPE_RESIDENTIAL_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                               "UTIL_PRESENT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                                  "LOT_SQ_FT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                              "LOT_SIZE_DESC",                FALSE,             FALSE,              FALSE,            FALSE,
+                                              "LOT_SIZE_TYPE",                FALSE,             FALSE,              FALSE,            FALSE,
+                                           "LOT_COVERAGE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                            "LOT_STORIES_NBR",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "UTIL_LOT_DEVELOPABLE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                       "UTIL_DEVELOPABLE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                "UTIL_DEVELOPMENT_ASSUMPTION",                FALSE,             FALSE,              FALSE,            FALSE,
+                              "UTIL_DEVELOPABLE_ESTIMATE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                          "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                            "UTIL_POTENTIAL_UTILIZATION_SQFT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "UTIL_UNDER_UTILIZED_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                                "UTILIZATION",                FALSE,              TRUE,              FALSE,             TRUE
+                         )
+return(dd_field_tags)
+}
+
+# COMMAND: MAKE_DD_FIELD_FORMAT ----
+
+make_dd_field_format <- function(inventory){
+  
+  dd_field_format <- inventory %>%
+    st_drop_geometry() %>% 
+    select_if(not_sfc) %>% 
+    map_chr(class) %>% 
+    {tibble("FIELD_NAME_DEV" = names(.),
+            "FIELD_FORMAT" = .)}
+  
+  return(dd_field_format)
+  
+  
+  }
+
+# COMMAND: MAKE_DD_FIELD_DESCRIPTION ----
+
+make_dd_field_description <- function(dd_field_name_dev){
+  dd_field_description <-
+    dd_field_name_dev %>% 
+    mutate(FIELD_DESCRIPTION = "**Will be added soon**")
+  
+  return(dd_field_description)
+  
+  }
+
+# COMMAND: MAKE_DD_DATA_SOURCE ----
+
+make_dd_data_source <- function(){
+  
+  dd_data_source <- tribble(
+                                                     ~FIELD_NAME_DEV,                             ~DATA_SOURCE,
+                                                               "PIN",  "King County Department of Assessments",
+                                                      "CENSUS_TRACT",                              "US Census",
+                                         "HELPERS_URL_PARCEL_VIEWER",  "King County Department of Assessments",
+                                                "HELPERS_URL_OPP360",          "Enterprise Community Partners",
+                                                     "TAXPAYER_NAME",  "King County Department of Assessments",
+                                                           "BILL_YR",  "King County Department of Assessments",
+                                                        "TAX_STATUS",  "King County Department of Assessments",
+                                                        "TAX_REASON",  "King County Department of Assessments",
+                                                     "APPR_IMPS_VAL",  "King County Department of Assessments",
+                                                     "APPR_LAND_VAL",  "King County Department of Assessments",
+                                                  "TAXABLE_IMPS_VAL",  "King County Department of Assessments",
+                                                  "TAXABLE_LAND_VAL",  "King County Department of Assessments",
+                                                         "PROP_NAME",  "King County Department of Assessments",
+                                                         "PROP_TYPE",  "King County Department of Assessments",
+                                             "ASSESSOR_PUB_LIST_LGL",  "King County Department of Assessments",
+                                                     "DISTRICT_NAME",  "King County Department of Assessments",
+                                                    "CURRENT_ZONING",  "King County Department of Assessments",
+                                                       "PRESENT_USE",  "King County Department of Assessments",
+                                                         "SQ_FT_LOT",  "King County Department of Assessments",
+                                                            "ACCESS",  "King County Department of Assessments",
+                                                        "TOPOGRAPHY",  "King County Department of Assessments",
+                                              "RESTRICTIVE_SZ_SHAPE",  "King County Department of Assessments",
+                                                     "PCNT_UNUSABLE",  "King County Department of Assessments",
+                                                     "CONTAMINATION",  "King County Department of Assessments",
+                                                     "HISTORIC_SITE",  "King County Department of Assessments",
+                                           "CURRENT_USE_DESIGNATION",  "King County Department of Assessments",
+                                           "NATIVE_GROWTH_PROT_ESMT",  "King County Department of Assessments",
+                                                         "EASEMENTS",  "King County Department of Assessments",
+                                                 "OTHER_DESIGNATION",  "King County Department of Assessments",
+                                                 "DEED_RESTRICTIONS",  "King County Department of Assessments",
+                                          "DEVELOPMENT_RIGHTS_PURCH",  "King County Department of Assessments",
+                                                  "COAL_MINE_HAZARD",  "King County Department of Assessments",
+                                                 "CRITICAL_DRAINAGE",  "King County Department of Assessments",
+                                                    "EROSION_HAZARD",  "King County Department of Assessments",
+                                                   "LANDFILL_BUFFER",  "King County Department of Assessments",
+                                            "HUNDRED_YR_FLOOD_PLAIN",  "King County Department of Assessments",
+                                                    "SEISMIC_HAZARD",  "King County Department of Assessments",
+                                                  "LANDSLIDE_HAZARD",  "King County Department of Assessments",
+                                                "STEEP_SLOPE_HAZARD",  "King County Department of Assessments",
+                                                            "STREAM",  "King County Department of Assessments",
+                                                           "WETLAND",  "King County Department of Assessments",
+                                                "SPECIES_OF_CONCERN",  "King County Department of Assessments",
+                                              "SENSITIVE_AREA_TRACT",  "King County Department of Assessments",
+                                                    "WATER_PROBLEMS",  "King County Department of Assessments",
+                                                "TRANSP_CONCURRENCY",  "King County Department of Assessments",
+                                                    "OTHER_PROBLEMS",  "King County Department of Assessments",
+                                                 "SUIT_OWNER_PUBLIC",  "King County Department of Assessments",
+                                              "SUIT_OWNER_NONPROFIT",  "King County Department of Assessments",
+                                                  "SUIT_OWNER_TAX_E",  "King County Department of Assessments",
+                                            "SUIT_WATER_OVERLAP_LGL",                        "King County GIS",
+                                            "SUIT_WATER_OVERLAP_PCT",                        "King County GIS",
+                                                   "SUIT_WITHIN_UGA",                        "King County GIS",
+                                             "SUIT_ZONING_CONSOL_20",                        "King County GIS",
+                                                  "SUIT_PRESENT_USE",  "King County Department of Assessments",
+                                                "SUITABLE_OWNER_LGL",  "King County Department of Assessments",
+                                        "SUITABLE_WATER_OVERLAP_LGL",                        "King County GIS",
+                                           "SUITABLE_WITHIN_UGA_LGL",                        "King County GIS",
+                                     "SUITABLE_ZONING_CONSOL_20_LGL",                        "King County GIS",
+                                          "SUITABLE_PRESENT_USE_LGL",  "King County Department of Assessments",
+                                                      "SUITABLE_LGL",                       "Multiple Sources",
+                                                          "BLDG_NBR",  "King County Department of Assessments",
+                                                    "BLDG_NET_SQ_FT",  "King County Department of Assessments",
+                                                 "BLDG_LIVING_UNITS",  "King County Department of Assessments",
+                                           "BLDG_TYPE_APARTMENT_LGL",  "King County Department of Assessments",
+                                          "BLDG_TYPE_COMMERCIAL_LGL",  "King County Department of Assessments",
+                                               "BLDG_TYPE_CONDO_LGL",  "King County Department of Assessments",
+                                         "BLDG_TYPE_RESIDENTIAL_LGL",  "King County Department of Assessments",
+                                                      "UTIL_PRESENT",  "King County Department of Assessments",
+                                                         "LOT_SQ_FT",  "King County Department of Assessments",
+                                                     "LOT_SIZE_DESC",  "King County Department of Assessments",
+                                                     "LOT_SIZE_TYPE",  "King County Department of Assessments",
+                                                  "LOT_COVERAGE_PCT",  "King County Department of Assessments",
+                                                   "LOT_STORIES_NBR",  "King County Department of Assessments",
+                                          "UTIL_LOT_DEVELOPABLE_PCT",  "King County Department of Assessments",
+                                              "UTIL_DEVELOPABLE_LGL",  "King County Department of Assessments",
+                                       "UTIL_DEVELOPMENT_ASSUMPTION",  "King County Department of Assessments",
+                                     "UTIL_DEVELOPABLE_ESTIMATE_LGL",  "King County Department of Assessments",
+                                 "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT",  "King County Department of Assessments",
+                                   "UTIL_POTENTIAL_UTILIZATION_SQFT",  "King County Department of Assessments",
+                                           "UTIL_UNDER_UTILIZED_LGL",  "King County Department of Assessments",
+                                                       "UTILIZATION",  "King County Department of Assessments"
+                                )
+return(dd_data_source)
+  }
+
+# COMMAND: MAKE_DD_DICTIONARY_VERSION ----
+
+make_dd_dictionary_version <- function(dd_field_name_dev){
+  dd_dictionary_version <-
+    dd_field_name_dev %>% 
+    mutate(DICTIONARY_VERSION = "v0.1 - Feb. 6, 2018")
+  
+  return(dd_dictionary_version)
+}
+
+# COMMAND: MAKE_DD ----
+
+make_dd <- function(...){
+  dd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
+  
+  return(dd)
+}
 # RUN PROJECT PLAN ----
 make(project_plan)
