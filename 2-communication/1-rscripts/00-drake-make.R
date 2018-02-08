@@ -132,7 +132,9 @@ export_plan <- drake_plan(
   inventory_point.geojson = write_geojson(inventory_point, root_file("1-data/4-ready/inventory_point.geojson")),
   inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
   inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.geojson")),
-  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson"))
+  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson")),
+  file_targets = TRUE,
+  strings_in_dots = "literals"
 )
 
 project_plan <- rbind(
