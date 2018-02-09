@@ -1,5 +1,6 @@
 # SETUP ----
-library(drake)
+library(drake) 
+library(tigris)
 library(sf)
 library(lwgeom)
 library(googledrive)
@@ -9,12 +10,15 @@ library(magrittr)
 library(rprojroot) 
 library(RSocrata)
 library(glue)
+library(fuzzyjoin)
+library(datapasta)
 library(tidyverse) 
 
 
 root <- rprojroot::is_rstudio_project
 root_file <- root$make_fix_file()
-options(httr_oob_default=TRUE) 
+options(httr_oob_default=TRUE,
+        tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 
 # MAKE PLANS ----
@@ -38,41 +42,132 @@ parcel_plan <- drake_plan(
 miscellaneous_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
-  zoning = make_zoning() 
+  zoning = make_zoning(),
+  census_tracts = make_census_tracts()
 )
 
-suitability_criteria_plan(
-  criteria_is_tax_exempt = make_criteria_is_tax_exempt(),
-  criteria_max_pct_underwater = make_criteria_max_pct_underwater(),
-  criteria_is_within_uga = criteria_is_within_uga(),
-  criteria_is_developable_zoning = make_criteria_is_developable_zoning(),
-  criteria_is_developable_present_use = make_criteria_is_developable_present_use(),
-  suitability_criteria = make_suitability_criteria(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use)
-  
+development_assumptions_plan <- drake_plan(
+  city_block_sqft = make_city_block_sqft(),
+  lot_types = make_lot_types(city_block_sqft),
+  development_assumptions_zoning = make_development_assumptions_zoning(),
+  development_assumptions_lot = make_development_assumptions_lot(lot_types, development_assumptions_zoning)
+)
+
+suitability_criteria_plan <- drake_plan(
+  criteria_tax_exempt = make_criteria_tax_exempt(),
+  criteria_max_water_overlap_pct = make_criteria_max_water_overlap_pct(),
+  criteria_within_uga = make_criteria_within_uga(),
+  criteria_developable_zoning = make_criteria_developable_zoning(development_assumptions_zoning),
+  criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
+  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use)
 )
 
 suitability_plan <- drake_plan(
-  tax_e = make_tax_e(parcel_ready, pub_parcel),
-  water_coverage = make_water_coverage(parcel_ready, waterbodies),
-  within_uga = make_within_uga(parcel_ready, uga),
-  developable_zoning = make_developable_zoning(parcel_ready, zoning),
-  present_use = make_present_use(parcel_ready),
-  parcel_suitability = make_suitability(parcel_sf, tax_e, water_coverage, within_uga, developable_zoning, present_use, suitability_criteria)
+  suitability_tax_exempt = make_suitability_tax_exempt(parcel_ready),
+  suitability_water_overlap = make_suitability_water_overlap(parcel_ready, waterbodies),
+  suitability_within_uga = make_suitability_within_uga(parcel_ready, uga),
+  suitability_developable_zoning = make_suitability_developable_zoning(parcel_ready, zoning),
+  suitability_present_use = make_suitability_present_use(parcel_ready),
+  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
+)
+
+building_plan <- drake_plan(
+  building_residential = make_building_residential(),
+  building_apartment = make_building_apartment(),
+  building_condo = make_building_condo(),
+  building_commercial = make_building_commercial(),
+  building = make_building(building_residential, building_apartment, building_condo, building_commercial)
+)
+
+utilization_criteria_plan <-  drake_plan(
+  criteria_lot_size = make_criteria_lot_size(city_block_sqft, lot_types)
 )
 
 utilization_plan <- drake_plan(
-  util_present = make_util_present(),
-  util_potential = make_util_potential(),
-  parcel_utilization = make_parcel_utilization(parcel_sf, util_present, util_potential)
+  utilization_present = make_utilization_present(parcel_ready, building),
+  utilization_lot_size = make_utilization_lot_size(parcel_ready, criteria_lot_size),
+  utilization_potential = make_utilization_potential(suitability, development_assumptions_lot, utilization_lot_size),
+  utilization = make_utilization(suitability, utilization_present, utilization_potential)
 )
 
+filter_plan <- drake_plan(
+  filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
+  filters = make_filters(parcel_ready, filters_census_tract)
+)
+
+helper_plan <- drake_plan(
+  helpers_url_parcel_viewer = make_helpers_url_parcel_viewer(parcel_ready),
+  helpers_url_opp360 = make_helpers_url_opp360(filters_census_tract),
+  helpers = make_helpers(helpers_url_parcel_viewer,helpers_url_opp360)
+  
+)
+
+inventory_plan <- drake_plan(
+  inventory = make_inventory(filters, helpers, suitability,  utilization),
+  inventory_suitable = make_inventory_suitable(inventory), 
+  inventory_table = make_inventory_table(inventory),
+  inventory_poly = make_inventory_poly(inventory),
+  inventory_point = make_inventory_point(inventory), 
+  inventory_suitable_table = make_inventory_suitable_table(inventory_suitable),
+  inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
+  inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
+  
+)
+
+data_dictionary_plan <- drake_plan(
+  dd_field_name_dev = make_dd_field_name_dev(inventory), 
+  dd_field_name_user = make_dd_field_name_user(),
+  dd_field_tags = make_dd_field_tags(),
+  dd_field_format = make_dd_field_format(inventory),
+  dd_field_description = make_dd_field_description(dd_field_name_dev),
+  dd_data_source = make_dd_data_source(),
+  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev),
+  dd = make_dd(dd_field_name_dev, dd_field_name_user, dd_field_format, dd_field_description, dd_data_source, dd_field_tags, dd_dictionary_version)
+)
+
+export_plan <- drake_plan(
+  data_dictionary.csv = write_csv(dd, root_file("1-data/4-ready/data_dictionary.csv")),
+  inventory_table.csv = write_csv(inventory_table, root_file("1-data/4-ready/inventory_table.csv")),
+  inventory_poly.geojson = write_geojson(inventory_poly, root_file("1-data/4-ready/inventory_poly.geojson")),
+  inventory_point.geojson = write_geojson(inventory_point, root_file("1-data/4-ready/inventory_point.geojson")),
+  inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
+  inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.geojson")),
+  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson")),
+  file_targets = TRUE,
+  strings_in_dots = "literals"
+)
 
 project_plan <- rbind(
   lookup_plan,
   parcel_plan,
+  miscellaneous_plan,
+  development_assumptions_plan,
+  suitability_criteria_plan,
   suitability_plan,
-  utilization_plan)    # rbind all plans together 
+  building_plan,
+  utilization_criteria_plan,
+  utilization_plan,
+  filter_plan,
+  helper_plan,
+  inventory_plan,
+  data_dictionary_plan,
+  export_plan)   
 
+
+# FUNCTION: WITHIN_RANGE ----
+`%within_range%` <- function(x,range){ 
+  between(x,min(range),max(range))
+          
+          } 
+
+# FUNCTION: LESSER_OF ----
+lesser_of <- function(x,y){
+  x <- as.double(x)
+  y <- as.double(y)
+  
+  if_else(x<= y, x,y, missing = x)
+  
+  } 
 
 # FUNCTION: MAKE_PARSE_LU_STRING ----
 parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){ 
@@ -501,7 +596,14 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
    
   # MAKE P_SF_READY
 
-  p_sf_ready <- parcel_sf
+  p_sf_ready <-  parcel_sf %>% 
+    miscgis::subset_duplicated("PIN") %>% 
+    group_by(PIN) %>%  # remove any duplicates PIN records with NAs
+    slice(1) %>%  # take the first record and discard the rest
+    ungroup %>% 
+    rbind(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
+    st_set_geometry("geometry")
+    
     
   # MAKE P_READY
   
@@ -562,7 +664,8 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
   acct_ready <- acct_frmt %>% 
     miscgis::subset_duplicated("PIN") %>% 
     group_by(PIN) %>% 
-    drop_na %>% 
+    drop_na %>% # remove any duplicates PIN records with NAs
+    slice(1) %>%  # take the first record and discard the rest
     ungroup %>% 
     bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>% 
     arrange(PIN)
@@ -574,7 +677,7 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
   parcel_ready <- obj_list %>% 
     reduce(.f = inner_join, by = "PIN") %>% 
     st_as_sf()
-  
+
   return(parcel_ready)
 }
 
@@ -675,245 +778,1232 @@ make_zoning <- function(){
   
   return(zoning)
 }
-# COMMAND: MAKE_CRITERIA_IS_TAX_EXEMPT ----
 
-make_criteria_is_tax_exempt <- function(){
+# COMMAND: MAKE_CENSUS_TRACTS ----
+make_census_tracts <- function(){
+  
+  tr_fp <- root_file("1-data/2-external/kc_census_tracts.gpkg")
+  
+  tr_dr_id <- as_id("18KYUqhoAgB65HY82mlPGYCN4TcNaRu7J")
+  
+  tr_load <- 
+    make_or_read2(fp = tr_fp,
+                  dr_id = tr_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    tr <- tracts(state = 53, county = "King")
+                    
+                    st_write(tr, fp, driver = "GPKG")
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                  
+                    drive_upload(fp, drive_folder)
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf,stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  census_tracts <- tr_load %>% st_transform(2926)
+  
+  return(census_tracts)
   
 }
 
-# COMMAND: MAKE_CRITERIA_MAX_PCT_UNDERWATER----
+# COMMAND: MAKE_CITY_BLOCK_SQFT ----
 
-make_criteria_max_pct_underwater <- function(){
+make_city_block_sqft <- function(){as.integer(66000)} 
+
+
+# COMMAND: MAKE_LOT_TYPES ----
+
+make_lot_types <- function(city_block_sqft){
+  lot_types <- tribble(
+                ~LOT_SIZE_DESC,
+         "less than 1/8 block",
+                   "1/4 block",
+      "greater than 1/4 block"
+     )
+
+  
+  return(lot_types)
+}
+
+# COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_ZONING ----
+
+make_development_assumptions_zoning <- function(){
+  
+  dev_assumptions_tbl <- tribble(
+                                 ~CONSOL_20, ~DEVELOPABLE_LGL,                                             ~DEVELOPMENT_ASSUMPTION,
+                "Central Business District",             TRUE,  "high rise construction, mixed-income, ~150 affordable apartments",
+                       "General Commercial",             TRUE,                                               "six story mixed use",
+                        "General Mixed Use",             TRUE,                                               "six story mixed use",
+                        "Historic District",             TRUE,                                      "no assumption for this class",
+         "Mixed Use Commercial/Residential",             TRUE,                                               "six story mixed use",
+                         "Mobile Home Park",             TRUE,                                      "no assumption for this class",
+                 "Multi-Family Residential",             TRUE,                                              "six story affordable",
+                 "Public Use/Institutional",             TRUE,                                      "no assumption for this class",
+                "Single-Family Residential",             TRUE,                                  "one unit per 5000 SF of lot size",
+                             "Undesignated",             TRUE,                                      "no assumption for this class",
+                                         NA,             TRUE,                                      "no assumption for this class",
+                      "Agriculture-Related",            FALSE,                                      "no assumption for this class",
+      "Aviation and Transportation-Related",            FALSE,                                      "no assumption for this class",
+                                   "Forest",            FALSE,                                      "no assumption for this class",
+                 "Industrial/Manufacturing",            FALSE,                                      "no assumption for this class",
+                 "Mineral Resource-Related",            FALSE,                                      "no assumption for this class",
+              "Mixed Use Commercial/Office",            FALSE,                                      "no assumption for this class",
+                     "Office/Business Park",            FALSE,                                      "no assumption for this class",
+        "Park/Golf Course/Trail/Open Space",            FALSE,                                      "no assumption for this class",
+                               "Rural Area",            FALSE,                                      "no assumption for this class",
+                  "Sensitive/Critical Area",            FALSE,                                      "no assumption for this class"
+     )
+  
+  development_assumptions_zoning <- dev_assumptions_tbl
+  
+  return(development_assumptions_zoning)
+
+}
+
+# COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_LOT ----
+
+make_development_assumptions_lot <- function(lot_types, development_assumptions_zoning){
+  
+  
+  
+  lot_dev_params <- tribble(
+                                ~LOT_SIZE_TYPE, ~LOT_COVERAGE_PCT, ~ LOT_STORIES_NBR,
+                                            NA,            NA,              NA,
+                               "undevelopable",            NA,              NA,
+      "potentially developable; no assumption",            NA,              NA,
+                               "single family",          0.75,               2,
+                                       "small",          0.75,               3,
+                                      "medium",          0.75,               7,
+                                       "large",           0.5,               7
+     )
+  
+  lot_dev_assumptions <- 
+    crossing(LOT_SIZE_DESC = lot_types$LOT_SIZE_DESC, 
+             CONSOL_20 = unique(development_assumptions_zoning$CONSOL_20) ) %>%  
+    left_join(development_assumptions_zoning, by = "CONSOL_20") %>%   
+    mutate(LOT_SIZE_TYPE = case_when(is.na(DEVELOPMENT_ASSUMPTION) ~ NA_character_,
+                                     !DEVELOPABLE_LGL ~ "undevelopable zoning",
+                                     str_detect(DEVELOPMENT_ASSUMPTION,"^no") ~ "potentially developable; no assumption", 
+                                     str_detect(DEVELOPMENT_ASSUMPTION,"^one") ~ "single family",
+                                     str_detect(LOT_SIZE_DESC,"less") ~ "small",
+                                     str_detect(LOT_SIZE_DESC,"^1") ~ "medium",
+                                     TRUE ~ "large")) %>% 
+    left_join(lot_dev_params, by = "LOT_SIZE_TYPE") %>% 
+    select(CONSOL_20,
+           DEVELOPABLE_LGL,
+           DEVELOPMENT_ASSUMPTION,
+           LOT_SIZE_DESC, 
+           LOT_SIZE_TYPE,
+           LOT_COVERAGE_PCT,
+           LOT_STORIES_NBR) 
+
+  
+  development_assumptions_lot <- lot_dev_assumptions
+  
+  return(development_assumptions_lot)
+
+}
+
+# COMMAND: MAKE_CRITERIA_TAX_EXEMPT ----
+
+make_criteria_tax_exempt <- function(){
+  
+  crit_tax_e <- list("tax_exempt" = TRUE)
+  
+  criteria_tax_exempt <- crit_tax_e
+  
+  return(criteria_tax_exempt)
   
 }
 
-# COMMAND: MAKE_CRITERIA_IS_WITHIN_UGA ----
+# COMMAND: MAKE_CRITERIA_MAX_WATER_OVERLAP_PCT----
 
-make_criteria_is_within_uga <- function(){
+make_criteria_max_water_overlap_pct <- function(){
+  
+  crit_wtr_overlap <- list("water_overlap" = 0.5)
+  
+  criteria_max_water_overlap_pct <- crit_wtr_overlap
+  
+  return(criteria_max_water_overlap_pct)
+}
+
+
+# COMMAND: MAKE_CRITERIA_WITHIN_UGA ----
+
+make_criteria_within_uga <- function(){
+  
+  crit_within_uga <- list("within_uga" = TRUE)
+  
+  criteria_within_uga <- crit_within_uga
+  
+  return(criteria_within_uga)
+}
+
+# COMMAND: MAKE_CRITERIA_DEVELOPABLE_ZONING ----
+
+make_criteria_developable_zoning <- function(development_assumptions_zoning){
+  
+  dz <- development_assumptions_zoning %>% 
+    filter(DEVELOPABLE_LGL) %>% 
+    pull(CONSOL_20)
+  
+  crit_dz <- list("developable_zoning" = dz)
+  
+  criteria_developable_zoning <-  crit_dz
+  
+  return(criteria_developable_zoning)
   
 }
 
-# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_ZONING ----
+# COMMAND: MAKE_CRITERIA_UNDEVELOPABLE_PRESENT_USE ----
 
-make_criteria_is_developable_zoning <- function(){
+make_criteria_undevelopable_present_use <- function(){
   
-}
-# COMMAND: MAKE_CRITERIA_IS_DEVELOPABLE_PRESENT_USE ----
-
-make_criteria_is_developable_present_use <- function(){
+   list_uses <- function(){
+                      parcel_ready %>% 
+                        st_drop_geometry() %>% 
+                        count(PRESENT_USE, sort = TRUE) %>% 
+                        print(n = Inf)
+                    }
+   
+   undev_presentuse <- c(
+     "Park, Public(Zoo/Arbor)",
+     "Mortuary/Cemetery/Crematory",
+     "Open Space Tmbr Land/Greenbelt",
+     "Open Space(Curr Use-RCW 84.34)",
+     "Mining/Quarry/Ore Processing",
+     "Farm",
+     "Reserve/Wilderness Area",
+     "Open Space(Agric-RCW 84.34)",
+     "Forest Land(Desig-RCW 84.33)",
+     "Forest Land(Class-RCW 84.33)",
+     "Tideland, 1st Class",
+     "Tideland, 2nd Class"
+   )
+   
+  crit_undev_presentuse <- list( "undevelopable_presentuse" = undev_presentuse) 
+  
+  criteria_undevelopable_presentuse <-  crit_undev_presentuse
+  
+  return(criteria_undevelopable_presentuse)
   
 }
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use){
-  
+make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use){
+  suitability_criteria <- c(
+    criteria_tax_exempt,
+    criteria_max_water_overlap_pct ,
+    criteria_within_uga,
+    criteria_developable_zoning ,
+    criteria_undevelopable_present_use 
+  )
+
 }
 
-# COMMAND: MAKE_TAX_E ----
+# COMMAND: MAKE_SUITABILITY_TAX_EXEMPT ----
 
-make_tax_e <- function(parcel_ready, pub_parcel){
+make_suitability_tax_exempt <- function(parcel_ready){
   
-  tax_e <- parcel_ready %>%  
-    mutate(CRIT_SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
-           CRIT_SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
-           CRIT_SUIT_OWNER_TAX_E = CRIT_SUIT_OWNER_PUBLIC | CRIT_SUIT_OWNER_NONPROFIT) %>% 
+  tax_exempt <- parcel_ready %>%  
+    st_drop_geometry() %>% 
+    mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
+           SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
+           SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT) %>% 
     select(PIN,
-           CRIT_SUIT_OWNER_PUBLIC,
-           CRIT_SUIT_OWNER_NONPROFIT,
-           CRIT_SUIT_OWNER_TAX_E) %>% 
-    st_set_geometry(NULL)
+           SUIT_OWNER_PUBLIC,
+           SUIT_OWNER_NONPROFIT,
+           SUIT_OWNER_TAX_E) 
   
-  return(tax_e)
+  return(tax_exempt)
 }
+# COMMAND: MAKE_SUITABILITY_WATER_OVERLAP ----
 
-# COMMAND: MAKE_WATER_COVERAGE ----
-
-make_water_coverage <- function(parcel_ready, waterbodies){
+make_suitability_water_overlap <- function(parcel_ready, waterbodies){
+  # Convert to EPSG 2926 
+  p_ready_poly <- parcel_ready %>%  
+    select(PIN) %>% 
+    st_transform(2926)
   
-  wc_fp <- root_file("1-data/3-interim/parcel_water_coverage.csv")
+  # Filter waterbodies to include only those larger than 1/2 sq km
   
-  wc_dr_id <- as_id("11DOvF2Sa4Fb7Ms7uMrBf3gDK8sy7qd8x")
+  min_sq_km <- 0.5
   
-  wc_load <- 
-    make_or_read2(fp = wc_fp,
-                  dr_id = wc_dr_id,
-                  skip_get_expr = TRUE,
-                  get_expr = function(fp){ 
-                    
-                    # Convert to EPSG 2926 
-                    p_ready_poly <- parcel_ready %>%  
-                      select(PIN) %>% 
-                      st_transform(2926)
-                    
-                    # Filter waterbodies to include only those larger than 1/2 sq km
-                    
-                    min_sq_km <- 0.5
-                    
-                    tolerance <- 5
-                    
-                    wtr <- st_transform(waterbodies, 2926) %>%  
-                      filter( AREA_SQ_KM > min_sq_km) %>% 
-                      st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
-                    
-                    p_water <- p_ready_poly 
-                    
-                    # ~ 3 min. operation
-                    
-                    p_water$CRIT_SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
-                    
-                    intersect_idx <- which(p_water$CRIT_SUIT_WATER_OVERLAP_LGL)
-                    
-                    p_water$CRIT_SUIT_WATER_OVERLAP_PCT <- as.double(0)
-                    
-                    wtr_union <- st_union(wtr)
-                    
-                    # ~ 2 min. operation
-                    
-                    p_water[intersect_idx,"CRIT_SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
-                                                                                              y = wtr_union)
-                    
-                    
-                    p_water_ready <- p_water %>% 
-                      st_drop_geometry() %>% 
-                      select(PIN,  
-                             CRIT_SUIT_WATER_OVERLAP_LGL,
-                             CRIT_SUIT_WATER_OVERLAP_PCT)
-                    
-                    write_csv(p_water_ready, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(fp, drive_folder)
-                    
-                    
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+  tolerance <- 5
   
-  water_coverage <- wc_load
+  wtr <- st_transform(waterbodies, 2926) %>%  
+    filter( AREA_SQ_KM > min_sq_km) %>% 
+    st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
   
-  return(wc_load)
+  p_water <- p_ready_poly 
+  
+  # ~ 3 min. operation
+  
+  p_water$SUIT_WATER_OVERLAP_LGL <- st_intersects_any(x = p_water,y = wtr)  
+  
+  intersect_idx <- which(p_water$SUIT_WATER_OVERLAP_LGL)
+  
+  p_water$SUIT_WATER_OVERLAP_PCT <- as.double(0)
+  
+  wtr_union <- st_union(wtr)
+  
+  # ~ 2 min. operation
+  
+  p_water[intersect_idx,"SUIT_WATER_OVERLAP_PCT"] <- st_intersect_area(x = p_water[intersect_idx,],
+                                                                       y = wtr_union)
+  
+  
+  p_water_ready <- p_water %>% 
+    st_drop_geometry() %>% 
+    select(PIN, 
+           SUIT_WATER_OVERLAP_LGL,
+           SUIT_WATER_OVERLAP_PCT)
+  
+  water_overlap <- p_water_ready
+  
+  return(water_overlap)
   
 }
 
 
-# COMMAND: MAKE_WITHIN_UGA ----
+# COMMAND: MAKE_SUITABILITY_WITHIN_UGA ----
 
-make_within_uga <- function(parcel_ready, uga){
+make_suitability_within_uga <- function(parcel_ready, uga){
   
-    w_uga_fp <- root_file("1-data/3-interim/parcel_within_uga.csv")
+  p_ready_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926)
   
-  w_uga_dr_id <- as_id("1PiYMzfdmRUN7vxlDxNM8ucL3t4A8zMg4")
+  uga_2926 <- st_transform(uga, 2926)
   
-  w_uga_load <- 
-    make_or_read2(fp = w_uga_fp,
-                  dr_id = w_uga_dr_id,
-                  skip_get_expr = TRUE,
-                  get_expr = function(fp){ 
-                    
-                      p_ready_pt <- parcel_ready %>% 
-                        st_set_geometry("geom_pt") %>% 
-                        st_transform(2926)
-                      
-                      uga_2926 <- st_transform(uga, 2926)
-                    
-                      uga_subdivide <- st_subdivide(uga_2926, 100) %>% 
-                        st_collection_extract()
-                      
-                      # ~ 20 min. operation
-                      p_ready_pt$CRIT_SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
-                      
-                      p_ready_within_uga <- p_ready_pt %>% 
-                        st_drop_geometry() %>% 
-                        select(PIN, CRIT_SUIT_WITHIN_UGA)
-                      
-                    write_csv(p_ready_within_uga, fp)
-
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-
-                    drive_upload(fp, drive_folder)
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-    
-return(w_uga_load)
+  uga_subdivide <- st_subdivide(uga_2926, 100) %>% 
+    st_collection_extract()
+  
+  # ~ 20 min. operation
+  p_ready_pt$SUIT_WITHIN_UGA <- st_intersects_any(p_ready_pt,uga_subdivide)
+  
+  p_ready_within_uga <- p_ready_pt %>% 
+    st_drop_geometry() %>% 
+    select(PIN, SUIT_WITHIN_UGA)
+  
+  return(p_ready_within_uga)
   
 }
 
-# COMMAND: MAKE_DEVELOPABLE_ZONING ----
+# COMMAND: MAKE_SUITABILITY_DEVELOPABLE_ZONING ----
 
-make_developable_zoning <- function(parcel_ready, zoning){
+make_suitability_developable_zoning <- function(parcel_ready, zoning){
   
-  dz_fp <- root_file("1-data/3-interim/parcel_consolidated_zoning.csv")
+  p_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
   
-  dz_dr_id <- as_id("1cunvaGmjw9AN-jJzjZESRL35i7BiKt_C")
+  zng <- zoning %>% st_transform(2926) %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
   
-  dz_load <- 
-    make_or_read2(fp = dz_fp,
-                  dr_id = dz_dr_id,
-                  skip_get_expr = TRUE,
-                  get_expr = function(fp){ 
-                    
-                    p_pt <- parcel_ready %>% 
-                      st_set_geometry("geom_pt") %>% 
-                      st_transform(2926) %>% 
-                      select(PIN)
-                    
-                    zng <- zoning %>% st_transform(2926) %>% 
-                      st_subdivide(max_vertices = 100) %>% 
-                      st_collection_extract() 
-                    
-                    p_zng <- p_pt
-                     
-                    p_zng$CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
-                    
-                    p_dz_ready <- st_drop_geometry(p_zng)
-                      
-                    
-                    write_csv(p_dz_ready, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(fp, drive_folder)
-                    
-                    
-                    
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
+  p_zng <- p_pt
   
-  developable_zoning <- dz_load
+  p_zng$SUIT_ZONING_CONSOL_20 <- st_over(p_zng, zng, "CONSOL_20") 
+  
+  p_dz_ready <- st_drop_geometry(p_zng)
+  
+  developable_zoning <- p_dz_ready
   
   return(developable_zoning)
   
 }
 
-# COMMAND: MAKE_PRESENT_USE ----
+# COMMAND: MAKE_SUITABILITY_PRESENT_USE ----
 
-# COMMAND: MAKE_PARCEL_SUITABILITY ----
+make_suitability_present_use <- function(parcel_ready){
+  
+  pres_use <- parcel_ready %>%  
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              SUIT_PRESENT_USE = PRESENT_USE)
+  
+  
+  present_use <- pres_use
+  
+  return(present_use)
+}
 
-# COMMAND: MAKE_UTIL_PRESENT ----
+# COMMAND: MAKE_SUITABILITY ----
+make_suitability <- function(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use){
+  
+  suitability <- list(parcel_ready, 
+                      suitability_tax_exempt, 
+                      suitability_water_overlap, 
+                      suitability_within_uga, 
+                      suitability_developable_zoning, 
+                      suitability_present_use) %>% 
+    reduce(left_join, by = "PIN") %>% 
+    mutate(
+      SUITABLE_OWNER_LGL = if_else(SUIT_OWNER_TAX_E == suitability_criteria[["tax_exempt"]],TRUE,FALSE,FALSE),
+      SUITABLE_WATER_OVERLAP_LGL = if_else(SUIT_WATER_OVERLAP_PCT <= suitability_criteria[["water_overlap"]],TRUE,FALSE,FALSE),
+      SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
+      SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
+      SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
+      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL
+    ) %>% 
+    st_sf
+  
+  return(suitability)
+  
+}
+# COMMAND: MAKE_BUILDING_RESIDENTIAL ----
 
-# COMMAND: MAKE_UTIL_POTENTIAL ---- 
+make_building_residential <- function(){ 
+  
+  bldg_res_fp <- root_file(res_fp <- "1-data/2-external/EXTR_ResBldg.csv")
+  
+  bldg_res_dr_id <- as_id("10rz6hc4lEAaaU-0Jcv0iCiVMFBVTc-en")
+  
+  bldg_res_load <- 
+    make_or_read2(fp = bldg_res_fp,
+                  dr_id = bldg_res_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_ResBldg.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  bldg_res <- bldg_res_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(bldg_res)
+  
+}
 
-# COMMAND: MAKE_PARCEL_UTILIZATION----
+# COMMAND: MAKE_BUILDING_APARTMENT ----
+
+make_building_apartment <- function(){ 
+  
+  bldg_apt_fp <- root_file(apt_fp <- "1-data/2-external/EXTR_AptComplex.csv")
+  
+  bldg_apt_dr_id <- as_id("11kkudStD4TuoiRqMie-Y4_8tZQJmLPBw")
+  
+  bldg_apt_load <- 
+    make_or_read2(fp = bldg_apt_fp,
+                  dr_id = bldg_apt_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_AptComplex.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_apartment <- bldg_apt_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(building_apartment)
+  
+}
+
+# COMMAND: MAKE_BUILDING_CONDO ----
+
+make_building_condo <- function(){ 
+  
+  bldg_condo_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CondoComplex.csv")
+  
+  bldg_condo_dr_id <- as_id("1avYhRKzHijnc-YZQDGICqWrQNhQoTwnB")
+  
+  bldg_condo_load <- 
+    make_or_read2(fp = bldg_condo_fp,
+                  dr_id = bldg_condo_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_CondoComplex.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_condo <- bldg_condo_load %>% 
+    rename_all(to_screaming_snake_case)
+  
+  return(building_condo)
+  
+}
+
+# COMMAND: MAKE_BUILDING_COMMERCIAL ----
+
+make_building_commercial <- function(){ 
+  
+  bldg_comm_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CommBldg.csv")
+  
+  bldg_comm_dr_id <- as_id("1VT_plwHQve51ldIg3chFUpcTSMD_ZyrN")
+  
+  bldg_comm_load <- 
+    make_or_read2(fp = bldg_comm_fp,
+                  dr_id = bldg_comm_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: url here
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    zip_dir <- root_file("1-data/2-external")
+                    
+                    target_name <- "EXTR_CommBldg.csv" 
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_csv,
+                      target_name = target_name
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  building_commercial <- bldg_comm_load %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    mutate(PIN = str_c(MAJOR,MINOR,sep = ""))
+  
+  return(building_commercial)
+  
+}
+
+# COMMAND: MAKE_BUILDING ----
+
+make_building <- function(building_residential, building_apartment, building_condo, building_commercial){
+  
+  bldg_empty <- tibble(PIN = as.character(""), 
+                       BLDG_NBR = as.integer(""),
+                       BLDG_NET_SQ_FT= as.integer(""),
+                       NBR_LIVING_UNITS = as.integer(""),
+                       NBR_BLDGS = as.integer(""),
+                       BLDG_CAT = as.character("")) %>% 
+    slice(0)
+  
+  comm_join <- building_commercial %>% 
+    transmute(PIN,
+              BLDG_NBR,
+              BLDG_NET_SQ_FT,
+              NBR_BLDGS,
+              BLDG_CAT = "commercial")
+  
+  res_join <- building_residential %>% 
+    transmute(PIN,
+              BLDG_NBR,
+              BLDG_NET_SQ_FT = SQ_FT_TOT_LIVING,
+              NBR_LIVING_UNITS,
+              BLDG_CAT = "residential")
+  
+  apt_join <- building_apartment %>% 
+    transmute(PIN,
+              NBR_BLDGS,
+              NBR_LIVING_UNITS = NBR_UNITS,
+              BLDG_CAT = "apartment")
+  
+  condo_join <- building_condo %>% 
+    transmute(PIN = MAJOR,
+              NBR_LIVING_UNITS = NBR_UNITS,
+              BLDG_CAT = "condo")
+  
+  # Join all bulding objects to the empty tibble
+  bldg_all <- list(bldg_empty, comm_join, res_join, apt_join, condo_join) %>% 
+    reduce(full_join) 
+  
+  # ~ 2 min. operation
+  
+  bldg_all_sum <- bldg_all %>%  
+    mutate(NBR_BLDGS = if_else(BLDG_CAT %in% c("residential", "condo"),as.integer(1),NBR_BLDGS)) %>% 
+    mutate(CAT_LGL = TRUE,
+           COL_NAME = str_c("TYPE",toupper(BLDG_CAT),"LGL", sep = "_")) %>% 
+    spread(COL_NAME, CAT_LGL) %>% 
+    mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.)) %>% 
+    group_by(PIN) %>%  
+    summarise(BLDG_NBR = max(n()),  
+              BLDG_NET_SQ_FT = sum(BLDG_NET_SQ_FT, na.rm = TRUE),
+              BLDG_LIVING_UNITS = sum(NBR_LIVING_UNITS, na.rm = TRUE),
+              BLDG_TYPE_APARTMENT_LGL = any(TYPE_APARTMENT_LGL),
+              BLDG_TYPE_COMMERCIAL_LGL = any(TYPE_COMMERCIAL_LGL),
+              BLDG_TYPE_CONDO_LGL = any(TYPE_CONDO_LGL),
+              BLDG_TYPE_RESIDENTIAL_LGL = any(TYPE_RESIDENTIAL_LGL))
+  
+  
+  building <- bldg_all_sum
+}
+
+# COMMAND: MAKE_CRITERIA_LOT_SIZE ----
+
+make_criteria_lot_size <- function(city_block_sqft, lot_types){
+  eight_block <- city_block_sqft/8
+  
+  quarter_block <- city_block_sqft/4
+  
+  crit_lot_size <- list("breaks" = c(-Inf,eight_block,quarter_block, Inf),
+                      "labels" =  lot_types$LOT_SIZE_DESC)
+  criteria_lot_size <- crit_lot_size
+ 
+   return(criteria_lot_size)
+}
+
+# COMMAND: MAKE_UTILIZATION_CRITERIA ----
+
+make_utilization_criteria <- function(criteria_underutilized){
+  utilization_criteria <- c(criteria_lot_size)
+  
+  return(utilization_criteria)
+}
+
+# COMMAND: MAKE_UTILILIZATION_PRESENT ----
+
+make_utilization_present <- function(parcel_ready, building){
+  
+  util_present <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    select(PIN) %>% 
+    left_join(building, by = "PIN") %>% 
+    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0))
+  
+  utilization_present <- util_present
+  
+  return(utilization_present)
+}
+
+
+# COMMAND: MAKE_UTILIZATION_LOT_SIZE----
+make_utilization_lot_size <- function(parcel_ready, criteria_lot_size){
+  
+  util_ls <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              LOT_SIZE_DESC = as.character(cut(SQ_FT_LOT,
+                               breaks = criteria_lot_size[["breaks"]],
+                               labels = criteria_lot_size[["labels"]])))
+  
+  utilization_lot_size <- util_ls
+  return(utilization_lot_size)
+  
+}
+
+# COMMAND: MAKE_UTILILIZATION_POTENTIAL ---- 
+
+make_utilization_potential <- function(suitability, development_assumptions_lot, utilization_lot_size){
+  
+  suit_trim <- suitability %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+           LOT_SQ_FT = SQ_FT_LOT,
+           UTIL_LOT_DEVELOPABLE_PCT = round(1-SUIT_WATER_OVERLAP_PCT,2),
+           CONSOL_20 = SUIT_ZONING_CONSOL_20
+           )
+  
+  util_potential <- suit_trim %>% 
+  left_join(utilization_lot_size, by = "PIN") %>% 
+    left_join(development_assumptions_lot, by = c("CONSOL_20", "LOT_SIZE_DESC")) %>% 
+    rename(UTIL_DEVELOPABLE_LGL = DEVELOPABLE_LGL,
+           UTIL_DEVELOPMENT_ASSUMPTION = DEVELOPMENT_ASSUMPTION) %>% 
+    mutate(UTIL_DEVELOPABLE_ESTIMATE_LGL = if_else(LOT_SIZE_TYPE %in% c("single family","small","medium","large"),
+                              TRUE,
+                              FALSE,
+                              missing = FALSE)) %>% 
+    mutate(UTIL_DEVELOPABLE_LOT_COVERAGE_PCT = lesser_of(LOT_COVERAGE_PCT, UTIL_LOT_DEVELOPABLE_PCT) ) %>% # take the lesser of lot coverage estimate and water overlap 
+    mutate(UTIL_POTENTIAL_UTILIZATION_SQFT = round(LOT_SQ_FT * UTIL_DEVELOPABLE_LOT_COVERAGE_PCT * LOT_STORIES_NBR)) %>%  # this is where the math happens!
+    select(PIN,
+           starts_with("LOT"),
+           starts_with("UTIL"))
+  
+  utilization_potential <- util_potential
+  
+  return(utilization_potential) 
+}
+
+# COMMAND: MAKE_UTILILIZATION ----
+
+make_utilization <- function(suitability, utilization_present, utilization_potential){
+  
+  util <- suitability %>% 
+    st_drop_geometry() %>% 
+    select(PIN) %>% 
+    left_join(utilization_present, by = "PIN") %>% 
+    left_join(utilization_potential, by = "PIN") %>% 
+    mutate(UTIL_UNDER_UTILIZED_LGL = if_else(UTIL_PRESENT < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA)) %>% 
+    mutate(UTILIZATION = case_when( 
+      !UTIL_UNDER_UTILIZED_LGL ~ "fully-utilized",
+      UTIL_UNDER_UTILIZED_LGL ~ "under-utilized", 
+      TRUE ~ LOT_SIZE_TYPE 
+    ))
+  
+  utilization <- util
+  return(utilization)
+  
+}
+
+# COMMAND: MAKE_FILTERS_TRACT ----
+make_filters_census_tract <- function(parcel_ready, census_tracts){
+  
+  p_ready_pt <- parcel_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926)
+  
+  tr_subdivide <- st_subdivide(census_tracts, 100) %>% 
+    st_collection_extract() 
+   
+  p_ready_pt$CENSUS_TRACT <- st_over(p_ready_pt,tr_subdivide, "GEOID") 
+  
+  p_ready_tr <- p_ready_pt %>% 
+    st_drop_geometry() %>% 
+    select(PIN, CENSUS_TRACT)
+  
+  filters_census_tract <- p_ready_tr
+  
+  return(filters_census_tract)
+   
+}
+
+# COMMAND: MAKE_FILTERS ----
+make_filters <- function(parcel_ready, ...){
+  
+  filter_list <- list(...) %>% 
+    reduce(left_join, by = "PIN")
+  
+  filters <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    select(PIN) %>% 
+    left_join(filter_list, by = "PIN") 
+  
+  return(filters)
+    
+  
+}
+
+
+# COMMAND: MAKE_HELPERS_URL_PARCEL_VIEWER ----
+make_helpers_url_parcel_viewer <- function(parcel_ready){
+  
+  url <- "http://blue.kingcounty.com/Assessor/eRealProperty/Detail.aspx?ParcelNbr="
+  
+  url_pv <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              HELPERS_URL_PARCEL_VIEWER = str_c(url,PIN,sep = ""))
+  
+ helpers_url_parcel_viewer <- url_pv
+ 
+ return(helpers_url_parcel_viewer)
+  
+  
+}
+
+
+# COMMAND: MAKE_HELPERS_URL_OPP360 ----
+make_helpers_url_opp360 <- function(filters_census_tract){
+  
+  url <- "**placeholer url** for census tract: "
+  
+  url_opp360 <- filters_census_tract %>% 
+    transmute(PIN,
+              HELPERS_URL_OPP360 = str_c(url,CENSUS_TRACT,sep = ""))
+  
+ helpers_url_opp360 <- url_opp360
+ 
+ return(helpers_url_opp360)
+  
+  
+}
+# COMMAND: MAKE_HELPERS ----
+make_helpers <- function(...){
+  
+  helpers <- reduce(list(...), left_join, by = "PIN")
+  
+  return(helpers)
+}
+# COMMAND: MAKE_INVENTORY ----
+
+make_inventory <- function(filters, helpers, suitability,  utilization){
+  
+  inv <- list(filters, helpers, suitability, utilization) %>% 
+    reduce(left_join, by = "PIN") %>%  
+    st_sf
+  
+  inventory <- inv
+  
+  return(inventory)
+  
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE ----
+
+make_inventory_suitable <- function(inventory){
+  
+  inv_suit <- filter(inventory, SUITABLE_LGL)
+  
+  inventory_suitable <- inv_suit
+  
+  return(inventory_suitable)
+  
+}
+
+
+# COMMAND: MAKE_INVENTORY_TABLE ----
+
+make_inventory_table <- function(inventory){
+  
+  inventory_table <- inventory %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)
+  
+  return(inventory_table)
+}
+
+# COMMAND: MAKE_INVENTORY_POLY ----
+
+make_inventory_poly <- function(inventory){
+  
+  inventory_poly <- inventory %>% 
+    select(PIN,geometry)
+  
+  return(inventory_poly)
+}
+
+# COMMAND: MAKE_INVENTORY_POINT ----
+
+make_inventory_point <- function(inventory){
+  
+  inventory_point <- inventory %>% 
+    st_set_geometry("geom_pt") %>% 
+    select(PIN,geom_pt)
+  
+  return(inventory_point)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_TABLE ----
+
+make_inventory_suitable_table <- function(inventory_suitable){
+  
+  inventory_suitable_table <- inventory_suitable %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)
+  
+  return(inventory_suitable_table)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_POLY ----
+
+make_inventory_suitable_poly <- function(inventory_suitable){
+  
+  inventory_suitable_poly <- inventory_suitable %>% 
+    select(PIN,geometry)
+  
+  return(inventory_suitable_poly)
+}
+
+# COMMAND: MAKE_INVENTORY_SUITABLE_POINT ----
+
+make_inventory_suitable_point <- function(inventory_suitable){
+  
+  inventory_suitable_point <- inventory_suitable %>% 
+    st_set_geometry("geom_pt") %>% 
+    select(PIN, geom_pt)
+  
+  return(inventory_suitable_point)
+}
+
+
+# COMMAND: MAKE_DD_FIELD_NAME_DEV ----
+
+make_dd_field_name_dev <- function(inventory){
+  name_dev <- inventory %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc) %>% 
+    names() %>% 
+    {tibble("FIELD_NAME_DEV" = .)}
+  
+  dd_field_name_dev <- name_dev
+  
+  return(dd_field_name_dev)
+}
+
+# COMMAND: MAKE_DD_FIELD_NAME_USER ----
+
+make_dd_field_name_user <- function(){
+  
+  # dpasta(dd_field_name_dev) 
+  
+  dd_field_name_user <-  tribble(
+                        ~FIELD_NAME_DEV, ~ FIELD_NAME_USER,
+                                  "PIN", "Parcel Identification Number",
+                         "CENSUS_TRACT", "Census Tract",
+            "HELPERS_URL_PARCEL_VIEWER", "Link to KC Parcel Viewer",
+                   "HELPERS_URL_OPP360", "Link to Opportunity 360",
+                        "TAXPAYER_NAME", "Taxpayer Name",
+                              "BILL_YR", "Tax Bill Year",
+                           "TAX_STATUS", "Tax Status",
+                           "TAX_REASON", "Tax Status Reason(s)",
+                        "APPR_IMPS_VAL", "Tax Appraised Improvement Value",
+                        "APPR_LAND_VAL", "Tax Appraised Land Value",
+                     "TAXABLE_IMPS_VAL", "Tax Taxable Improvement Value",
+                     "TAXABLE_LAND_VAL", "Tax Taxable Land Value",
+                            "PROP_NAME", "Property Name",
+                            "PROP_TYPE", "Property Type",
+                "ASSESSOR_PUB_LIST_LGL", "T/F: Assessor Public-Ownership List?",
+                        "DISTRICT_NAME", "District Name",
+                       "CURRENT_ZONING", "Current Zoning",
+                          "PRESENT_USE", "Present Use",
+                            "SQ_FT_LOT", "Lot Size (SqFt)",
+                               "ACCESS", "Lot Accessibility Level",
+                           "TOPOGRAPHY", "T/F: Topography?",
+                 "RESTRICTIVE_SZ_SHAPE", "T/F: Restrictive Size/Shape?",
+                        "PCNT_UNUSABLE", "Lot Percent Unusable",
+                        "CONTAMINATION", "T/F: Contaminated?",
+                        "HISTORIC_SITE", "T/F: Historic Site?",
+              "CURRENT_USE_DESIGNATION", "Current Use Designation",
+              "NATIVE_GROWTH_PROT_ESMT", "T/F: Native Growth Protection Estimate",
+                            "EASEMENTS", "T/F :Easements?",
+                    "OTHER_DESIGNATION", "T/F: Other Designations?",
+                    "DEED_RESTRICTIONS", "T/F: Deed Restrictions?",
+             "DEVELOPMENT_RIGHTS_PURCH", "T/F: Development Rights Purchased?",
+                     "COAL_MINE_HAZARD", "T/F: Coal Mine Hazard?",
+                    "CRITICAL_DRAINAGE", "T/F: Critical Drainage?",
+                       "EROSION_HAZARD", "T/F: Erosion Hazard?",
+                      "LANDFILL_BUFFER", "T/F: Within Landfill Buffer?",
+               "HUNDRED_YR_FLOOD_PLAIN", "T/F: Within 100 Year Flood Plain?",
+                       "SEISMIC_HAZARD", "T/F: Seismic Hazard?",
+                     "LANDSLIDE_HAZARD", "T/F: Landslide Hazard?",
+                   "STEEP_SLOPE_HAZARD", "T/F: Steep Slope Hazard?",
+                               "STREAM", "T/F: Stream?",
+                              "WETLAND", "T/F: Wetland?",
+                   "SPECIES_OF_CONCERN", "T/F: Species of Concern?",
+                 "SENSITIVE_AREA_TRACT", "T/F: Sensitive Area Tract?",
+                       "WATER_PROBLEMS", "T/F: Water Problems?",
+                   "TRANSP_CONCURRENCY", "T/F: Transportation Concurrency?",
+                       "OTHER_PROBLEMS", "T/F: Other Problems?",
+                    "SUIT_OWNER_PUBLIC", "T/F: Public Ownership?",
+                 "SUIT_OWNER_NONPROFIT", "T/F: Non-Profit Ownership?",
+                     "SUIT_OWNER_TAX_E", "T/F: Tax-Exempt Ownership?",
+               "SUIT_WATER_OVERLAP_LGL", "T/F: Overlaped by Waterbodies?",
+               "SUIT_WATER_OVERLAP_PCT", "T/F: Percent Overlapped by Waterbodies?",
+                      "SUIT_WITHIN_UGA", "T/F: Within the Urban Growth Area?",
+                "SUIT_ZONING_CONSOL_20", "Zoning (KC Consolidated Categories)",
+                     "SUIT_PRESENT_USE", "Present Use",
+                   "SUITABLE_OWNER_LGL", "T/F: Suitable Ownership?",
+           "SUITABLE_WATER_OVERLAP_LGL", "T/F: Suitable Water Overlap?",
+              "SUITABLE_WITHIN_UGA_LGL", "T/F: Suitable Urban Growth Area Distance?",
+        "SUITABLE_ZONING_CONSOL_20_LGL", "T/F: Suitable Zoning?",
+             "SUITABLE_PRESENT_USE_LGL", "T/F: Suitable Present Use?",
+                         "SUITABLE_LGL", "T/F: Suitable Site?",
+                             "BLDG_NBR", "Number of Buildings",
+                       "BLDG_NET_SQ_FT", "Net Area (SqFt) of Buildings",
+                    "BLDG_LIVING_UNITS", "Net Number of Living Units",
+              "BLDG_TYPE_APARTMENT_LGL", "T/F: Apartment Building On-Site?",
+             "BLDG_TYPE_COMMERCIAL_LGL", "T/F: Commercial Building On-Site?",
+                  "BLDG_TYPE_CONDO_LGL", "T/F: Condo Building On-Site?",
+            "BLDG_TYPE_RESIDENTIAL_LGL", "T/F: Residential Building On-Site?",
+                         "UTIL_PRESENT", "Present Utilization (Sqft)",
+                            "LOT_SQ_FT", "Lot Size (SqFt)",
+                        "LOT_SIZE_DESC", "Lot Size Description",
+                        "LOT_SIZE_TYPE", "Lot Size Devevlopment Type",
+                     "LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
+                      "LOT_STORIES_NBR", "Number of Developable Stories (Assumed)",
+             "UTIL_LOT_DEVELOPABLE_PCT", "Percent Developable (Assumed) and Not Under Water",
+                 "UTIL_DEVELOPABLE_LGL", "T/F: Developable Zoning (KC Consolidated Categories)?",
+          "UTIL_DEVELOPMENT_ASSUMPTION", "Development Scenario (Assumed)",
+        "UTIL_DEVELOPABLE_ESTIMATE_LGL", "T/F: In Zoning With A Development Scenario?",
+    "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
+      "UTIL_POTENTIAL_UTILIZATION_SQFT", "Potential Utilization (Sqft)",
+              "UTIL_UNDER_UTILIZED_LGL", "T/F: Is Potential Utilization Greater than Present?",
+                          "UTILIZATION", "Utilization Category"
+   )
+  
+  
+  
+  return(dd_field_name_user)
+}
+
+# COMMAND: MAKE_DD_FIELD_TAGS ----
+
+make_dd_field_tags <- function(){
+  
+  dd_field_tags <- tribble(
+                                              ~FIELD_NAME_DEV, ~FIELD_TAG_SENSITIVE, ~FIELD_TAG_FILTER, ~FIELD_TAG_TOOLTIP, ~FIELD_TAG_TABLE,
+                                                        "PIN",                FALSE,             FALSE,               TRUE,             TRUE,
+                                               "CENSUS_TRACT",                FALSE,              TRUE,              FALSE,             TRUE,
+                                  "HELPERS_URL_PARCEL_VIEWER",                FALSE,             FALSE,               TRUE,             TRUE,
+                                         "HELPERS_URL_OPP360",                FALSE,             FALSE,               TRUE,             TRUE,
+                                              "TAXPAYER_NAME",                 TRUE,              TRUE,               TRUE,             TRUE,
+                                                    "BILL_YR",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TAX_STATUS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TAX_REASON",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "APPR_IMPS_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                              "APPR_LAND_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                           "TAXABLE_IMPS_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                           "TAXABLE_LAND_VAL",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                                  "PROP_NAME",                 TRUE,             FALSE,              FALSE,             TRUE,
+                                                  "PROP_TYPE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                      "ASSESSOR_PUB_LIST_LGL",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "DISTRICT_NAME",                FALSE,              TRUE,              FALSE,             TRUE,
+                                             "CURRENT_ZONING",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                "PRESENT_USE",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                  "SQ_FT_LOT",                FALSE,             FALSE,               TRUE,             TRUE,
+                                                     "ACCESS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                 "TOPOGRAPHY",                FALSE,             FALSE,              FALSE,             TRUE,
+                                       "RESTRICTIVE_SZ_SHAPE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "PCNT_UNUSABLE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "CONTAMINATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                              "HISTORIC_SITE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                    "CURRENT_USE_DESIGNATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                    "NATIVE_GROWTH_PROT_ESMT",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                  "EASEMENTS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "OTHER_DESIGNATION",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "DEED_RESTRICTIONS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                   "DEVELOPMENT_RIGHTS_PURCH",                FALSE,             FALSE,              FALSE,             TRUE,
+                                           "COAL_MINE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "CRITICAL_DRAINAGE",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "EROSION_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                            "LANDFILL_BUFFER",                FALSE,             FALSE,              FALSE,             TRUE,
+                                     "HUNDRED_YR_FLOOD_PLAIN",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "SEISMIC_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                           "LANDSLIDE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "STEEP_SLOPE_HAZARD",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                     "STREAM",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                    "WETLAND",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "SPECIES_OF_CONCERN",                FALSE,             FALSE,              FALSE,             TRUE,
+                                       "SENSITIVE_AREA_TRACT",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "WATER_PROBLEMS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                         "TRANSP_CONCURRENCY",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "OTHER_PROBLEMS",                FALSE,             FALSE,              FALSE,             TRUE,
+                                          "SUIT_OWNER_PUBLIC",                FALSE,              TRUE,              FALSE,            FALSE,
+                                       "SUIT_OWNER_NONPROFIT",                FALSE,              TRUE,              FALSE,            FALSE,
+                                           "SUIT_OWNER_TAX_E",                FALSE,             FALSE,              FALSE,            FALSE,
+                                     "SUIT_WATER_OVERLAP_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                     "SUIT_WATER_OVERLAP_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                            "SUIT_WITHIN_UGA",                FALSE,             FALSE,              FALSE,            FALSE,
+                                      "SUIT_ZONING_CONSOL_20",                FALSE,              TRUE,              FALSE,            FALSE,
+                                           "SUIT_PRESENT_USE",                FALSE,             FALSE,              FALSE,            FALSE,
+                                         "SUITABLE_OWNER_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                 "SUITABLE_WATER_OVERLAP_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "SUITABLE_WITHIN_UGA_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                              "SUITABLE_ZONING_CONSOL_20_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "SUITABLE_PRESENT_USE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                               "SUITABLE_LGL",                FALSE,             FALSE,              FALSE,             TRUE,
+                                                   "BLDG_NBR",                FALSE,             FALSE,              FALSE,             TRUE,
+                                             "BLDG_NET_SQ_FT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                          "BLDG_LIVING_UNITS",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "BLDG_TYPE_APARTMENT_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "BLDG_TYPE_COMMERCIAL_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                        "BLDG_TYPE_CONDO_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                  "BLDG_TYPE_RESIDENTIAL_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                               "UTIL_PRESENT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                                  "LOT_SQ_FT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                              "LOT_SIZE_DESC",                FALSE,             FALSE,              FALSE,            FALSE,
+                                              "LOT_SIZE_TYPE",                FALSE,             FALSE,              FALSE,            FALSE,
+                                           "LOT_COVERAGE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                            "LOT_STORIES_NBR",                FALSE,             FALSE,              FALSE,            FALSE,
+                                   "UTIL_LOT_DEVELOPABLE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                       "UTIL_DEVELOPABLE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                "UTIL_DEVELOPMENT_ASSUMPTION",                FALSE,             FALSE,              FALSE,            FALSE,
+                              "UTIL_DEVELOPABLE_ESTIMATE_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                          "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT",                FALSE,             FALSE,              FALSE,            FALSE,
+                            "UTIL_POTENTIAL_UTILIZATION_SQFT",                FALSE,             FALSE,              FALSE,            FALSE,
+                                    "UTIL_UNDER_UTILIZED_LGL",                FALSE,             FALSE,              FALSE,            FALSE,
+                                                "UTILIZATION",                FALSE,              TRUE,              FALSE,             TRUE
+                         )
+return(dd_field_tags)
+}
+
+# COMMAND: MAKE_DD_FIELD_FORMAT ----
+
+make_dd_field_format <- function(inventory){
+  
+  dd_field_format <- inventory %>%
+    st_drop_geometry() %>% 
+    select_if(not_sfc) %>% 
+    map_chr(class) %>% 
+    {tibble("FIELD_NAME_DEV" = names(.),
+            "FIELD_FORMAT" = .)}
+  
+  return(dd_field_format)
+  
+  
+  }
+
+# COMMAND: MAKE_DD_FIELD_DESCRIPTION ----
+
+make_dd_field_description <- function(dd_field_name_dev){
+  dd_field_description <-
+    dd_field_name_dev %>% 
+    mutate(FIELD_DESCRIPTION = "**Will be added soon**")
+  
+  return(dd_field_description)
+  
+  }
+
+# COMMAND: MAKE_DD_DATA_SOURCE ----
+
+make_dd_data_source <- function(){
+  
+  dd_data_source <- tribble(
+                                                     ~FIELD_NAME_DEV,                             ~DATA_SOURCE,
+                                                               "PIN",  "King County Department of Assessments",
+                                                      "CENSUS_TRACT",                              "US Census",
+                                         "HELPERS_URL_PARCEL_VIEWER",  "King County Department of Assessments",
+                                                "HELPERS_URL_OPP360",          "Enterprise Community Partners",
+                                                     "TAXPAYER_NAME",  "King County Department of Assessments",
+                                                           "BILL_YR",  "King County Department of Assessments",
+                                                        "TAX_STATUS",  "King County Department of Assessments",
+                                                        "TAX_REASON",  "King County Department of Assessments",
+                                                     "APPR_IMPS_VAL",  "King County Department of Assessments",
+                                                     "APPR_LAND_VAL",  "King County Department of Assessments",
+                                                  "TAXABLE_IMPS_VAL",  "King County Department of Assessments",
+                                                  "TAXABLE_LAND_VAL",  "King County Department of Assessments",
+                                                         "PROP_NAME",  "King County Department of Assessments",
+                                                         "PROP_TYPE",  "King County Department of Assessments",
+                                             "ASSESSOR_PUB_LIST_LGL",  "King County Department of Assessments",
+                                                     "DISTRICT_NAME",  "King County Department of Assessments",
+                                                    "CURRENT_ZONING",  "King County Department of Assessments",
+                                                       "PRESENT_USE",  "King County Department of Assessments",
+                                                         "SQ_FT_LOT",  "King County Department of Assessments",
+                                                            "ACCESS",  "King County Department of Assessments",
+                                                        "TOPOGRAPHY",  "King County Department of Assessments",
+                                              "RESTRICTIVE_SZ_SHAPE",  "King County Department of Assessments",
+                                                     "PCNT_UNUSABLE",  "King County Department of Assessments",
+                                                     "CONTAMINATION",  "King County Department of Assessments",
+                                                     "HISTORIC_SITE",  "King County Department of Assessments",
+                                           "CURRENT_USE_DESIGNATION",  "King County Department of Assessments",
+                                           "NATIVE_GROWTH_PROT_ESMT",  "King County Department of Assessments",
+                                                         "EASEMENTS",  "King County Department of Assessments",
+                                                 "OTHER_DESIGNATION",  "King County Department of Assessments",
+                                                 "DEED_RESTRICTIONS",  "King County Department of Assessments",
+                                          "DEVELOPMENT_RIGHTS_PURCH",  "King County Department of Assessments",
+                                                  "COAL_MINE_HAZARD",  "King County Department of Assessments",
+                                                 "CRITICAL_DRAINAGE",  "King County Department of Assessments",
+                                                    "EROSION_HAZARD",  "King County Department of Assessments",
+                                                   "LANDFILL_BUFFER",  "King County Department of Assessments",
+                                            "HUNDRED_YR_FLOOD_PLAIN",  "King County Department of Assessments",
+                                                    "SEISMIC_HAZARD",  "King County Department of Assessments",
+                                                  "LANDSLIDE_HAZARD",  "King County Department of Assessments",
+                                                "STEEP_SLOPE_HAZARD",  "King County Department of Assessments",
+                                                            "STREAM",  "King County Department of Assessments",
+                                                           "WETLAND",  "King County Department of Assessments",
+                                                "SPECIES_OF_CONCERN",  "King County Department of Assessments",
+                                              "SENSITIVE_AREA_TRACT",  "King County Department of Assessments",
+                                                    "WATER_PROBLEMS",  "King County Department of Assessments",
+                                                "TRANSP_CONCURRENCY",  "King County Department of Assessments",
+                                                    "OTHER_PROBLEMS",  "King County Department of Assessments",
+                                                 "SUIT_OWNER_PUBLIC",  "King County Department of Assessments",
+                                              "SUIT_OWNER_NONPROFIT",  "King County Department of Assessments",
+                                                  "SUIT_OWNER_TAX_E",  "King County Department of Assessments",
+                                            "SUIT_WATER_OVERLAP_LGL",                        "King County GIS",
+                                            "SUIT_WATER_OVERLAP_PCT",                        "King County GIS",
+                                                   "SUIT_WITHIN_UGA",                        "King County GIS",
+                                             "SUIT_ZONING_CONSOL_20",                        "King County GIS",
+                                                  "SUIT_PRESENT_USE",  "King County Department of Assessments",
+                                                "SUITABLE_OWNER_LGL",  "King County Department of Assessments",
+                                        "SUITABLE_WATER_OVERLAP_LGL",                        "King County GIS",
+                                           "SUITABLE_WITHIN_UGA_LGL",                        "King County GIS",
+                                     "SUITABLE_ZONING_CONSOL_20_LGL",                        "King County GIS",
+                                          "SUITABLE_PRESENT_USE_LGL",  "King County Department of Assessments",
+                                                      "SUITABLE_LGL",                       "Multiple Sources",
+                                                          "BLDG_NBR",  "King County Department of Assessments",
+                                                    "BLDG_NET_SQ_FT",  "King County Department of Assessments",
+                                                 "BLDG_LIVING_UNITS",  "King County Department of Assessments",
+                                           "BLDG_TYPE_APARTMENT_LGL",  "King County Department of Assessments",
+                                          "BLDG_TYPE_COMMERCIAL_LGL",  "King County Department of Assessments",
+                                               "BLDG_TYPE_CONDO_LGL",  "King County Department of Assessments",
+                                         "BLDG_TYPE_RESIDENTIAL_LGL",  "King County Department of Assessments",
+                                                      "UTIL_PRESENT",  "King County Department of Assessments",
+                                                         "LOT_SQ_FT",  "King County Department of Assessments",
+                                                     "LOT_SIZE_DESC",  "King County Department of Assessments",
+                                                     "LOT_SIZE_TYPE",  "King County Department of Assessments",
+                                                  "LOT_COVERAGE_PCT",  "King County Department of Assessments",
+                                                   "LOT_STORIES_NBR",  "King County Department of Assessments",
+                                          "UTIL_LOT_DEVELOPABLE_PCT",  "King County Department of Assessments",
+                                              "UTIL_DEVELOPABLE_LGL",  "King County Department of Assessments",
+                                       "UTIL_DEVELOPMENT_ASSUMPTION",  "King County Department of Assessments",
+                                     "UTIL_DEVELOPABLE_ESTIMATE_LGL",  "King County Department of Assessments",
+                                 "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT",  "King County Department of Assessments",
+                                   "UTIL_POTENTIAL_UTILIZATION_SQFT",  "King County Department of Assessments",
+                                           "UTIL_UNDER_UTILIZED_LGL",  "King County Department of Assessments",
+                                                       "UTILIZATION",  "King County Department of Assessments"
+                                )
+return(dd_data_source)
+  }
+
+# COMMAND: MAKE_DD_DICTIONARY_VERSION ----
+
+make_dd_dictionary_version <- function(dd_field_name_dev){
+  dd_dictionary_version <-
+    dd_field_name_dev %>% 
+    mutate(DICTIONARY_VERSION = "v0.1 - Feb. 6, 2018")
+  
+  return(dd_dictionary_version)
+}
+
+# COMMAND: MAKE_DD ----
+
+make_dd <- function(...){
+  dd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
+  
+  return(dd)
+}
+
+# COMMAND: WRITE_GEOJSON ----
+
+write_geojson <- function(obj, dsn){
+  
+  st_write(obj, dsn, driver = "GeoJSON",delete_dsn = TRUE)
+  
+}
+
+
 # RUN PROJECT PLAN ----
-# make(project_plan)
+make(project_plan)
