@@ -483,8 +483,7 @@ make_parcel_sf <- function(parcel_sf_poly){
                                    dir_path = zip_dir,
                                    read_fun = read_rds,
                                    target_name = target_name,
-                                   .tempdir = FALSE,
-                                   layer = "parcel",
+                                   .tempdir = FALSE, 
                                    stringsAsFactors = FALSE) %>% 
                       as_tibble %>% 
                       st_sf()
@@ -707,7 +706,7 @@ make_criteria_is_developable_present_use <- function(){
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use){
+make_suitability_criteria <- function(criteria_is_tax_exempt, criteria_max_pct_underwater, criteria_is_within_uga, criteria_is_developable_zoning, criteria_is_developable_present_use){
   
 }
 
