@@ -132,8 +132,7 @@ export_plan <- drake_plan(
   inventory_point.geojson = write_geojson(inventory_point, root_file("1-data/4-ready/inventory_point.geojson")),
   inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
   inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.geojson")),
-  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson")),
-  file_targets = TRUE,
+  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson")), 
   strings_in_dots = "literals"
 )
 
@@ -531,63 +530,23 @@ make_parcel_sf_poly <- function(){
  
 make_parcel_sf <- function(parcel_sf_poly){
   
-  p_sf_fp <- root_file("1-data/3-interim/kc-parcel-geoms-sf.rds")
+  p_sf_2926 <- st_transform(parcel_sf_poly, 2926)
   
-  p_sf_dr_id <- as_id("1vuc_LDus5BsxRJOX7PjhF62O9ZCezk6v")
+  p_sf_2926$geom_pt <- st_centroid(st_geometry(p_sf_2926))
   
-  p_sf <- 
-    make_or_read2(fp = p_sf_fp, 
-                  dr_id = p_sf_dr_id, 
-                  skip_get_expr = TRUE,
-                  get_expr = function(fp){
-                    
-                    p_sf_2926 <- st_transform(parcel_sf_poly, 2926)
-                    
-                    p_sf_2926$geom_pt <- st_centroid(st_geometry(p_sf_2926))
-                    
-                    p_sf_ready <- p_sf_2926 %>% 
-                      mutate(MAJOR = str_pad(MAJOR, 6, "left", "0"),
-                             MINOR = str_pad(MINOR, 4, "left", "0")) %>% 
-                      transmute(PIN = str_c(MAJOR,MINOR),
-                                geom_pt) %>% 
-                      drop_na() %>% 
-                      st_transform(4326) %>% 
-                      st_set_geometry("geometry") %>% 
-                      st_sf
-                    
-                    write_rds(p_sf_ready, fp)  # save as rds to keep second geometry
-                    
-                    zip_fp <- root_file("1-data/3-interim/kc-parcel-geoms-sf.zip")
-                    
-                    zip_pithy(zip_fp, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
-                    
-                    drive_upload(media = zip_fp,path = drive_folder)
-                    
-                    # drive_update(file = as_id("1vuc_LDus5BsxRJOX7PjhF62O9ZCezk6v"),media = zip_fp)
-                    
-                    
-                  },
-                  make_expr = function(fp,dr_id){
-                    zip_dir <- "./1-data/2-external"
-                    
-                    target_name <- "kc-parcel-geoms-sf"
-                    
-                    p_sf <- drive_read_zip(dr_id = dr_id,
-                                   dir_path = zip_dir,
-                                   read_fun = read_rds,
-                                   target_name = target_name,
-                                   .tempdir = FALSE, 
-                                   stringsAsFactors = FALSE) %>% 
-                      as_tibble %>% 
-                      st_sf()
-                    
-                  },
-                  read_expr = function(fp){read_rds(fp) %>%  as_tibble %>%  st_sf()}
-    )
+  p_sf_ready <- p_sf_2926 %>% 
+    mutate(MAJOR = str_pad(MAJOR, 6, "left", "0"),
+           MINOR = str_pad(MINOR, 4, "left", "0")) %>% 
+    transmute(PIN = str_c(MAJOR,MINOR),
+              geom_pt) %>% 
+    drop_na() %>% 
+    st_transform(4326) %>% 
+    st_set_geometry("geometry") %>% 
+    st_sf
   
-  return(p_sf)
+  parcel_sf <- p_sf_ready
+  
+  return(parcel_sf)
 }
 
 # COMMAND: MAKE_PARCEL_READY ----
