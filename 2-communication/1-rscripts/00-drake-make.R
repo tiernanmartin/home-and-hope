@@ -7,16 +7,13 @@ library(googledrive)
 library(miscgis)  
 library(snakecase)
 library(magrittr)
-library(rprojroot) 
+library(here) 
 library(RSocrata)
 library(glue)
 library(fuzzyjoin)
 library(datapasta)
 library(tidyverse) 
 
-
-root <- rprojroot::is_rstudio_project
-root_file <- root$make_fix_file()
 options(httr_oob_default=TRUE,
         tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
@@ -126,13 +123,13 @@ data_dictionary_plan <- drake_plan(
 )
 
 export_plan <- drake_plan(
-  data_dictionary.csv = write_csv(dd, root_file("1-data/4-ready/data_dictionary.csv")),
-  inventory_table.csv = write_csv(inventory_table, root_file("1-data/4-ready/inventory_table.csv")),
-  inventory_poly.geojson = write_geojson(inventory_poly, root_file("1-data/4-ready/inventory_poly.geojson")),
-  inventory_point.geojson = write_geojson(inventory_point, root_file("1-data/4-ready/inventory_point.geojson")),
-  inventory_suitable_table.csv = write_csv(inventory_suitable_table, root_file("1-data/4-ready/inventory_suitable_table.csv")),
-  inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, root_file("1-data/4-ready/inventory_suitable_poly.geojson")),
-  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, root_file("1-data/4-ready/inventory_suitable_point.geojson")), 
+  data_dictionary.csv = write_csv(dd, here("1-data/4-ready/data_dictionary.csv")),
+  inventory_table.csv = write_csv(inventory_table, here("1-data/4-ready/inventory_table.csv")),
+  inventory_poly.geojson = write_geojson(inventory_poly, here("1-data/4-ready/inventory_poly.geojson")),
+  inventory_point.geojson = write_geojson(inventory_point, here("1-data/4-ready/inventory_point.geojson")),
+  inventory_suitable_table.csv = write_csv(inventory_suitable_table, here("1-data/4-ready/inventory_suitable_table.csv")),
+  inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.geojson")),
+  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.geojson")), 
   strings_in_dots = "literals"
 )
 
@@ -217,7 +214,7 @@ st_over <- function(x,y,col){
 
 make_lu <- function(){
   
-  lu_fp <- root_file("1-data/2-external/EXTR_LookUp.csv")
+  lu_fp <- here("1-data/2-external/EXTR_LookUp.csv")
   
   lu_dr_id <- as_id("1-L42pHb7lySqonanSwBbXSH9OZrKHp2A")
   
@@ -239,7 +236,7 @@ make_lu <- function(){
 
 make_tax_status <- function(){
   
-  tax_s_fp <- root_file("1-data/1-raw/tax_status.txt")
+  tax_s_fp <- here("1-data/1-raw/tax_status.txt")
   
   tax_s_dr_id <- as_id("1xY6l2FRF2a-6Ugk2_qzPo3aA7a35hw8a")
   
@@ -275,7 +272,7 @@ make_tax_status <- function(){
 
 make_tax_reason <- function(){
    
-  tax_r_fp <- root_file("1-data/1-raw/tax_reason.txt")
+  tax_r_fp <- here("1-data/1-raw/tax_reason.txt")
   
   tax_r_dr_id <- as_id("1S9YyHFwTDYrMnM0WGZEHiFrgEUpAfqWL")
   
@@ -318,7 +315,7 @@ MX = more than one reason applies
 
 make_prop_type <- function(){
   
-  pt_fp <- root_file("1-data/1-raw/prop_type.txt")
+  pt_fp <- here("1-data/1-raw/prop_type.txt")
   
   pt_dr_id <- as_id("1nJp_t4hvf1sy9flwmKLnWKnZvdLQs2XN")
   
@@ -361,7 +358,7 @@ X = Exempt
 # COMMAND: MAKE_PUB_PARCEL ----
 
 make_pub_parcel <- function(){ 
-  pub_fp <-  root_file("1-data/2-external/kc-public-parcels.csv")
+  pub_fp <-  here("1-data/2-external/kc-public-parcels.csv")
   
   pub_dr_id <- as_id("1ERHvVa9K6F-lk1L8X47Oy1sdw_s2t9kv")
   
@@ -416,7 +413,7 @@ make_pub_parcel <- function(){
 
 make_acct <- function(){ 
   
-  acct_fp <- root_file("./1-data/2-external/kc_real_prop_acct_extract.rds")
+  acct_fp <- here("./1-data/2-external/kc_real_prop_acct_extract.rds")
   
   acct_dr_id <- as_id("19f4AUMAEshnDNJqGjVsurFthbKGcKYvh")
   
@@ -451,7 +448,7 @@ make_acct <- function(){
 # COMMAND: MAKE_PARCEL_DF ----
 make_parcel_df <- function(){
   
-  p_fp <- root_file("./1-data/2-external/EXTR_Parcel_20171013.csv")
+  p_fp <- here("./1-data/2-external/EXTR_Parcel_20171013.csv")
   
   p_dr_id <- as_id("0B5Pp4V6eCkhraF9jOTl3bURiMkU")
   
@@ -644,7 +641,7 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
 
 make_waterbodies <- function(){
   
-  w_fp <- root_file("./1-data/2-external/waterbodies-kc.gpkg")
+  w_fp <- here("./1-data/2-external/waterbodies-kc.gpkg")
   
   w_dr_id <- as_id("1OF2Z0sNWBmdDdZ4lPgUoolVELd7HCyWL")
   
@@ -668,7 +665,7 @@ make_waterbodies <- function(){
 
 make_uga <- function(){
   
-  uga_fp <- root_file("1-data/2-external/uga")
+  uga_fp <- here("1-data/2-external/uga")
   
   uga_dr_id <- as_id("0B5Pp4V6eCkhrZGQ0Q0h5aHNUVW8")
   
@@ -682,7 +679,7 @@ make_uga <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external/uga")
+                    zip_dir <- here("1-data/2-external/uga")
                     
                     target_name <- "uga"
                     
@@ -705,7 +702,7 @@ make_uga <- function(){
 
 make_zoning <- function(){
   
-  zoning_fp <- root_file("1-data/2-external/zoning_kc_consol_20")
+  zoning_fp <- here("1-data/2-external/zoning_kc_consol_20")
   
   zoning_dr_id <- as_id("0B5Pp4V6eCkhrOTUwT29WQl9STVk")
   
@@ -719,7 +716,7 @@ make_zoning <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external/")
+                    zip_dir <- here("1-data/2-external/")
                     
                     target_name <- "zoning_kc_consol_20"
                     
@@ -741,7 +738,7 @@ make_zoning <- function(){
 # COMMAND: MAKE_CENSUS_TRACTS ----
 make_census_tracts <- function(){
   
-  tr_fp <- root_file("1-data/2-external/kc_census_tracts.gpkg")
+  tr_fp <- here("1-data/2-external/kc_census_tracts.gpkg")
   
   tr_dr_id <- as_id("18KYUqhoAgB65HY82mlPGYCN4TcNaRu7J")
   
@@ -1124,7 +1121,7 @@ make_suitability <- function(parcel_ready, suitability_criteria, suitability_tax
 
 make_building_residential <- function(){ 
   
-  bldg_res_fp <- root_file(res_fp <- "1-data/2-external/EXTR_ResBldg.csv")
+  bldg_res_fp <- here(res_fp <- "1-data/2-external/EXTR_ResBldg.csv")
   
   bldg_res_dr_id <- as_id("10rz6hc4lEAaaU-0Jcv0iCiVMFBVTc-en")
   
@@ -1137,7 +1134,7 @@ make_building_residential <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external")
+                    zip_dir <- here("1-data/2-external")
                     
                     target_name <- "EXTR_ResBldg.csv" 
                     
@@ -1164,7 +1161,7 @@ make_building_residential <- function(){
 
 make_building_apartment <- function(){ 
   
-  bldg_apt_fp <- root_file(apt_fp <- "1-data/2-external/EXTR_AptComplex.csv")
+  bldg_apt_fp <- here(apt_fp <- "1-data/2-external/EXTR_AptComplex.csv")
   
   bldg_apt_dr_id <- as_id("11kkudStD4TuoiRqMie-Y4_8tZQJmLPBw")
   
@@ -1177,7 +1174,7 @@ make_building_apartment <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external")
+                    zip_dir <- here("1-data/2-external")
                     
                     target_name <- "EXTR_AptComplex.csv" 
                     
@@ -1204,7 +1201,7 @@ make_building_apartment <- function(){
 
 make_building_condo <- function(){ 
   
-  bldg_condo_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CondoComplex.csv")
+  bldg_condo_fp <- here(condo_fp <- "1-data/2-external/EXTR_CondoComplex.csv")
   
   bldg_condo_dr_id <- as_id("1avYhRKzHijnc-YZQDGICqWrQNhQoTwnB")
   
@@ -1217,7 +1214,7 @@ make_building_condo <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external")
+                    zip_dir <- here("1-data/2-external")
                     
                     target_name <- "EXTR_CondoComplex.csv" 
                     
@@ -1243,7 +1240,7 @@ make_building_condo <- function(){
 
 make_building_commercial <- function(){ 
   
-  bldg_comm_fp <- root_file(condo_fp <- "1-data/2-external/EXTR_CommBldg.csv")
+  bldg_comm_fp <- here(condo_fp <- "1-data/2-external/EXTR_CommBldg.csv")
   
   bldg_comm_dr_id <- as_id("1VT_plwHQve51ldIg3chFUpcTSMD_ZyrN")
   
@@ -1256,7 +1253,7 @@ make_building_commercial <- function(){
                   },
                   make_expr = function(fp, dr_id){
                     
-                    zip_dir <- root_file("1-data/2-external")
+                    zip_dir <- here("1-data/2-external")
                     
                     target_name <- "EXTR_CommBldg.csv" 
                     
