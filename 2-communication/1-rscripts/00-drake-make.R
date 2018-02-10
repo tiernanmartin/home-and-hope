@@ -1837,7 +1837,7 @@ make_dd_field_format <- function(inventory){
 make_dd_field_description <- function(dd_field_name_dev){
   dd_field_description <-
     dd_field_name_dev %>% 
-    mutate(FIELD_DESCRIPTION = "**Will be added soon**")
+    mutate(FIELD_DESCRIPTION = "https://www.policymap.com/report_widget?pid=241975&type=op&area=predefined&sid=2010")
   
   return(dd_field_description)
   
