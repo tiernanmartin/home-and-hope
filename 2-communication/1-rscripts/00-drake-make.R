@@ -12,11 +12,83 @@ library(RSocrata)
 library(glue)
 library(fuzzyjoin)
 library(datapasta)
+library(writexl)
 library(tidyverse) 
 
 options(httr_oob_default=TRUE,
         tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+
+
+# FUNCTION: EXTRACT_TARGET_PATHS ----
+
+extract_target_paths <- function(plan){
+ pluck(plan,"target") %>% map_chr(str_replace_all, pattern = "'", replacement = "")
+}
+
+# FUNCTION: DRAKE_HERE ----
+drake_here <- function(x) {
+  x %>% str_replace_all("'", "") %>% here() %>% as_drake_filename()
+}
+# FUNCTION: WITHIN_RANGE ----
+`%within_range%` <- function(x,range){ 
+  between(x,min(range),max(range))
+          
+          } 
+
+# FUNCTION: LESSER_OF ----
+lesser_of <- function(x,y){
+  x <- as.double(x)
+  y <- as.double(y)
+  
+  if_else(x<= y, x,y, missing = x)
+  
+  } 
+
+# FUNCTION: MAKE_PARSE_LU_STRING ----
+parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){ 
+  str_split(string, pattern = row_sep) %>% 
+    flatten() %>% 
+    keep(~ str_detect(.x,"")) %>%  
+    str_replace_all("\\\n","") %>% 
+    map_chr(c) %>% 
+    map_df(~.x %>% str_split(pattern = col_sep) %>% as.data.frame %>% t %>% as_data_frame ) %>%  
+    set_names(c(join_name,long_name))
+}
+
+
+# FUNCTION: ST_INTERSECTS_ANY ----
+st_intersects_any <- function(x, y) {
+  sapply(st_intersects(x, y), function(z) length(z)> 0)
+}
+# FUNCTION: ST_INTERSECT_AREA ----
+st_intersect_area <- function(x, y){ 
+  
+  x_sfc <- x %>% 
+    st_geometry %>% 
+    st_transform(st_crs(y)) 
+  
+  area_x <- x_sfc %>% st_area() %>% as.double()
+  
+  area_xy <- st_intersection(x_sfc, y) %>% st_area %>% as.double()
+  
+  if(is_empty(area_xy)){return(as.double(0))}
+  
+  overlap_pct <- area_xy %>% 
+    magrittr::divide_by(area_x) %>% 
+    as.double() %>% 
+    round(2)
+  
+  return(overlap_pct)
+}
+
+# FUNCTION: ST_OVER ----
+
+st_over <- function(x,y,col){
+  idx <- sapply(st_intersects(x,y), function(z) if (length(z)==0) NA_integer_ else z[1])
+  
+  y[idx,col][[1]]
+}
 
 # MAKE PLANS ----
 
@@ -124,15 +196,24 @@ data_dictionary_plan <- drake_plan(
 )
 
 export_plan <- drake_plan(
-  data_dictionary.csv = write_csv(dd, here("1-data/4-ready/data_dictionary.csv")),
-  inventory_table.csv = write_csv(inventory_table, here("1-data/4-ready/inventory_table.csv")),
-  inventory_poly.geojson = write_geojson(inventory_poly, here("1-data/4-ready/inventory_poly.geojson")),
-  inventory_point.geojson = write_geojson(inventory_point, here("1-data/4-ready/inventory_point.geojson")),
-  inventory_suitable_table.csv = write_csv(inventory_suitable_table, here("1-data/4-ready/inventory_suitable_table.csv")),
-  inventory_suitable_poly.geojson = write_geojson(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.geojson")),
-  inventory_suitable_point.geojson = write_geojson(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.geojson")), 
-  strings_in_dots = "literals"
-)
+  '1-data/4-ready/data_dictionary.csv' = write_csv(dd, here("1-data/4-ready/data_dictionary.csv")),
+  '1-data/4-ready/inventory_table.csv' = write_inventory_csv(inventory, here("1-data/4-ready/inventory_table.csv")), 
+  '1-data/4-ready/inventory_table.rda' = write_inventory_rda(inventory, here("1-data/4-ready/inventory_table.rda")), 
+  '1-data/4-ready/inventory_table.xlsx' = write_inventory_xlsx(inventory, here("1-data/4-ready/inventory_table.xlsx")), 
+  '1-data/4-ready/inventory_suitable_table.csv' = write_inventory_csv(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.csv")), 
+  '1-data/4-ready/inventory_suitable_table.rda' = write_inventory_rda(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.rda")), 
+  '1-data/4-ready/inventory_suitable_table.xlsx' = write_inventory_xlsx(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.xlsx")), 
+  '1-data/4-ready/inventory_suitable_poly.geojson' = write_inventory_geojson(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.geojson")),
+  '1-data/4-ready/inventory_suitable_point.geojson' = write_inventory_geojson(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.geojson")), 
+  strings_in_dots = "literals",
+  file_targets = TRUE
+) %>% purrr::modify_at("target", drake_here)
+
+zip_plan <- drake_plan(
+  '1-data/4-ready/site-inventory-20180212.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180212.zip"), extract_target_paths(export_plan)),
+  strings_in_dots = "literals",
+  file_targets = TRUE
+) %>% purrr::modify_at("target", drake_here)
 
 project_plan <- rbind(
   lookup_plan,
@@ -148,68 +229,11 @@ project_plan <- rbind(
   helper_plan,
   inventory_plan,
   data_dictionary_plan,
-  export_plan)   
+  export_plan,
+  zip_plan)   
 
 
-# FUNCTION: WITHIN_RANGE ----
-`%within_range%` <- function(x,range){ 
-  between(x,min(range),max(range))
-          
-          } 
 
-# FUNCTION: LESSER_OF ----
-lesser_of <- function(x,y){
-  x <- as.double(x)
-  y <- as.double(y)
-  
-  if_else(x<= y, x,y, missing = x)
-  
-  } 
-
-# FUNCTION: MAKE_PARSE_LU_STRING ----
-parse_lu_string <- function(string, col_sep, row_sep, join_name, long_name){ 
-  str_split(string, pattern = row_sep) %>% 
-    flatten() %>% 
-    keep(~ str_detect(.x,"")) %>%  
-    str_replace_all("\\\n","") %>% 
-    map_chr(c) %>% 
-    map_df(~.x %>% str_split(pattern = col_sep) %>% as.data.frame %>% t %>% as_data_frame ) %>%  
-    set_names(c(join_name,long_name))
-}
-
-
-# FUNCTION: ST_INTERSECTS_ANY ----
-st_intersects_any <- function(x, y) {
-  sapply(st_intersects(x, y), function(z) length(z)> 0)
-}
-# FUNCTION: ST_INTERSECT_AREA ----
-st_intersect_area <- function(x, y){ 
-  
-  x_sfc <- x %>% 
-    st_geometry %>% 
-    st_transform(st_crs(y)) 
-  
-  area_x <- x_sfc %>% st_area() %>% as.double()
-  
-  area_xy <- st_intersection(x_sfc, y) %>% st_area %>% as.double()
-  
-  if(is_empty(area_xy)){return(as.double(0))}
-  
-  overlap_pct <- area_xy %>% 
-    magrittr::divide_by(area_x) %>% 
-    as.double() %>% 
-    round(2)
-  
-  return(overlap_pct)
-}
-
-# FUNCTION: ST_OVER ----
-
-st_over <- function(x,y,col){
-  idx <- sapply(st_intersects(x,y), function(z) if (length(z)==0) NA_integer_ else z[1])
-  
-  y[idx,col][[1]]
-}
 
 # COMMAND: MAKE_LU ----
 
@@ -1956,9 +1980,45 @@ make_dd <- function(...){
   return(dd)
 }
 
-# COMMAND: WRITE_GEOJSON ----
+# COMMAND: WRITE_INVENTORY_RDA ----
 
-write_geojson <- function(obj, dsn){
+write_inventory_rda <- function(x, path){
+  
+  inventory_table <- x %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)  
+  
+  save(inventory_table,file = path)
+
+}
+
+# COMMAND: WRITE_INVENTORY_CSV----
+write_inventory_csv <- function(x, path){
+  
+  inventory_table <- x %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)   
+  
+  write_csv(inventory_table, path)
+
+}
+
+
+# COMMAND: WRITE_INVENTORY_XLSX ----
+write_inventory_xlsx <- function(x, path){
+  
+  inventory_table <- x %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)  
+  
+  write_xlsx(inventory_table, path)
+
+}
+
+
+# COMMAND: WRITE_INVENTORY_GEOJSON ----
+
+write_inventory_geojson <- function(obj, dsn){
   
   obj_4326 <- st_transform(obj, 4326)
   
