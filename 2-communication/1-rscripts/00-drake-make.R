@@ -1960,7 +1960,9 @@ make_dd <- function(...){
 
 write_geojson <- function(obj, dsn){
   
-  st_write(obj, dsn, driver = "GeoJSON",delete_dsn = TRUE)
+  obj_4326 <- st_transform(obj, 4326)
+  
+  st_write(obj_4326, dsn, driver = "GeoJSON",delete_dsn = TRUE)
   
 }
 
