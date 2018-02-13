@@ -25,8 +25,31 @@ set.seed(98104)
 # FUNCTION: EXTRACT_TARGET_PATHS ----
 
 extract_target_paths <- function(plan){
- pluck(plan,"target") %>% map_chr(str_replace_all, pattern = "'", replacement = "")
+ 
+  paths <- pluck(plan,"target") %>% map_chr(str_replace_all, pattern = "'", replacement = "")
+
+  shp_pattern <- "\\.shp$"
+  
+  paths_contain_shapefiles <- any(str_detect(paths, shp_pattern))
+  
+ if(paths_contain_shapefiles){ 
+   
+   shapefile_exts <- c(".shx",".dbf",".prj") 
+   
+   shps <- keep(paths, ~ str_detect(.,shp_pattern)) 
+   
+   new_paths <- shps %>% 
+     map(str_replace, pattern = shp_pattern, replacement = shapefile_exts) %>% 
+     flatten_chr %>% 
+     c(paths)
+   
+   return(new_paths)
+   
+ }else{ return(paths) }
+
 }
+
+
 
 # FUNCTION: INTEGER_DUMMY ----
   integer_dummy <- function(n, mean = 0, sd = 1){
@@ -260,7 +283,7 @@ export_plan <- drake_plan(
 ) %>% purrr::modify_at("target", drake_here)
 
 zip_plan <- drake_plan(
-  '1-data/4-ready/site-inventory-20180213.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180213.zip"), extract_target_paths(export_plan)),
+  '1-data/4-ready/site-inventory-shp-20180213.zip' = zip_pithy(here("1-data/4-ready/site-inventory-shp-20180213.zip"), extract_target_paths(export_plan)),
   strings_in_dots = "literals",
   file_targets = TRUE
 ) %>% purrr::modify_at("target", drake_here)
@@ -280,10 +303,8 @@ project_plan <- rbind(
   inventory_plan,
   data_dictionary_plan,
   export_plan,
-  zip_plan)   
-
-
-
+  zip_plan
+  )   
 
 # COMMAND: MAKE_LU ----
 
@@ -1830,9 +1851,7 @@ make_helpers_opp360_xwalk <- function(){
 
 
 # COMMAND: MAKE_HELPERS_URL_OPP360 ----
-make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){
-  
-  url <- "**placeholer url** for census tract: "
+make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){ 
   
   url_opp360 <- filters_census_tract %>%  
     left_join(helpers_opp360_xwalk, by = c("CENSUS_TRACT" = "FIPS_TEXT")) %>% 
@@ -2354,7 +2373,7 @@ write_inventory_shp <- function(obj, dsn){
   
   obj_2926 <- st_transform(obj, 2926)
   
-  st_write(obj_4326, dsn, driver = "ESRI Shapefile",delete_dsn = TRUE)
+  st_write(obj_2926, dsn, driver = "ESRI Shapefile",delete_dsn = TRUE)
   
 }
 
