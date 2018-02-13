@@ -12,6 +12,7 @@ library(RSocrata)
 library(glue)
 library(fuzzyjoin)
 library(datapasta)
+library(readxl)
 library(writexl)
 library(tidyverse)  
 library(here) 
@@ -213,8 +214,9 @@ filter_plan <- drake_plan(
 )
 
 helper_plan <- drake_plan(
+  helpers_opp360_xwalk = make_helpers_opp360_xwalk(),
   helpers_url_parcel_viewer = make_helpers_url_parcel_viewer(parcel_ready),
-  helpers_url_opp360 = make_helpers_url_opp360(filters_census_tract),
+  helpers_url_opp360 = make_helpers_url_opp360(filters_census_tract, helpers_opp360_xwalk),
   helpers = make_helpers(helpers_url_parcel_viewer,helpers_url_opp360)
   
 )
@@ -251,8 +253,8 @@ export_plan <- drake_plan(
   '1-data/4-ready/inventory_suitable_table.csv' = write_inventory_csv(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.csv")), 
   '1-data/4-ready/inventory_suitable_table.rda' = write_inventory_rda(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.rda")), 
   '1-data/4-ready/inventory_suitable_table.xlsx' = write_inventory_xlsx(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.xlsx")), 
-  '1-data/4-ready/inventory_suitable_poly.geojson' = write_inventory_geojson(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.geojson")),
-  '1-data/4-ready/inventory_suitable_point.geojson' = write_inventory_geojson(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.geojson")), 
+  '1-data/4-ready/inventory_suitable_poly.shp' = write_inventory_shp(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.shp")),
+  '1-data/4-ready/inventory_suitable_point.shp' = write_inventory_shp(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.shp")), 
   strings_in_dots = "literals",
   file_targets = TRUE
 ) %>% purrr::modify_at("target", drake_here)
@@ -1798,14 +1800,44 @@ make_helpers_url_parcel_viewer <- function(parcel_ready){
 }
 
 
+
+# COMMAND: MAKE_HELPERS_OPP360_XWALK ----
+make_helpers_opp360_xwalk <- function(){
+  opp360_xwalk_fp <- "./1-data/2-external/PolicyMap_FIPS_URL_Crosswalk.xlsx"
+  
+  opp360_xwalk_dr_id <- as_id("1H-9j4zFpR72bcf971V_dDI1ZD9I2rAKI")
+  
+  opp360_xwalk_load <- 
+    make_or_read2(fp = opp360_xwalk_fp, 
+                  dr_id = opp360_xwalk_dr_id, 
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){
+                    # SOURCE: KIS Team (email from Zach Patton on Feb. 13, 2018)
+                  },
+                  make_expr = function(fp,dr_id){ 
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_xlsx)
+                  },
+                  read_expr = function(fp){read_xlsx(fp)}
+    )
+  
+  opp360_xwalk <-
+    opp360_xwalk_load %>%
+    rename_all(to_screaming_snake_case) 
+  
+  return(opp360_xwalk)
+  
+}
+
+
 # COMMAND: MAKE_HELPERS_URL_OPP360 ----
-make_helpers_url_opp360 <- function(filters_census_tract){
+make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){
   
   url <- "**placeholer url** for census tract: "
   
-  url_opp360 <- filters_census_tract %>% 
-    transmute(PIN,
-              HELPERS_URL_OPP360 = str_c(url,CENSUS_TRACT,sep = ""))
+  url_opp360 <- filters_census_tract %>%  
+    left_join(helpers_opp360_xwalk, by = c("CENSUS_TRACT" = "FIPS_TEXT")) %>% 
+    select(PIN, 
+           HELPERS_URL_OPP360 = URL) 
   
  helpers_url_opp360 <- url_opp360
  
@@ -1813,6 +1845,7 @@ make_helpers_url_opp360 <- function(filters_census_tract){
   
   
 }
+
 # COMMAND: MAKE_HELPERS ----
 make_helpers <- function(...){
   
@@ -2315,6 +2348,15 @@ write_inventory_geojson <- function(obj, dsn){
   
 }
 
+# COMMAND: WRITE_INVENTORY_SHP ----
+
+write_inventory_shp <- function(obj, dsn){
+  
+  obj_2926 <- st_transform(obj, 2926)
+  
+  st_write(obj_4326, dsn, driver = "ESRI Shapefile",delete_dsn = TRUE)
+  
+}
 
 # RUN PROJECT PLAN ----
 make(project_plan)
