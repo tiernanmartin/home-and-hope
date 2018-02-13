@@ -7,18 +7,19 @@ library(googledrive)
 library(miscgis)  
 library(snakecase)
 library(magrittr)
-library(here) 
+library(lubridate)
 library(RSocrata)
 library(glue)
 library(fuzzyjoin)
 library(datapasta)
 library(writexl)
-library(tidyverse) 
+library(tidyverse)  
+library(here) 
 
 options(httr_oob_default=TRUE,
         tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
-
+set.seed(98104)
 
 # FUNCTION: EXTRACT_TARGET_PATHS ----
 
@@ -26,9 +27,31 @@ extract_target_paths <- function(plan){
  pluck(plan,"target") %>% map_chr(str_replace_all, pattern = "'", replacement = "")
 }
 
+# FUNCTION: INTEGER_DUMMY ----
+  integer_dummy <- function(n, mean = 0, sd = 1){
+    
+    x <- as.integer(round(abs(rnorm(n, mean , sd)),0))
+   
+    return(x)
+  }
+
+# FUNCTION: SPATIAL_DUMMY ----
+  spatial_dummy <- function(n, mean = 0, sd = 1){
+    
+    jitter <- abs(rnorm(n, mean = 0, sd = 1)) 
+    
+    x <- rnorm(n, mean , sd) 
+    
+    x[x<0] <- .1
+    
+    x <- round(x + jitter,2)
+    
+    return(x)
+  }
+
 # FUNCTION: DRAKE_HERE ----
 drake_here <- function(x) {
-  x %>% str_replace_all("'", "") %>% here() %>% as_drake_filename()
+  x %>% str_replace_all("'", "") %>% here::here() %>% as_drake_filename()
 }
 # FUNCTION: WITHIN_RANGE ----
 `%within_range%` <- function(x,range){ 
@@ -161,7 +184,32 @@ utilization_plan <- drake_plan(
 
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
-  filters = make_filters(parcel_ready, filters_census_tract)
+  filters_public_owner = make_filters_public_owner(parcel_ready),
+  filters_surplus_status = make_filters_surplus_status(parcel_ready),
+  filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_ready),
+  filters_proximity_preschool = make_filters_proximity_preschool(parcel_ready),
+  filters_proximity_open_space = make_filters_proximity_open_space(parcel_ready),
+  filters_potential_units = make_filters_potential_units(parcel_ready),
+  filters_leg_district = make_filters_leg_district(parcel_ready),
+  filters_school_district = make_filters_school_district(parcel_ready),
+  filters_historic = make_filters_historic(parcel_ready),
+  filters_afford_expir_date = make_filters_afford_expir_date(parcel_ready),
+  filters_eligibility_nmtc = make_filters_eligibility_nmtc(parcel_ready),
+  filters_eligibility_dda = make_filters_eligibility_dda(parcel_ready),
+  filters_eligibility_qct = make_filters_eligibility_qct(parcel_ready),
+  filters = make_filters(parcel_ready, 
+                         filters_census_tract, 
+                         filters_public_owner, 
+                         filters_surplus_status, 
+                         filters_proximity_marijuana, 
+                         filters_proximity_preschool, 
+                         filters_proximity_open_space, 
+                         filters_school_district, 
+                         filters_historic, 
+                         filters_afford_expir_date,
+                         filters_eligibility_nmtc,
+                         filters_eligibility_dda,
+                         filters_eligibility_qct)
 )
 
 helper_plan <- drake_plan(
@@ -210,7 +258,7 @@ export_plan <- drake_plan(
 ) %>% purrr::modify_at("target", drake_here)
 
 zip_plan <- drake_plan(
-  '1-data/4-ready/site-inventory-20180212.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180212.zip"), extract_target_paths(export_plan)),
+  '1-data/4-ready/site-inventory-20180213.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180213.zip"), extract_target_paths(export_plan)),
   strings_in_dots = "literals",
   file_targets = TRUE
 ) %>% purrr::modify_at("target", drake_here)
@@ -1491,6 +1539,230 @@ make_filters_census_tract <- function(parcel_ready, census_tracts){
    
 }
 
+
+make_filters_public_owner <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED
+  
+  p_ready_po <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_PUBLIC_OWNER = str_trim(TAXPAYER_NAME))
+  
+  filters_public_owner <- p_ready_po
+  
+  return(filters_public_owner)
+   
+}
+
+make_filters_surplus_status <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED
+  
+  p_ready_ss <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_SURPLUS_STATUS_LGL = sample(c(TRUE,FALSE),n(),replace = TRUE))
+  
+  filters_surplus_status <- p_ready_ss
+  
+  return(filters_surplus_status)
+   
+}
+
+make_filters_proximity_marijuana <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED
+  
+  
+  p_ready_prox_mj <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_PROXIMITY_MARIJUANA = spatial_dummy(n(), mean = 25, sd = 10)
+              )
+  
+  filters_proximity_marijuana <- p_ready_prox_mj
+  
+  return(filters_proximity_marijuana)
+   
+}
+
+make_filters_proximity_preschool <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED
+  
+  
+  p_ready_prox_ps <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_PROXIMITY_PRESCHOOL = spatial_dummy(n(), mean = 10, sd = 10)
+              )
+  
+  filters_proximity_preschool <- p_ready_prox_ps
+  
+  return(filters_proximity_preschool)
+   
+}
+
+make_filters_proximity_open_space <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+   p_ready_prox_os<- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_PROXIMITY_OPEN_SPACE = spatial_dummy(n(), mean = 5, sd = 5)
+              )
+  
+  filters_proximity_open_space <- p_ready_prox_os
+  
+  return(filters_proximity_open_space)
+   
+}
+
+make_filters_potential_units <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+   p_ready_pu<- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_POTENTIAL_UNITS = integer_dummy(n(),10,5)
+              )
+  
+  filters_potential_units <- p_ready_pu
+  
+  return(filters_potential_units)
+   
+}
+
+make_filters_leg_district <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+  leg_districts <- c(34,11,37,43,46,36,32,33,45,41,30,1,47,5,31,48,39) %>% 
+    map_chr(~str_c("District ",.x))
+  
+   p_ready_ld<- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_LEG_DISTRICT = sample(leg_districts,n(), replace = TRUE)
+              )
+  
+  filters_leg_district <- p_ready_ld
+  
+  return(filters_leg_district)
+   
+}
+
+make_filters_school_district <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+  school_districts <- c(
+"Seattle", "Federal Way", "Enumclaw", "Mercer Island", "Highline", "Vashon Island", "Renton", "Skykomish", "Bellevue", "Tukwila", "Riverview", "Auburn", "Tahoma", "Snoqualmie Valley", "Issaquah", "Shoreline", "Lake Washington", "Kent", "Northshore", "Fife"
+)
+
+  
+   p_ready_sd<- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_SCHOOL_DISTRICT = sample(school_districts,n(), replace = TRUE)
+              )
+  
+  filters_school_district <- p_ready_sd
+  
+  return(filters_school_district)
+   
+}
+
+make_filters_historic <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+ 
+   p_ready_hist<- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_HISTORIC_LGL = sample(c(TRUE,FALSE),n(), replace = TRUE)
+              )
+  
+  filters_historic <- p_ready_hist
+  
+  return(filters_historic)
+   
+}
+
+make_filters_afford_expir_date <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+ 
+  sample_dates <- c("20181231","20191231","20201231") %>% 
+    map(ymd) %>% 
+    map_dbl(pluck,1) %>% 
+    as_date
+  
+   p_ready_afford_expir_date <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_AFFORD_EXPIR_DATE = sample(sample_dates,n(), replace = TRUE)
+              )
+  
+  filters_afford_expir_date <- p_ready_afford_expir_date
+  
+  return(filters_afford_expir_date)
+   
+}
+
+make_filters_eligibility_nmtc <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+   p_ready_eligibility_nmtc <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_ELIGIBILITY_NMTC = sample(c(rep(FALSE,times = 25),TRUE),n(), replace = TRUE)
+              )
+  
+  filters_eligibility_nmtc <- p_ready_eligibility_nmtc
+  
+  return(filters_eligibility_nmtc)
+   
+}
+
+make_filters_eligibility_dda <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+  
+   p_ready_eligibility_dda <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_ELIGIBILITY_DDA = sample(c(rep(FALSE,times = 25),TRUE),n(), replace = TRUE)
+              )
+  
+  filters_eligibility_dda <- p_ready_eligibility_dda
+  
+  return(filters_eligibility_dda)
+   
+}
+
+make_filters_eligibility_qct <- function(parcel_ready){
+  
+  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  
+  
+   p_ready_eligibility_qct <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              FILTER_ELIGIBILITY_QCT = sample(c(rep(FALSE,times = 25),TRUE),n(), replace = TRUE)
+              )
+  
+  filters_eligibility_qct <- p_ready_eligibility_qct
+  
+  return(filters_eligibility_qct)
+   
+}
+
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   
@@ -1656,108 +1928,125 @@ make_dd_field_name_dev <- function(inventory){
 
 # COMMAND: MAKE_DD_FIELD_NAME_USER ----
 
-make_dd_field_name_user <- function(){
-  
-  # dpasta(dd_field_name_dev) 
+make_dd_field_name_user <- function(){ 
   
   dd_field_name_user <-  tribble(
-                        ~FIELD_NAME_DEV, ~ FIELD_NAME_USER,
-                                  "PIN", "Parcel Identification Number",
-                         "CENSUS_TRACT", "Census Tract",
-            "HELPERS_URL_PARCEL_VIEWER", "Link to KC Parcel Viewer",
-                   "HELPERS_URL_OPP360", "Link to Opportunity 360",
-                        "TAXPAYER_NAME", "Taxpayer Name",
-                              "BILL_YR", "Tax Bill Year",
-                           "TAX_STATUS", "Tax Status",
-                           "TAX_REASON", "Tax Status Reason(s)",
-                        "APPR_IMPS_VAL", "Tax Appraised Improvement Value",
-                        "APPR_LAND_VAL", "Tax Appraised Land Value",
-                     "TAXABLE_IMPS_VAL", "Tax Taxable Improvement Value",
-                     "TAXABLE_LAND_VAL", "Tax Taxable Land Value",
-                            "PROP_NAME", "Property Name",
-                            "PROP_TYPE", "Property Type",
-                "ASSESSOR_PUB_LIST_LGL", "T/F: Assessor Public-Ownership List?",
-                        "DISTRICT_NAME", "District Name",
-                       "CURRENT_ZONING", "Current Zoning",
-                          "PRESENT_USE", "Present Use",
-                            "SQ_FT_LOT", "Lot Size (SqFt)",
-                               "ACCESS", "Lot Accessibility Level",
-                           "TOPOGRAPHY", "T/F: Topography?",
-                 "RESTRICTIVE_SZ_SHAPE", "T/F: Restrictive Size/Shape?",
-                        "PCNT_UNUSABLE", "Lot Percent Unusable",
-                        "CONTAMINATION", "T/F: Contaminated?",
-                        "HISTORIC_SITE", "T/F: Historic Site?",
-              "CURRENT_USE_DESIGNATION", "Current Use Designation",
-              "NATIVE_GROWTH_PROT_ESMT", "T/F: Native Growth Protection Estimate",
-                            "EASEMENTS", "T/F :Easements?",
-                    "OTHER_DESIGNATION", "T/F: Other Designations?",
-                    "DEED_RESTRICTIONS", "T/F: Deed Restrictions?",
-             "DEVELOPMENT_RIGHTS_PURCH", "T/F: Development Rights Purchased?",
-                     "COAL_MINE_HAZARD", "T/F: Coal Mine Hazard?",
-                    "CRITICAL_DRAINAGE", "T/F: Critical Drainage?",
-                       "EROSION_HAZARD", "T/F: Erosion Hazard?",
-                      "LANDFILL_BUFFER", "T/F: Within Landfill Buffer?",
-               "HUNDRED_YR_FLOOD_PLAIN", "T/F: Within 100 Year Flood Plain?",
-                       "SEISMIC_HAZARD", "T/F: Seismic Hazard?",
-                     "LANDSLIDE_HAZARD", "T/F: Landslide Hazard?",
-                   "STEEP_SLOPE_HAZARD", "T/F: Steep Slope Hazard?",
-                               "STREAM", "T/F: Stream?",
-                              "WETLAND", "T/F: Wetland?",
-                   "SPECIES_OF_CONCERN", "T/F: Species of Concern?",
-                 "SENSITIVE_AREA_TRACT", "T/F: Sensitive Area Tract?",
-                       "WATER_PROBLEMS", "T/F: Water Problems?",
-                   "TRANSP_CONCURRENCY", "T/F: Transportation Concurrency?",
-                       "OTHER_PROBLEMS", "T/F: Other Problems?",
-                    "SUIT_OWNER_PUBLIC", "T/F: Public Ownership?",
-                 "SUIT_OWNER_NONPROFIT", "T/F: Non-Profit Ownership?",
-                     "SUIT_OWNER_TAX_E", "T/F: Tax-Exempt Ownership?",
-               "SUIT_WATER_OVERLAP_LGL", "T/F: Overlaped by Waterbodies?",
-               "SUIT_WATER_OVERLAP_PCT", "T/F: Percent Overlapped by Waterbodies?",
-                      "SUIT_WITHIN_UGA", "T/F: Within the Urban Growth Area?",
-                "SUIT_ZONING_CONSOL_20", "Zoning (KC Consolidated Categories)",
-                     "SUIT_PRESENT_USE", "Present Use",
-                   "SUITABLE_OWNER_LGL", "T/F: Suitable Ownership?",
-           "SUITABLE_WATER_OVERLAP_LGL", "T/F: Suitable Water Overlap?",
-              "SUITABLE_WITHIN_UGA_LGL", "T/F: Suitable Urban Growth Area Distance?",
-        "SUITABLE_ZONING_CONSOL_20_LGL", "T/F: Suitable Zoning?",
-             "SUITABLE_PRESENT_USE_LGL", "T/F: Suitable Present Use?",
-                         "SUITABLE_LGL", "T/F: Suitable Site?",
-                             "BLDG_NBR", "Number of Buildings",
-                       "BLDG_NET_SQ_FT", "Net Area (SqFt) of Buildings",
-                    "BLDG_LIVING_UNITS", "Net Number of Living Units",
-              "BLDG_TYPE_APARTMENT_LGL", "T/F: Apartment Building On-Site?",
-             "BLDG_TYPE_COMMERCIAL_LGL", "T/F: Commercial Building On-Site?",
-                  "BLDG_TYPE_CONDO_LGL", "T/F: Condo Building On-Site?",
-            "BLDG_TYPE_RESIDENTIAL_LGL", "T/F: Residential Building On-Site?",
-                         "UTIL_PRESENT", "Present Utilization (Sqft)",
-                            "LOT_SQ_FT", "Lot Size (SqFt)",
-                        "LOT_SIZE_DESC", "Lot Size Description",
-                        "LOT_SIZE_TYPE", "Lot Size Devevlopment Type",
-                     "LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
-                      "LOT_STORIES_NBR", "Number of Developable Stories (Assumed)",
-             "UTIL_LOT_DEVELOPABLE_PCT", "Percent Developable (Assumed) and Not Under Water",
-                 "UTIL_DEVELOPABLE_LGL", "T/F: Developable Zoning (KC Consolidated Categories)?",
-          "UTIL_DEVELOPMENT_ASSUMPTION", "Development Scenario (Assumed)",
-        "UTIL_DEVELOPABLE_ESTIMATE_LGL", "T/F: In Zoning With A Development Scenario?",
-    "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT", "Percent Developable (Assumed)",
-      "UTIL_POTENTIAL_UTILIZATION_SQFT", "Potential Utilization (Sqft)",
-              "UTIL_UNDER_UTILIZED_LGL", "T/F: Is Potential Utilization Greater than Present?",
-                          "UTILIZATION", "Utilization Category"
-   )
-  
-  
-  
-  return(dd_field_name_user)
+                                                 ~FIELD_NAME_DEV,                                         ~FIELD_NAME_USER,
+                                                           "PIN",                           "Parcel Identification Number",
+                                                  "CENSUS_TRACT",                                           "Census Tract",
+                                           "FILTER_PUBLIC_OWNER",                                   "Name of Public Owner",
+                                     "FILTER_SURPLUS_STATUS_LGL",                                         "Surplus Status",
+                                    "FILTER_PROXIMITY_MARIJUANA",                      "Proximity to Marijunan Businesses",
+                                    "FILTER_PROXIMITY_PRESCHOOL",                                 "Proximity to Preschool",
+                                   "FILTER_PROXIMITY_OPEN_SPACE",                                "Proximity to Open Space",
+                                        "FILTER_SCHOOL_DISTRICT",                                        "School District",
+                                           "FILTER_HISTORIC_LGL",                          "Historic Property or Landmark",
+                                      "FILTER_AFFORD_EXPIR_DATE",                              "Affordability Expir. Date",
+                                       "FILTER_ELIGIBILITY_NMTC",                              "Funding Eligibility: NMTC",
+                                        "FILTER_ELIGIBILITY_DDA",                               "Funding Eligibility: DDA",
+                                        "FILTER_ELIGIBILITY_QCT",                               "Funding Eligibility: CTC",
+                                     "HELPERS_URL_PARCEL_VIEWER",                               "Link to KC Parcel Viewer",
+                                            "HELPERS_URL_OPP360",                                "Link to Opportunity 360",
+                                                 "TAXPAYER_NAME",                                          "Taxpayer Name",
+                                                       "BILL_YR",                                          "Tax Bill Year",
+                                                    "TAX_STATUS",                                             "Tax Status",
+                                                    "TAX_REASON",                                   "Tax Status Reason(s)",
+                                                 "APPR_IMPS_VAL",                        "Tax Appraised Improvement Value",
+                                                 "APPR_LAND_VAL",                               "Tax Appraised Land Value",
+                                              "TAXABLE_IMPS_VAL",                          "Tax Taxable Improvement Value",
+                                              "TAXABLE_LAND_VAL",                                 "Tax Taxable Land Value",
+                                                     "PROP_NAME",                                          "Property Name",
+                                                     "PROP_TYPE",                                          "Property Type",
+                                         "ASSESSOR_PUB_LIST_LGL",                   "T/F: Assessor Public-Ownership List?",
+                                                 "DISTRICT_NAME",                                          "District Name",
+                                                "CURRENT_ZONING",                                         "Current Zoning",
+                                                   "PRESENT_USE",                                            "Present Use",
+                                                     "SQ_FT_LOT",                                        "Lot Size (SqFt)",
+                                                        "ACCESS",                                "Lot Accessibility Level",
+                                                    "TOPOGRAPHY",                                       "T/F: Topography?",
+                                          "RESTRICTIVE_SZ_SHAPE",                           "T/F: Restrictive Size/Shape?",
+                                                 "PCNT_UNUSABLE",                                   "Lot Percent Unusable",
+                                                 "CONTAMINATION",                                     "T/F: Contaminated?",
+                                                 "HISTORIC_SITE",                                    "T/F: Historic Site?",
+                                       "CURRENT_USE_DESIGNATION",                                "Current Use Designation",
+                                       "NATIVE_GROWTH_PROT_ESMT",                 "T/F: Native Growth Protection Estimate",
+                                                     "EASEMENTS",                                        "T/F :Easements?",
+                                             "OTHER_DESIGNATION",                               "T/F: Other Designations?",
+                                             "DEED_RESTRICTIONS",                                "T/F: Deed Restrictions?",
+                                      "DEVELOPMENT_RIGHTS_PURCH",                     "T/F: Development Rights Purchased?",
+                                              "COAL_MINE_HAZARD",                                 "T/F: Coal Mine Hazard?",
+                                             "CRITICAL_DRAINAGE",                                "T/F: Critical Drainage?",
+                                                "EROSION_HAZARD",                                   "T/F: Erosion Hazard?",
+                                               "LANDFILL_BUFFER",                           "T/F: Within Landfill Buffer?",
+                                        "HUNDRED_YR_FLOOD_PLAIN",                      "T/F: Within 100 Year Flood Plain?",
+                                                "SEISMIC_HAZARD",                                   "T/F: Seismic Hazard?",
+                                              "LANDSLIDE_HAZARD",                                 "T/F: Landslide Hazard?",
+                                            "STEEP_SLOPE_HAZARD",                               "T/F: Steep Slope Hazard?",
+                                                        "STREAM",                                           "T/F: Stream?",
+                                                       "WETLAND",                                          "T/F: Wetland?",
+                                            "SPECIES_OF_CONCERN",                               "T/F: Species of Concern?",
+                                          "SENSITIVE_AREA_TRACT",                             "T/F: Sensitive Area Tract?",
+                                                "WATER_PROBLEMS",                                   "T/F: Water Problems?",
+                                            "TRANSP_CONCURRENCY",                       "T/F: Transportation Concurrency?",
+                                                "OTHER_PROBLEMS",                                   "T/F: Other Problems?",
+                                             "SUIT_OWNER_PUBLIC",                                 "T/F: Public Ownership?",
+                                          "SUIT_OWNER_NONPROFIT",                             "T/F: Non-Profit Ownership?",
+                                              "SUIT_OWNER_TAX_E",                             "T/F: Tax-Exempt Ownership?",
+                                        "SUIT_WATER_OVERLAP_LGL",                         "T/F: Overlaped by Waterbodies?",
+                                        "SUIT_WATER_OVERLAP_PCT",                "T/F: Percent Overlapped by Waterbodies?",
+                                               "SUIT_WITHIN_UGA",                     "T/F: Within the Urban Growth Area?",
+                                         "SUIT_ZONING_CONSOL_20",                    "Zoning (KC Consolidated Categories)",
+                                              "SUIT_PRESENT_USE",                                            "Present Use",
+                                            "SUITABLE_OWNER_LGL",                               "T/F: Suitable Ownership?",
+                                    "SUITABLE_WATER_OVERLAP_LGL",                           "T/F: Suitable Water Overlap?",
+                                       "SUITABLE_WITHIN_UGA_LGL",              "T/F: Suitable Urban Growth Area Distance?",
+                                 "SUITABLE_ZONING_CONSOL_20_LGL",                                  "T/F: Suitable Zoning?",
+                                      "SUITABLE_PRESENT_USE_LGL",                             "T/F: Suitable Present Use?",
+                                                  "SUITABLE_LGL",                                    "T/F: Suitable Site?",
+                                                      "BLDG_NBR",                                    "Number of Buildings",
+                                                "BLDG_NET_SQ_FT",                           "Net Area (SqFt) of Buildings",
+                                             "BLDG_LIVING_UNITS",                             "Net Number of Living Units",
+                                       "BLDG_TYPE_APARTMENT_LGL",                       "T/F: Apartment Building On-Site?",
+                                      "BLDG_TYPE_COMMERCIAL_LGL",                      "T/F: Commercial Building On-Site?",
+                                           "BLDG_TYPE_CONDO_LGL",                           "T/F: Condo Building On-Site?",
+                                     "BLDG_TYPE_RESIDENTIAL_LGL",                     "T/F: Residential Building On-Site?",
+                                                  "UTIL_PRESENT",                             "Present Utilization (Sqft)",
+                                                     "LOT_SQ_FT",                                        "Lot Size (SqFt)",
+                                                 "LOT_SIZE_DESC",                                   "Lot Size Description",
+                                                 "LOT_SIZE_TYPE",                             "Lot Size Devevlopment Type",
+                                              "LOT_COVERAGE_PCT",                          "Percent Developable (Assumed)",
+                                               "LOT_STORIES_NBR",                "Number of Developable Stories (Assumed)",
+                                      "UTIL_LOT_DEVELOPABLE_PCT",      "Percent Developable (Assumed) and Not Under Water",
+                                          "UTIL_DEVELOPABLE_LGL",  "T/F: Developable Zoning (KC Consolidated Categories)?",
+                                   "UTIL_DEVELOPMENT_ASSUMPTION",                         "Development Scenario (Assumed)",
+                                 "UTIL_DEVELOPABLE_ESTIMATE_LGL",            "T/F: In Zoning With A Development Scenario?",
+                             "UTIL_DEVELOPABLE_LOT_COVERAGE_PCT",                          "Percent Developable (Assumed)",
+                               "UTIL_POTENTIAL_UTILIZATION_SQFT",                           "Potential Utilization (Sqft)",
+                                       "UTIL_UNDER_UTILIZED_LGL",    "T/F: Is Potential Utilization Greater than Present?",
+                                                   "UTILIZATION",                                   "Utilization Category"
+                            )
+return(dd_field_name_user)
 }
 
 # COMMAND: MAKE_DD_FIELD_TAGS ----
 
-make_dd_field_tags <- function(){
-  
-  dd_field_tags <-tribble(
+make_dd_field_tags <- function(){ 
+
+  dd_field_tags <- tribble(
                                             ~FIELD_NAME_DEV, ~FIELD_TAG_SENSITIVE, ~FIELD_TAG_FILTER, ~FIELD_TAG_TOOLTIP, ~FIELD_TAG_TABLE, ~FIELD_TAG_DUMMY,
                                                       "PIN",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                                              "CENSUS_TRACT",                FALSE,              TRUE,              FALSE,             TRUE,            FALSE,
+                                      "FILTER_PUBLIC_OWNER",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                "FILTER_SURPLUS_STATUS_LGL",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                               "FILTER_PROXIMITY_MARIJUANA",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                               "FILTER_PROXIMITY_PRESCHOOL",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                              "FILTER_PROXIMITY_OPEN_SPACE",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                   "FILTER_SCHOOL_DISTRICT",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                      "FILTER_HISTORIC_LGL",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                 "FILTER_AFFORD_EXPIR_DATE",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                  "FILTER_ELIGIBILITY_NMTC",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                   "FILTER_ELIGIBILITY_DDA",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                                   "FILTER_ELIGIBILITY_QCT",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
                                 "HELPERS_URL_PARCEL_VIEWER",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                                        "HELPERS_URL_OPP360",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                                             "TAXPAYER_NAME",                 TRUE,              TRUE,               TRUE,             TRUE,            FALSE,
