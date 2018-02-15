@@ -149,10 +149,11 @@ lookup_plan <- drake_plan(
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
   acct = make_acct(),
+  parcel_addr = make_parcel_addr(),
   parcel_df = make_parcel_df(),
   parcel_sf_poly = make_parcel_sf_poly(),
   parcel_sf = make_parcel_sf(parcel_sf_poly),
-  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_df, parcel_sf)
+  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf)
 )
 
 miscellaneous_plan <- drake_plan(
@@ -301,10 +302,14 @@ project_plan <- rbind(
   filter_plan,
   helper_plan,
   inventory_plan,
-  data_dictionary_plan,
+  data_dictionary_plan
+  )   
+
+publish_plan <- rbind(
+  project_plan,
   export_plan,
   zip_plan
-  )   
+)
 
 # COMMAND: MAKE_LU ----
 
@@ -541,6 +546,45 @@ make_acct <- function(){
 }
 
 
+
+# COMMAND: MAKE_PARCEL_ADDR ----
+make_parcel_addr <- function(){
+  
+  p_fp <- here("./1-data/2-external/address/address.shp")
+  
+  p_dr_id <- as_id("1MD5ctFCUNsC0Fw599YUFV5UaPArHxvFL")
+  
+  p_load <-  
+    make_or_read2(fp = p_fp,
+                  dr_id = p_dr_id,
+                  skip_get_expr = TRUE,
+                  get_expr = function(fp){ # Source: ftp://ftp.kingcounty.gov/gis-web/GISData/city_SHP.zip
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- "./1-data/2-external/address"
+                    
+                    target_name <- "address.shp"
+                    
+                    drive_read_zip(
+                      dr_id = dr_id,
+                      .tempdir = FALSE,
+                      dir_path = zip_dir,
+                      read_fun = read_sf,
+                      target_name = target_name,
+                      stringsAsFactors = FALSE
+                    ) 
+                    
+                  },
+                  read_expr = function(fp){ read_sf(p_fp,stringsAsFactors = FALSE)})
+  
+  parcel_addr <- p_load %>% 
+    rename_if(not_sfc, to_screaming_snake_case) %>% 
+    st_drop_geometry 
+    
+  
+  return(parcel_addr)
+}
+
 # COMMAND: MAKE_PARCEL_DF ----
 make_parcel_df <- function(){
   
@@ -644,7 +688,7 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, acct, parcel_df, parcel_sf){
+make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf){
    
   # MAKE P_SF_READY
 
@@ -656,7 +700,26 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
     rbind(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>% 
     st_set_geometry("geometry")
     
-    
+  # MAKE P_ADDR_READY
+  p_addr_ready <- parcel_addr %>% 
+    transmute(PIN, 
+              ADDRESS_FULL = ADDR_FULL, 
+              CITY_NAME = CTYNAME, 
+              CITY_NAME_POSTAL = POSTALCTYN,
+              ZIPCODE = factor(ZIP_5), 
+              PRIMARY_ADDR_LGL = as.logical(PRIM_ADDR)) %>% 
+    mutate(CITY_NAME = factor(case_when(
+                all(is.na(CITY_NAME),is.na(CITY_NAME_POSTAL)) ~ NA_character_,
+                is.na(CITY_NAME) ~ CITY_NAME_POSTAL,
+                TRUE ~ CITY_NAME
+              ))) %>% 
+  group_by(PIN) %>% 
+    arrange(desc(PRIMARY_ADDR_LGL)) %>% 
+    slice(1) %>% 
+    ungroup
+  
+  
+  
   # MAKE P_READY
   
   present_use <- lu %>% 
@@ -724,7 +787,7 @@ make_parcel_ready <- function(lu, prop_type, tax_status,tax_reason, pub_parcel, 
   
   # MAKE PARCEL_READY
   
-  obj_list <- list(acct_ready,p_ready,p_sf_ready)
+  obj_list <- list(acct_ready,p_addr_ready,p_ready,p_sf_ready)
   
   parcel_ready <- obj_list %>% 
     reduce(.f = inner_join, by = "PIN") %>% 
@@ -2379,3 +2442,7 @@ write_inventory_shp <- function(obj, dsn){
 
 # RUN PROJECT PLAN ----
 make(project_plan)
+
+# RUN PUBLISH PLAN ----
+make(publish_plan)
+
