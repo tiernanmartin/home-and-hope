@@ -1625,7 +1625,7 @@ make_filters_census_tract <- function(parcel_ready, census_tracts){
    
 }
 
-
+# COMMAND: MAKE_FILTERS_PUBLIC_OWNER ----
 make_filters_public_owner <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED
@@ -1641,6 +1641,7 @@ make_filters_public_owner <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_SURPLUS_STATUS ----
 make_filters_surplus_status <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED
@@ -1656,6 +1657,7 @@ make_filters_surplus_status <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_PROXIMITY_MARIJUANA ----
 make_filters_proximity_marijuana <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED
@@ -1673,6 +1675,7 @@ make_filters_proximity_marijuana <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_PROXIMITY_PRESCHOOL ----
 make_filters_proximity_preschool <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED
@@ -1690,6 +1693,7 @@ make_filters_proximity_preschool <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_PROXIMITY_OPEN_SPACE ----
 make_filters_proximity_open_space <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1706,6 +1710,7 @@ make_filters_proximity_open_space <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_POTENTIAL_UNITS ----
 make_filters_potential_units <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1722,6 +1727,7 @@ make_filters_potential_units <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_LEG_DISTRICT ----
 make_filters_leg_district <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1741,6 +1747,7 @@ make_filters_leg_district <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_SCHOOL_DISTRICT ----
 make_filters_school_district <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1762,6 +1769,7 @@ make_filters_school_district <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_HISTORIC ----
 make_filters_historic <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1778,6 +1786,7 @@ make_filters_historic <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_AFFORD_EXPIR_DATE ----
 make_filters_afford_expir_date <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1799,6 +1808,7 @@ make_filters_afford_expir_date <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_ELIGIBILITY_NMTC ----
 make_filters_eligibility_nmtc <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1815,6 +1825,7 @@ make_filters_eligibility_nmtc <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_ELIGIBILITY_DDA ----
 make_filters_eligibility_dda <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
@@ -1832,6 +1843,7 @@ make_filters_eligibility_dda <- function(parcel_ready){
    
 }
 
+# COMMAND: MAKE_FILTERS_ELIGIBILITY_QTC ----
 make_filters_eligibility_qct <- function(parcel_ready){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
