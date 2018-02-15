@@ -572,9 +572,9 @@ make_parcel_addr <- function(){
                   get_expr = function(fp){ # Source: ftp://ftp.kingcounty.gov/gis-web/GISData/city_SHP.zip
                   },
                   make_expr = function(fp, dr_id){
-                    zip_dir <- "./1-data/2-external/address"
+                    zip_dir <- "./1-data/2-external"
                     
-                    target_name <- "address.shp"
+                    target_name <- "address"
                     
                     drive_read_zip(
                       dr_id = dr_id,
