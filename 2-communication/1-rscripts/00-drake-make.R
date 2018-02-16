@@ -248,10 +248,6 @@ helper_plan <- drake_plan(
 inventory_plan <- drake_plan(
   inventory = make_inventory(filters, helpers, suitability,  utilization),
   inventory_suitable = make_inventory_suitable(inventory), 
-  inventory_table = make_inventory_table(inventory),
-  inventory_poly = make_inventory_poly(inventory),
-  inventory_point = make_inventory_point(inventory), 
-  inventory_suitable_table = make_inventory_suitable_table(inventory_suitable),
   inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
   
@@ -288,7 +284,7 @@ export_plan <- drake_plan(
 ) %>% purrr::modify_at("target", drake_here)
 
 zip_plan <- drake_plan(
-  '1-data/4-ready/site-inventory-shp-20180213.zip' = zip_pithy(here("1-data/4-ready/site-inventory-shp-20180213.zip"), extract_target_paths(export_plan)),
+  '1-data/4-ready/site-inventory-20180216.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180216.zip"), extract_target_paths(export_plan)),
   strings_in_dots = "literals",
   file_targets = TRUE
 ) %>% purrr::modify_at("target", drake_here)
@@ -312,11 +308,10 @@ project_plan <- bind_rows(
                            drake::default_trigger(),
                            trigger))
   
-
+# add zip plan back!
 publish_plan <- bind_rows(
   project_plan,
-  export_plan,
-  zip_plan
+  export_plan
 ) %>% 
   mutate(trigger = if_else(is.na(trigger),
                            drake::default_trigger(),
@@ -1984,49 +1979,6 @@ make_inventory_suitable <- function(inventory){
   
 }
 
-
-# COMMAND: MAKE_INVENTORY_TABLE ----
-
-make_inventory_table <- function(inventory){
-  
-  inventory_table <- inventory %>% 
-    st_drop_geometry() %>% 
-    select_if(not_sfc)
-  
-  return(inventory_table)
-}
-
-# COMMAND: MAKE_INVENTORY_POLY ----
-
-make_inventory_poly <- function(inventory){
-  
-  inventory_poly <- inventory %>% 
-    select(PIN,geometry)
-  
-  return(inventory_poly)
-}
-
-# COMMAND: MAKE_INVENTORY_POINT ----
-
-make_inventory_point <- function(inventory){
-  
-  inventory_point <- inventory %>% 
-    st_set_geometry("geom_pt") %>% 
-    select(PIN,geom_pt)
-  
-  return(inventory_point)
-}
-
-# COMMAND: MAKE_INVENTORY_SUITABLE_TABLE ----
-
-make_inventory_suitable_table <- function(inventory_suitable){
-  
-  inventory_suitable_table <- inventory_suitable %>% 
-    st_drop_geometry() %>% 
-    select_if(not_sfc)
-  
-  return(inventory_suitable_table)
-}
 
 # COMMAND: MAKE_INVENTORY_SUITABLE_POLY ----
 
