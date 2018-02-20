@@ -285,7 +285,7 @@ export_plan <- drake_plan(
 
 zip_plan <- drake_plan(
   '1-data/4-ready/site-inventory-20180216.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180216.zip"), extract_target_paths(export_plan)),
-  strings_in_dots = "literals",
+  strings_in_dots = "literals", 
   file_targets = TRUE
 ) %>% purrr::modify_at("target", drake_here)
 
@@ -311,7 +311,8 @@ project_plan <- bind_rows(
 # add zip plan back!
 publish_plan <- bind_rows(
   project_plan,
-  export_plan
+  export_plan, 
+  zip_plan
 ) %>% 
   mutate(trigger = if_else(is.na(trigger),
                            drake::default_trigger(),
