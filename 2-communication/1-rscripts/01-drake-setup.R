@@ -1,0 +1,23 @@
+# SETUP ----
+library(drake) 
+library(tigris)
+library(sf)
+library(lwgeom)
+library(googledrive)
+library(miscgis)  
+library(snakecase)
+library(magrittr)
+library(lubridate)
+library(RSocrata)
+library(glue)
+library(fuzzyjoin)
+library(datapasta)
+library(readxl)
+library(writexl)
+library(tidyverse)  
+library(here) 
+
+options(httr_oob_default=TRUE,
+        tigris_class = "sf") 
+htmltools::tagList(rmarkdown::html_dependency_font_awesome())
+set.seed(98104)
