@@ -1,4 +1,4 @@
-# MAKE PLANS ----
+# MAKE PLANS: PARCEL ----
 
 lookup_plan <- drake_plan( 
   lu = make_lu(),
@@ -15,7 +15,9 @@ parcel_plan <- drake_plan(
   parcel_sf_poly = make_parcel_sf_poly(),
   parcel_sf = make_parcel_sf(parcel_sf_poly),
   parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf)
-)
+) %>% bind_rows(lookup_plan)
+
+# MAKE PLANS: SUITABILITY AND UTILIZATION ----
 
 miscellaneous_plan <- drake_plan(
   waterbodies = make_waterbodies(),
@@ -68,6 +70,19 @@ utilization_plan <- drake_plan(
   utilization = make_utilization(suitability, utilization_present, utilization_potential)
 )
 
+suit_util_plan <- bind_rows(
+  parcel_plan,
+  miscellaneous_plan,
+  development_assumptions_plan,
+  suitability_criteria_plan,
+  suitability_plan,
+  building_plan,
+  utilization_criteria_plan,
+  utilization_plan
+)
+
+# MAKE PLANS: FILTERS AND HELPERS ----
+
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
   filters_public_owner = make_filters_public_owner(parcel_ready),
@@ -106,13 +121,25 @@ helper_plan <- drake_plan(
   
 )
 
+filter_helper_plan <- bind_rows(
+  suit_util_plan,
+  filter_plan,
+  helper_plan
+)
+
+# MAKE PLANS: INVENTORY_PLAN ----
+
 inventory_plan <- drake_plan(
   inventory = make_inventory(filters, helpers, suitability,  utilization),
   inventory_suitable = make_inventory_suitable(inventory), 
   inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
   
-)
+) %>% 
+  bind_rows(filter_helper_plan)
+
+# MAKE PLANS: DOCUMENTATION ----
+
 
 data_dictionary_plan <- drake_plan(
   dd_field_name_dev = make_dd_field_name_dev(inventory), 
@@ -129,6 +156,12 @@ data_dictionary_plan <- drake_plan(
                            "always",
                            drake::default_trigger()))
 
+documentation_plan <- bind_rows(
+  inventory_plan,
+  data_dictionary_plan
+)
+
+# MAKE PLANS: EXPORT ----
 
 export_plan <- drake_plan(
   '1-data/4-ready/data_dictionary.csv' = write_csv(dd, here("1-data/4-ready/data_dictionary.csv")),
@@ -142,38 +175,42 @@ export_plan <- drake_plan(
   '1-data/4-ready/inventory_suitable_point.shp' = write_inventory_shp(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.shp")), 
   strings_in_dots = "literals",
   file_targets = TRUE
-) %>% purrr::modify_at("target", drake_here)
+) %>% purrr::modify_at("target", drake_here) %>% 
+  bind_rows(documentation_plan)
+
+# MAKE PLANS: ZIP ----
 
 zip_plan <- drake_plan( 
   '1-data/4-ready/site-inventory-20180218.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180218.zip"), extract_target_paths(export_plan)),
   strings_in_dots = "literals", 
   file_targets = TRUE
-) %>% purrr::modify_at("target", drake_here)
+) %>% purrr::modify_at("target", drake_here) %>% 
+  bind_rows(export_plan)
 
-project_plan <- bind_rows(
-  lookup_plan,
-  parcel_plan,
-  miscellaneous_plan,
-  development_assumptions_plan,
-  suitability_criteria_plan,
-  suitability_plan,
-  building_plan,
-  utilization_criteria_plan,
-  utilization_plan,
-  filter_plan,
-  helper_plan,
-  inventory_plan,
-  data_dictionary_plan,
-  export_plan
-  ) %>% 
-  mutate(trigger = if_else(is.na(trigger),
-                           drake::default_trigger(),
-                           trigger))
-
-publish_plan <- bind_rows( 
-  project_plan,  
-  zip_plan
-) %>% 
-  mutate(trigger = if_else(is.na(trigger),
-                           drake::default_trigger(),
-                           trigger))
+# project_plan <- bind_rows(
+#   lookup_plan,
+#   parcel_plan,
+#   miscellaneous_plan,
+#   development_assumptions_plan,
+#   suitability_criteria_plan,
+#   suitability_plan,
+#   building_plan,
+#   utilization_criteria_plan,
+#   utilization_plan,
+#   filter_plan,
+#   helper_plan,
+#   inventory_plan,
+#   data_dictionary_plan,
+#   export_plan
+#   ) %>% 
+#   mutate(trigger = if_else(is.na(trigger),
+#                            drake::default_trigger(),
+#                            trigger))
+# 
+# publish_plan <- bind_rows( 
+#   project_plan,  
+#   zip_plan
+# ) %>% 
+#   mutate(trigger = if_else(is.na(trigger),
+#                            drake::default_trigger(),
+#                            trigger))
