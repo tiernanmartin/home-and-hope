@@ -377,18 +377,20 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf){
+make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
    
   
   # MAKE P_SF_READY
 
   p_sf_ready <-  parcel_sf %>%
     miscgis::subset_duplicated("PIN") %>%
-    group_by(PIN) %>%  
-    slice(1) %>%  
+    group_by(PIN) %>%
+    slice(1) %>%
     ungroup %>%
     rbind(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>%
     st_set_geometry("geometry")
+  
+  
 
   # MAKE P_ADDR_READY
   p_addr_ready <- parcel_addr %>%
@@ -408,12 +410,13 @@ make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel,
     slice(1) %>%
     ungroup
 
-
-
-  # MAKE P_READY
-
+ 
+  
+  # MAKE P_READY 
+  
   present_use <- lu %>%
-    filter(LU_TYPE == 102) %>%
+    as_tibble() %>%
+    dplyr::filter(LU_TYPE == 102) %>%
     select(PRESENT_USE = LU_ITEM,
            PRESENT_USE_DESC = LU_DESCRIPTION)
 
@@ -445,6 +448,8 @@ make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel,
            HISTORIC_SITE:OTHER_PROBLEMS
     )
 
+
+  
   # MAKE ACCT_READY
 
   acct_frmt <- acct %>%
@@ -756,7 +761,7 @@ make_criteria_within_uga <- function(){
 make_criteria_developable_zoning <- function(development_assumptions_zoning){
   
   dz <- development_assumptions_zoning %>% 
-    filter(DEVELOPABLE_LGL) %>% 
+    dplyr::filter(DEVELOPABLE_LGL) %>% 
     pull(CONSOL_20)
   
   crit_dz <- list("developable_zoning" = dz)
@@ -771,12 +776,12 @@ make_criteria_developable_zoning <- function(development_assumptions_zoning){
 
 make_criteria_undevelopable_present_use <- function(){
   
-   list_uses <- function(){
-                      parcel_ready %>% 
-                        st_drop_geometry() %>% 
-                        count(PRESENT_USE, sort = TRUE) %>% 
-                        print(n = Inf)
-                    }
+   # list_uses <- function(){
+   #                    parcel_ready %>% 
+   #                      st_drop_geometry() %>% 
+   #                      count(PRESENT_USE, sort = TRUE) %>% 
+   #                      print(n = Inf)
+   #                  }
    
    undev_presentuse <- c(
      "Park, Public(Zoo/Arbor)",
@@ -845,7 +850,7 @@ make_suitability_water_overlap <- function(parcel_ready, waterbodies){
   tolerance <- 5
   
   wtr <- st_transform(waterbodies, 2926) %>%  
-    filter( AREA_SQ_KM > min_sq_km) %>% 
+    dplyr::filter( AREA_SQ_KM > min_sq_km) %>% 
     st_simplify(preserveTopology = TRUE, dTolerance = tolerance)
   
   p_water <- p_ready_poly 
@@ -1655,7 +1660,7 @@ make_inventory <- function(filters, helpers, suitability,  utilization){
 
 make_inventory_suitable <- function(inventory){
   
-  inv_suit <- filter(inventory, SUITABLE_LGL)
+  inv_suit <- dplyr::filter(inventory, SUITABLE_LGL)
   
   inventory_suitable <- inv_suit
   
