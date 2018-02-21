@@ -1,4 +1,3 @@
-
 # FUNCTION: EXTRACT_TARGET_PATHS ----
 
 extract_target_paths <- function(plan){

@@ -6,7 +6,7 @@ lookup_plan <- drake_plan(
   tax_status = make_tax_status(),
   tax_reason = make_tax_reason()
 )
-
+ 
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
   acct = make_acct(),
