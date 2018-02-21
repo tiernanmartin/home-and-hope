@@ -51,7 +51,7 @@ extract_target_paths <- function(plan){
 
 # FUNCTION: DRAKE_HERE ----
 drake_here <- function(x) {
-  x %>% str_replace_all("'", "") %>% here::here() %>% as_drake_filename()
+  x %>% str_replace_all('\"', "") %>% here() %>% as_drake_filename()
 }
 # FUNCTION: WITHIN_RANGE ----
 `%within_range%` <- function(x,range){ 
