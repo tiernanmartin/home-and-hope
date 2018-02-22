@@ -16,5 +16,6 @@ source(here("2-communication/1-rscripts/04-drake-plans.R"))
 
 # MAKE PLANS ---- 
 
+make(documentation_plan)
 make(export_plan)
 
