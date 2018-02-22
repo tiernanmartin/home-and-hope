@@ -14,8 +14,7 @@ source(here("2-communication/1-rscripts/03-drake-commands.R"))
 
 source(here("2-communication/1-rscripts/04-drake-plans.R"))
 
-# MAKE PLANS ----
-make(project_plan)
+# MAKE PLANS ---- 
 
-make(publish_plan)
+make(export_plan)
 

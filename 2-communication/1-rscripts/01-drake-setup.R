@@ -14,9 +14,9 @@ library(fuzzyjoin)
 library(datapasta)
 library(readxl)
 library(writexl)
-library(tidyverse)  
 library(here) 
 
+library(tidyverse)  
 options(httr_oob_default=TRUE,
         tigris_class = "sf") 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
