@@ -1539,21 +1539,49 @@ make_filters_eligibility_dda <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_ELIGIBILITY_QTC ----
-make_filters_eligibility_qct <- function(parcel_ready){
+make_filters_eligibility_qct <- function(filters_census_tract){
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  elig_qtc_fp <- here("1-data/2-external/QCT2018.DBF")
   
+  elig_qtc_dr_id <- as_id("1JU0MQKta1mQurT89DJtk8nFvYcgxP4qk")
   
-   p_ready_eligibility_qct <- parcel_ready %>% 
+  elig_qtc_load <- 
+    make_or_read2(fp = elig_qtc_fp,
+                  dr_id = elig_qtc_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE:  https://www.huduser.gov/portal/datasets/qct/QCT2018dbf.zip
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    target_name <- "QCT2018.DBF"
+                    
+                    dir_path <- here("1-data/2-external/")
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   .tempdir = FALSE,
+                                   dir_path = dir_path,
+                                   read_fun = foreign::read.dbf,
+                                   target_name = target_name)
+                  },
+                  read_expr = function(fp){foreign::read.dbf(fp)})
+  
+  elig_qtc <- elig_qtc_load %>% 
+    transmute(CENSUS_TRACT = as.character(FIPS),
+              FILTER_ELIGIBILITY_QCT = TRUE)
+    
+  
+  p_ready_eligibility_qct <- filters_census_tract %>% 
     st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_ELIGIBILITY_QCT = sample(c(rep(FALSE,times = 25),TRUE),n(), replace = TRUE)
-              )
+    select(PIN, CENSUS_TRACT) %>% 
+    left_join(elig_qtc, by = "CENSUS_TRACT") %>% 
+    transmute(PIN,
+              FILTER_ELIGIBILITY_QCT = if_else(is.na(FILTER_ELIGIBILITY_QCT),FALSE,FILTER_ELIGIBILITY_QCT))
   
   filters_eligibility_qct <- p_ready_eligibility_qct
   
   return(filters_eligibility_qct)
-   
+  
 }
 
 # COMMAND: MAKE_FILTERS ----
@@ -1835,7 +1863,7 @@ make_dd_field_tags <- function(){
                   "FILTER_AFFORD_EXPIR_DATE",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
                    "FILTER_ELIGIBILITY_NMTC",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
                     "FILTER_ELIGIBILITY_DDA",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
-                    "FILTER_ELIGIBILITY_QCT",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                    "FILTER_ELIGIBILITY_QCT",                FALSE,              TRUE,              FALSE,            FALSE,             FALSE,
                  "HELPERS_URL_PARCEL_VIEWER",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                         "HELPERS_URL_OPP360",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                              "TAXPAYER_NAME",                 TRUE,              TRUE,               TRUE,             TRUE,            FALSE,
@@ -1970,9 +1998,9 @@ tibble::tribble(
               "FILTER_SCHOOL_DISTRICT",                                  "Other",
                  "FILTER_HISTORIC_LGL",                                  "Other",
             "FILTER_AFFORD_EXPIR_DATE",                                  "Other",
-             "FILTER_ELIGIBILITY_NMTC",                                  "Other",
-              "FILTER_ELIGIBILITY_DDA",                                  "Other",
-              "FILTER_ELIGIBILITY_QCT",                                  "Other",
+             "FILTER_ELIGIBILITY_NMTC",                                  "HUD",
+              "FILTER_ELIGIBILITY_DDA",                                  "HUD",
+              "FILTER_ELIGIBILITY_QCT",                                  "HUD",
            "HELPERS_URL_PARCEL_VIEWER",  "King County Department of Assessments",
                   "HELPERS_URL_OPP360",          "Enterprise Community Partners",
                        "TAXPAYER_NAME",  "King County Department of Assessments",

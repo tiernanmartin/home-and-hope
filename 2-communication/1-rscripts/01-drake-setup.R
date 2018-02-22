@@ -1,4 +1,5 @@
 # SETUP ----
+library(foreign)
 library(drake) 
 library(tigris)
 library(sf)
