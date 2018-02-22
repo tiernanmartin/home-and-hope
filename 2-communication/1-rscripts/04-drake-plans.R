@@ -14,7 +14,7 @@ parcel_plan <- drake_plan(
   parcel_df = make_parcel_df(),
   parcel_sf_poly = make_parcel_sf_poly(),
   parcel_sf = make_parcel_sf(parcel_sf_poly),
-  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf)
+  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf)
 ) %>% bind_rows(lookup_plan)
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----
@@ -71,7 +71,7 @@ utilization_plan <- drake_plan(
 )
 
 suit_util_plan <- bind_rows(
-  parcel_plan,
+  parcel_plan, 
   miscellaneous_plan,
   development_assumptions_plan,
   suitability_criteria_plan,
@@ -151,10 +151,7 @@ data_dictionary_plan <- drake_plan(
   dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.2"),
   dd = make_dd(dd_field_name_dev, dd_field_name_user, dd_field_format, dd_field_description, dd_data_source, dd_field_tags, dd_dictionary_version), 
   strings_in_dots = "literals"
-) %>% 
-  mutate(trigger = if_else(target %in% "dd_dictionary_version",
-                           "always",
-                           drake::default_trigger()))
+) 
 
 documentation_plan <- bind_rows(
   inventory_plan,
@@ -164,53 +161,38 @@ documentation_plan <- bind_rows(
 # MAKE PLANS: EXPORT ----
 
 export_plan <- drake_plan(
-  '1-data/4-ready/data_dictionary.csv' = write_csv(dd, here("1-data/4-ready/data_dictionary.csv")),
-  '1-data/4-ready/inventory_table.csv' = write_inventory_csv(inventory, here("1-data/4-ready/inventory_table.csv")), 
-  '1-data/4-ready/inventory_table.rda' = write_inventory_rda(inventory, here("1-data/4-ready/inventory_table.rda")), 
-  '1-data/4-ready/inventory_table.xlsx' = write_inventory_xlsx(inventory, here("1-data/4-ready/inventory_table.xlsx")), 
-  '1-data/4-ready/inventory_suitable_table.csv' = write_inventory_csv(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.csv")), 
-  '1-data/4-ready/inventory_suitable_table.rda' = write_inventory_rda(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.rda")), 
-  '1-data/4-ready/inventory_suitable_table.xlsx' = write_inventory_xlsx(inventory_suitable, here("1-data/4-ready/inventory_suitable_table.xlsx")), 
-  '1-data/4-ready/inventory_suitable_poly.shp' = write_inventory_shp(inventory_suitable_poly, here("1-data/4-ready/inventory_suitable_poly.shp")),
-  '1-data/4-ready/inventory_suitable_point.shp' = write_inventory_shp(inventory_suitable_point, here("1-data/4-ready/inventory_suitable_point.shp")), 
-  strings_in_dots = "literals",
-  file_targets = TRUE
-) %>% purrr::modify_at("target", drake_here) %>% 
-  bind_rows(documentation_plan)
-
-# MAKE PLANS: ZIP ----
-
-zip_plan <- drake_plan( 
-  '1-data/4-ready/site-inventory-20180218.zip' = zip_pithy(here("1-data/4-ready/site-inventory-20180218.zip"), extract_target_paths(export_plan)),
-  strings_in_dots = "literals", 
-  file_targets = TRUE
-) %>% purrr::modify_at("target", drake_here) %>% 
-  bind_rows(export_plan)
-
-# project_plan <- bind_rows(
-#   lookup_plan,
-#   parcel_plan,
-#   miscellaneous_plan,
-#   development_assumptions_plan,
-#   suitability_criteria_plan,
-#   suitability_plan,
-#   building_plan,
-#   utilization_criteria_plan,
-#   utilization_plan,
-#   filter_plan,
-#   helper_plan,
-#   inventory_plan,
-#   data_dictionary_plan,
-#   export_plan
-#   ) %>% 
-#   mutate(trigger = if_else(is.na(trigger),
-#                            drake::default_trigger(),
-#                            trigger))
-# 
-# publish_plan <- bind_rows( 
-#   project_plan,  
-#   zip_plan
-# ) %>% 
-#   mutate(trigger = if_else(is.na(trigger),
-#                            drake::default_trigger(),
-#                            trigger))
+  write_csv(dd, file_out(here("1-data/4-ready/data_dictionary.csv"))),
+  write_inventory_csv(inventory, file_out(here("1-data/4-ready/inventory_table.csv"))), 
+  write_inventory_rda(inventory, file_out(here("1-data/4-ready/inventory_table.rda"))), 
+  write_inventory_xlsx(inventory, file_out(here("1-data/4-ready/inventory_table.xlsx"))), 
+  write_inventory_csv(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.csv"))), 
+  write_inventory_rda(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.rda"))), 
+  write_inventory_xlsx(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.xlsx"))), 
+  write_inventory_shp(inventory_suitable_poly, file_out(here("1-data/4-ready/inventory_suitable_poly.shp"))),
+  write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
+  c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
+  c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180221.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+                                                                            file_in(here("1-data/4-ready/inventory_table.csv")),
+                                                                            file_in(here("1-data/4-ready/inventory_table.rda")),
+                                                                            file_in(here("1-data/4-ready/inventory_table.xlsx")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_table.csv")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_table.rda")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_table.xlsx")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_poly.shp")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_point.shp")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_poly.dbf")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_poly.prj")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_poly.shx")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_point.dbf")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_point.prj")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_point.shx"))
+                                                                            ))
+) %>% 
+  evaluate_plan(wildcard = "EXTN", values = c("dbf", "prj", "shx")) %>% 
+  modify_at("target", drake_here) %>% 
+  bind_rows(documentation_plan) %>% 
+  mutate(trigger = if_else(target %in% "dd_dictionary_version",
+                           "always",
+                           drake::default_trigger()))
+  
