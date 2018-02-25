@@ -87,6 +87,7 @@ suit_util_plan <- bind_rows(
 
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
+  filters_zcta = make_filters_zcta(parcel_ready, zcta),
   filters_public_owner = make_filters_public_owner(parcel_ready),
   filters_surplus_status = make_filters_surplus_status(parcel_ready),
   filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_ready),
