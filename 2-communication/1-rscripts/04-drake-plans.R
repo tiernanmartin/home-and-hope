@@ -24,7 +24,8 @@ miscellaneous_plan <- drake_plan(
   uga = make_uga(),
   zoning = make_zoning(),
   census_tracts = make_census_tracts(),
-  king_county = make_king_county()
+  king_county = make_king_county(),
+  zcta = make_zcta(king_county)
 )
 
 development_assumptions_plan <- drake_plan(
