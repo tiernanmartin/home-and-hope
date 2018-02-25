@@ -1,4 +1,6 @@
 # SETUP ----
+library(tigris)
+library(tabulizer)
 library(foreign)
 library(drake) 
 library(tigris)
@@ -19,6 +21,7 @@ library(here)
 
 library(tidyverse)  
 options(httr_oob_default=TRUE,
-        tigris_class = "sf") 
+        tigris_class = "sf",
+        tigris_use_cache = TRUE) 
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 set.seed(98104)
