@@ -99,7 +99,7 @@ filter_plan <- drake_plan(
   filters_historic = make_filters_historic(parcel_ready),
   filters_afford_expir_date = make_filters_afford_expir_date(parcel_ready),
   filters_eligibility_nmtc = make_filters_eligibility_nmtc(parcel_ready),
-  filters_eligibility_dda = make_filters_eligibility_dda(parcel_ready),
+  filters_eligibility_dda = make_filters_eligibility_dda(filters_zcta),
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
