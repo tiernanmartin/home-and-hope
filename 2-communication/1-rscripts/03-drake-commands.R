@@ -890,7 +890,11 @@ make_criteria_undevelopable_present_use <- function(){
      "Forest Land(Desig-RCW 84.33)",
      "Forest Land(Class-RCW 84.33)",
      "Tideland, 1st Class",
-     "Tideland, 2nd Class"
+     "Tideland, 2nd Class",
+     "Air Terminal and Hangers",
+     "Terminal(Marine/Comm Fish)",
+     "River/Creek/Stream",
+     "Art Gallery/Museum/Soc Srvc"
    )
    
   crit_undev_presentuse <- list( "undevelopable_presentuse" = undev_presentuse) 
