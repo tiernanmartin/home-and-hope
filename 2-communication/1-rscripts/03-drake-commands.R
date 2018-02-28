@@ -1792,7 +1792,7 @@ make_helpers <- function(...){
 
 make_inventory <- function(filters, helpers, suitability,  utilization){
   
-  inv <- list(filters, helpers, suitability, utilization) %>% 
+  inv <- list(suitability, filters, helpers, utilization) %>% 
     reduce(left_join, by = "PIN") %>%  
     st_sf
   
