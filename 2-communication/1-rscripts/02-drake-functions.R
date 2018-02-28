@@ -1,3 +1,10 @@
+# FUNCTION: EMPTY_AS_NA ----
+
+empty_as_na <- function(x){
+    if("factor" %in% class(x)) x <- as.character(x) ## since ifelse wont work with factors
+    ifelse(as.character(x)!="", x, NA_character_)
+}
+
 # FUNCTION: EXTRACT_TARGET_PATHS ----
 
 extract_target_paths <- function(plan){
