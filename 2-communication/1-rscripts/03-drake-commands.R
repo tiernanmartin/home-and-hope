@@ -1622,15 +1622,39 @@ make_filters_afford_expir_date <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_ELIGIBILITY_NMTC ----
-make_filters_eligibility_nmtc <- function(parcel_ready){
+make_filters_eligibility_nmtc <- function(filters_census_tract){
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  elig_nmtc_fp <- here("1-data/2-external/NMTC-2011-2015-LIC-Nov2-2017-4pm.xlsx")
   
-   p_ready_eligibility_nmtc <- parcel_ready %>% 
+  elig_nmtc_dr_id <- as_id("1gM7oRPZTEDM4N7Xhcmih8R4WFTxLj8rK")
+  
+  elig_nmtc_load <- 
+    make_or_read2(fp = elig_nmtc_fp,
+                  dr_id = elig_nmtc_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE: https://www.cdfifund.gov/Documents/NMTC%202011-2015%20LIC%20Nov2-2017-4pm.xlsx
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,  path = fp, read_fun = read_xlsx,.tempfile = FALSE)
+                  },
+                  read_expr = function(fp){read_xlsx(fp)})
+  
+  elig_nmtc <- elig_nmtc_load %>% 
+    clean_names() %>% 
+    rename_all(to_screaming_snake_case) %>% 
+    transmute(CENSUS_TRACT = X_2010_CENSUS_TRACT_NUMBER_FIPS_CODE_GEOID,
+              NMTC = DOES_CENSUS_TRACT_QUALIFY_FOR_NMTC_LOW_INCOME_COMMUNITY_LIC_ON_POVERTY_OR_INCOME_CRITERIA,
+              FILTER_ELIGIBILITY_NMTC = if_else(NMTC %in% "Yes",TRUE,FALSE)
+              ) 
+  
+  
+   p_ready_eligibility_nmtc <- filters_census_tract %>% 
     st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_ELIGIBILITY_NMTC = sample(c(rep(FALSE,times = 25),TRUE),n(), replace = TRUE)
-              )
+    select(PIN, CENSUS_TRACT) %>% 
+    left_join(elig_nmtc, by = "CENSUS_TRACT") %>% 
+    select(PIN,
+           FILTER_ELIGIBILITY_NMTC)
   
   filters_eligibility_nmtc <- p_ready_eligibility_nmtc
   
@@ -2008,8 +2032,8 @@ make_dd_field_tags <- function(){
                     "FILTER_SCHOOL_DISTRICT",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
                        "FILTER_HISTORIC_LGL",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
                   "FILTER_AFFORD_EXPIR_DATE",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
-                   "FILTER_ELIGIBILITY_NMTC",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
-                    "FILTER_ELIGIBILITY_DDA",                FALSE,              TRUE,              FALSE,            FALSE,             TRUE,
+                   "FILTER_ELIGIBILITY_NMTC",                FALSE,              TRUE,              FALSE,            FALSE,             FALSE,
+                    "FILTER_ELIGIBILITY_DDA",                FALSE,              TRUE,              FALSE,            FALSE,             FALSE,
                     "FILTER_ELIGIBILITY_QCT",                FALSE,              TRUE,              FALSE,            FALSE,             FALSE,
                  "HELPERS_URL_PARCEL_VIEWER",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                         "HELPERS_URL_OPP360",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
