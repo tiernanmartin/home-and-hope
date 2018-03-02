@@ -1,4 +1,5 @@
 # SETUP ----
+library(janitor)
 library(tigris)
 library(tabulizer)
 library(foreign)
