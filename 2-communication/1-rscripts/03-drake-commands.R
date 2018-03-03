@@ -2275,6 +2275,27 @@ make_dd_dictionary_version <- function(dd_field_name_dev, version_string){
   return(dd_dictionary_version)
 }
 
+# COMMAND: MAKE_DD_GOOGLE_DRIVE ----
+
+make_dd_google_drive <- function(...){
+  dd_gd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
+  
+  sheet_key <- as_id("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0")
+  
+  dd_ss <- gs_key(sheet_key, lookup = NULL, visibility = NULL, verbose = TRUE)
+
+  gs_edit_cells(dd_ss, 
+              ws = 1, 
+              input = dd_gd, 
+              anchor = "A1", 
+              byrow = FALSE,
+              col_names = TRUE, 
+              trim = FALSE, 
+              verbose = TRUE)
+  
+  return(dd_gd)
+}
+
 # COMMAND: MAKE_DD ----
 
 make_dd <- function(...){
@@ -2282,6 +2303,8 @@ make_dd <- function(...){
   
   return(dd)
 }
+
+
 
 # COMMAND: WRITE_INVENTORY_RDA ----
 
