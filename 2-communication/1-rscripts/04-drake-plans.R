@@ -103,6 +103,7 @@ filter_plan <- drake_plan(
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
+                         filters_zcta,
                          filters_public_owner, 
                          filters_surplus_status, 
                          filters_proximity_marijuana, 
