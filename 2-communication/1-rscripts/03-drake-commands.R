@@ -2293,15 +2293,17 @@ make_dd_google_drive <- function(...){
               trim = FALSE, 
               verbose = TRUE)
   
-  return(dd_gd)
+  return(dd_ss)
 }
 
 # COMMAND: MAKE_DD ----
 
-make_dd <- function(...){
-  dd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
+make_dd <- function(dd_google_drive){
+  
+  dd <- gs_read(dd_google_drive, ws = "STATIC_VERSION")
   
   return(dd)
+  
 }
 
 
