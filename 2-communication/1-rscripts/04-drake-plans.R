@@ -152,6 +152,7 @@ data_dictionary_plan <- drake_plan(
   dd_field_description = make_dd_field_description(dd_field_name_dev),
   dd_data_source = make_dd_data_source(),
   dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.2"),
+  dd_google_drive = make_dd_google_drive(dd_field_name_dev, dd_field_format, dd_dictionary_version),
   dd = make_dd(dd_field_name_dev, dd_field_name_user, dd_field_format, dd_field_description, dd_data_source, dd_field_tags, dd_dictionary_version), 
   strings_in_dots = "literals"
 ) 
@@ -163,7 +164,7 @@ documentation_plan <- bind_rows(
 
 # MAKE PLANS: EXPORT ----
 
-export_plan <- drake_plan(
+export_plan <- drake_plan( 
   write_csv(dd, file_out(here("1-data/4-ready/data_dictionary.csv"))),
   write_inventory_csv(inventory, file_out(here("1-data/4-ready/inventory_table.csv"))), 
   write_inventory_rda(inventory, file_out(here("1-data/4-ready/inventory_table.rda"))), 
