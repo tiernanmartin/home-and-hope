@@ -1824,8 +1824,9 @@ make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){
   
   url_opp360 <- filters_census_tract %>%  
     left_join(helpers_opp360_xwalk, by = c("CENSUS_TRACT" = "FIPS_TEXT")) %>% 
-    select(PIN, 
-           HELPERS_URL_OPP360 = URL) 
+    transmute(PIN, 
+           HELPERS_URL_OPP360 = URL,
+           HELPERS_PID_OPP360 = as.character(PID)) 
   
  helpers_url_opp360 <- url_opp360
  
