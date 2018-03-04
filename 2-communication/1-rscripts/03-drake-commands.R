@@ -142,6 +142,64 @@ X = Exempt
   
 }
 
+# COMMAND: MAKE_PRESENT_USE_RECODE ----
+
+make_present_use_recode <- function(){
+  
+  pu_fp <- here("1-data/1-raw/present_use_recode.csv")
+  
+  pu_dr_id <- as_id("1FYNs7oioWbjHUS4An4CLSmNOhN5xA7Oa")
+  
+  pu_load <- 
+    make_or_read2(fp = pu_fp,
+                  dr_id = pu_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    present_use_recode <- 
+                      tribble(
+                        ~ ORIG, ~ NEW,
+                        "\\("," \\(",
+                        "Srvc","Service",
+                        "Ctr","Center",
+                        "Bldg","Building",
+                        "Nghbrhood","Neighborhood",
+                        "Prop ","Property ",
+                        "Soc ", "Social ",
+                        "Greenhse", "Greenhouse",
+                        "Nrsry", "Nursery",
+                        "Hort", "Horticulture",
+                        "Relig", "Religious",
+                        "Res ", "Residential ",
+                        "Gen ", "General ",
+                        "Warehse", "Warehouse",
+                        "Billbrd", "Billboard",
+                        "Fac\\)", "Facility\\)",
+                        "Curr", "Current",
+                        "Tmbr", "Timber",
+                        "Dev ", "Development "
+                      ) 
+                    
+                    write_csv(present_use_recode, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                    
+                    drive_upload(media = fp, path = drive_folder) 
+                    
+                  },
+                  make_expr = function(fp, dr_id){ 
+                    drive_download(file = dr_id, path = fp) 
+                    read_csv(fp)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  present_use_recode <- pu_load 
+  
+  return(present_use_recode)
+  
+}
+
+
 
 # COMMAND: MAKE_PUB_PARCEL ----
 
@@ -377,7 +435,7 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
+make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
    
   
   # MAKE P_SF_READY
@@ -414,11 +472,14 @@ make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, pub_parcel,
   
   # MAKE P_READY 
   
-  present_use <- lu %>%
+  present_use_recode <- name_tbl_vector(present_use_recode, "ORIG","NEW")
+
+
+present_use <- lu %>%
     as_tibble() %>%
     dplyr::filter(LU_TYPE == 102) %>%
-    select(PRESENT_USE = LU_ITEM,
-           PRESENT_USE_DESC = LU_DESCRIPTION)
+    transmute(PRESENT_USE = LU_ITEM,
+           PRESENT_USE_DESC = str_replace_all(LU_DESCRIPTION,present_use_recode))
 
   pub_parcel_ready <- pub_parcel %>%
     transmute(PIN,
