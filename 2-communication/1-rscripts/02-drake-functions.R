@@ -1,3 +1,11 @@
+# FUNCTION:  ----
+name_tbl_vector <- function(x, name, value){
+  x %>% 
+    transpose %>% 
+  {set_names(map_chr(., value), map_chr(.,name))}
+
+}
+
 # FUNCTION: ANY_NOT_NA ----
 
 any_not_na <- function(x){ reduce( map(x, is.na), `+`) != ncol(x)}
