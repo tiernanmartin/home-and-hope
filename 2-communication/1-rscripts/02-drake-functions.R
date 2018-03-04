@@ -1,3 +1,8 @@
+# FUNCTION: ANY_NOT_NA ----
+
+any_not_na <- function(x){ reduce( map(x, is.na), `+`) != ncol(x)}
+
+
 # FUNCTION: EMPTY_AS_NA ----
 
 empty_as_na <- function(x){
