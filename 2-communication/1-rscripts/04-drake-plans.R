@@ -1,7 +1,9 @@
 # MAKE PLANS: PARCEL ----
 
 lookup_plan <- drake_plan( 
+  parcel_metadata_table = make_parcel_metadata_table(),
   lu = make_lu(),
+  parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu),
   prop_type = make_prop_type(),
   tax_status = make_tax_status(),
   tax_reason = make_tax_reason(),
@@ -15,7 +17,7 @@ parcel_plan <- drake_plan(
   parcel_df = make_parcel_df(),
   parcel_sf_poly = make_parcel_sf_poly(),
   parcel_sf = make_parcel_sf(parcel_sf_poly),
-  parcel_ready = make_parcel_ready(lu, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf)
+  parcel_ready = make_parcel_ready(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf)
 ) %>% bind_rows(lookup_plan)
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----

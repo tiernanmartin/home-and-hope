@@ -1,3 +1,32 @@
+# COMMAND: MAKE_PARCEL_METADATA_TABLE ----
+make_parcel_metadata_table <- function(){
+  
+  p_meta_tbl_fp <- here("1-data/3-interim/KC_Parcel_Metadata_Table.csv")
+  
+  p_meta_tbl_dr_id <- as_id("19UL-kxImyu6u5QIoi25qqHxTuX8RCXvYot9T0KoaWyM")
+  
+  
+  p_meta_tbl_load <- 
+    make_or_read2(fp = p_meta_tbl_fp, dr_id = p_meta_tbl_dr_id, skip_get_expr = FALSE,
+                  get_expr = function(fp){  #SOURCE: http://info.kingcounty.gov/assessor/datadownload/desc/Parcel.doc
+                    },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  p_meta_tbl <- p_meta_tbl_load %>% 
+    transmute(FIELD_NAME = to_screaming_snake_case(FIELD_NAME),
+              LU_TYPE = LOOKUP)
+  
+  parcel_metadata_table <- p_meta_tbl
+  
+  return(parcel_metadata_table)
+  
+  
+}
+
+
 # COMMAND: MAKE_LU ----
 
 make_lu <- function(){
@@ -19,6 +48,22 @@ make_lu <- function(){
   
   lu <- rename_all(lu_load, to_screaming_snake_case)
 }
+
+# COMMAND: MAKE_PARCEL_LOOKUP ----
+
+make_parcel_lookup <- function(parcel_metadata_table, lu){
+  
+  p_lu <- parcel_metadata_table %>% 
+  left_join(lu, by = "LU_TYPE") %>% 
+  drop_na
+  
+  parcel_lookup <- p_lu
+  
+  return(parcel_lookup)
+  
+  
+}
+
 
 # COMMAND: MAKE_TAX_STATUS ----
 
@@ -435,7 +480,7 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
+make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
    
   
   # MAKE P_SF_READY
@@ -472,14 +517,13 @@ make_parcel_ready <- function(lu, prop_type, tax_status, tax_reason, present_use
   
   # MAKE P_READY 
   
-  present_use_recode <- name_tbl_vector(present_use_recode, "ORIG","NEW")
+  present_use_recode_named_vector <- name_tbl_vector(present_use_recode, "ORIG","NEW")
 
 
-present_use <- lu %>%
-    as_tibble() %>%
+present_use <- parcel_lookup %>%
     dplyr::filter(LU_TYPE == 102) %>%
     transmute(PRESENT_USE = LU_ITEM,
-           PRESENT_USE_DESC = str_replace_all(LU_DESCRIPTION,present_use_recode))
+           PRESENT_USE_DESC = str_replace_all(LU_DESCRIPTION,present_use_recode_named_vector))
 
   pub_parcel_ready <- pub_parcel %>%
     transmute(PIN,
