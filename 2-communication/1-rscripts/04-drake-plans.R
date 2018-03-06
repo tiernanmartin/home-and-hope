@@ -3,11 +3,11 @@
 lookup_plan <- drake_plan( 
   parcel_metadata_table = make_parcel_metadata_table(),
   lu = make_lu(),
-  parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu),
   prop_type = make_prop_type(),
   tax_status = make_tax_status(),
   tax_reason = make_tax_reason(),
-  present_use_recode = make_present_use_recode()
+  present_use_recode = make_present_use_recode(), 
+  parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu, present_use_recode)
 )
  
 parcel_plan <- drake_plan(
@@ -177,7 +177,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180304.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180306.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),

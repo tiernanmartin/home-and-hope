@@ -49,20 +49,7 @@ make_lu <- function(){
   lu <- rename_all(lu_load, to_screaming_snake_case)
 }
 
-# COMMAND: MAKE_PARCEL_LOOKUP ----
 
-make_parcel_lookup <- function(parcel_metadata_table, lu){
-  
-  p_lu <- parcel_metadata_table %>% 
-  left_join(lu, by = "LU_TYPE") %>% 
-  drop_na
-  
-  parcel_lookup <- p_lu
-  
-  return(parcel_lookup)
-  
-  
-}
 
 
 # COMMAND: MAKE_TAX_STATUS ----
@@ -204,7 +191,6 @@ make_present_use_recode <- function(){
                     present_use_recode <- 
                       tribble(
                         ~ ORIG, ~ NEW,
-                        "\\("," \\(",
                         "Srvc","Service",
                         "Ctr","Center",
                         "Bldg","Building",
@@ -244,7 +230,36 @@ make_present_use_recode <- function(){
   
 }
 
+# COMMAND: MAKE_PARCEL_LOOKUP ----
 
+make_parcel_lookup <- function(parcel_metadata_table, lu, present_use_recode){
+  
+  p_lu_orig <- parcel_metadata_table %>% 
+    left_join(lu, by = "LU_TYPE") %>% 
+    drop_na
+  
+  p_lu_token <- p_lu_orig %>% 
+    mutate(id = row_number()) %>% 
+    unnest_tokens(ORIG, LU_DESCRIPTION, to_lower = FALSE) 
+  
+  p_lu_recoded <- p_lu_token %>% 
+    left_join(present_use_recode, by = "ORIG") %>% 
+    mutate(LU_DESCRIPTION = if_else(is.na(NEW),ORIG,NEW)) %>% 
+    select(id,FIELD_NAME,LU_ITEM, LU_DESCRIPTION) %>%
+    nest(-id) %>% 
+    mutate(FIELD_NAME = map_chr(data, ~.x %>% pull("FIELD_NAME") %>% first),
+           LU_ITEM = map_int(data, ~.x %>% pull("LU_ITEM") %>% first),
+           LU_DESCRIPTION = map_chr(data, ~.x %>% pull("LU_DESCRIPTION") %>% str_c(collapse = " "))) %>% 
+    select(FIELD_NAME,
+           LU_ITEM,
+           LU_DESCRIPTION)
+  
+  parcel_lookup <- p_lu_recoded
+  
+  return(parcel_lookup)
+  
+  
+}
 
 # COMMAND: MAKE_PUB_PARCEL ----
 
@@ -517,40 +532,77 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
   
   # MAKE P_READY 
   
-  present_use_recode_named_vector <- name_tbl_vector(present_use_recode, "ORIG","NEW")
-
-
-present_use <- parcel_lookup %>%
-    dplyr::filter(LU_TYPE == 102) %>%
-    transmute(PRESENT_USE = LU_ITEM,
-           PRESENT_USE_DESC = str_replace_all(LU_DESCRIPTION,present_use_recode_named_vector))
+  recode_cols <- unique(parcel_lookup$FIELD_NAME) %>% keep(~.x %in% colnames(parcel_df))
+  
+  fine_cols <- colnames(parcel_df) %>% discard(~.x %in% recode_cols)
+  
+  
+  parcel_recode_cols <- 
+    parcel_df %>%  
+    select_at(vars(recode_cols)) %>% 
+    gather(FIELD_NAME, LU_ITEM) %>% 
+    left_join(parcel_lookup, by = c("FIELD_NAME", "LU_ITEM")) %>% 
+    select(FIELD_NAME, LU_DESCRIPTION) %>% 
+    group_by(FIELD_NAME) %>% 
+    mutate(ROW = 1:n()) %>% 
+    spread(FIELD_NAME,LU_DESCRIPTION) %>% 
+    select(-ROW)
+  
+  parcel_df_recoded <- 
+    parcel_df %>% 
+    select_at(vars(fine_cols)) %>% 
+    bind_cols(parcel_recode_cols) %>% 
+    mutate_if(is_logical_yn, recode_logical_yn) %>% 
+    mutate_if(is_logical_01, recode_logical_01) %>% 
+    mutate_if(is_logical_yesno, recode_logical_yesno)
+ 
 
   pub_parcel_ready <- pub_parcel %>%
     transmute(PIN,
               ASSESSOR_PUB_LIST_LGL = TRUE)
 
-  p_ready <- parcel_df %>%
+  p_ready <- parcel_df_recoded %>%
    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
            MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
            PIN = str_c(MAJOR,MINOR)) %>%
     left_join(prop_type, by = "PROP_TYPE") %>%
-    left_join(present_use, by = "PRESENT_USE") %>%
     left_join(pub_parcel_ready, by = "PIN") %>%
-    mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%
+    mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
     select(PIN,
            PROP_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
            ASSESSOR_PUB_LIST_LGL,
            DISTRICT_NAME,
            CURRENT_ZONING,
-           PRESENT_USE = PRESENT_USE_DESC,
+           PRESENT_USE,
            SQ_FT_LOT,
            ACCESS,
            TOPOGRAPHY,
            RESTRICTIVE_SZ_SHAPE,
            PCNT_UNUSABLE,
            CONTAMINATION,
-           HISTORIC_SITE:OTHER_PROBLEMS
+           HISTORIC_SITE,
+           CURRENT_USE_DESIGNATION,
+           NATIVE_GROWTH_PROT_ESMT,
+           EASEMENTS,
+           OTHER_DESIGNATION,
+           DEED_RESTRICTIONS,
+           DEVELOPMENT_RIGHTS_PURCH,
+           COAL_MINE_HAZARD,
+           CRITICAL_DRAINAGE,
+           EROSION_HAZARD,
+           LANDFILL_BUFFER,
+           HUNDRED_YR_FLOOD_PLAIN,
+           SEISMIC_HAZARD,
+           LANDSLIDE_HAZARD,
+           STEEP_SLOPE_HAZARD,
+           STREAM,
+           WETLAND,
+           SPECIES_OF_CONCERN,
+           SENSITIVE_AREA_TRACT,
+           WATER_PROBLEMS,
+           TRANSP_CONCURRENCY,
+           OTHER_PROBLEMS 
     )
 
 

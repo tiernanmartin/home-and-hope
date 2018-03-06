@@ -1,4 +1,5 @@
 # SETUP ----
+library(tidytext)
 library(janitor)
 library(tigris)
 library(tabulizer)
