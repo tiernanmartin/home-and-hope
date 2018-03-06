@@ -1,4 +1,38 @@
-# FUNCTION:  ----
+# FUNCTIONS: LOGICAL RECODING ----
+
+
+is_logical_yn <- function(x){all(unique(x) %in% c("Y","N",NA_character_))}
+
+recode_logical_yn <- function(x){ if_else(x %in% "Y",TRUE,FALSE,missing = NA)}
+
+is_logical_01 <- function(x){all(unique(x) %in% c(1,0, NA))}
+
+recode_logical_01 <- function(x){ if_else(x %in% 1,TRUE,FALSE,missing = NA)}
+
+is_logical_yesno <- function(x){
+  
+  strings <- list("yes", "no") %>% 
+  map(~ list(to_screaming_snake_case,to_snake_case,to_upper_camel_case) %>% 
+        invoke_map_chr(.x) 
+        ) %>% flatten_chr() %>% 
+    prepend(NA_character_)
+  
+  all(unique(x) %in% strings)
+  
+  }
+
+recode_logical_yesno <- function(x){ 
+  
+  yes <- map("yes",~ list(to_screaming_snake_case,to_snake_case,to_upper_camel_case) %>% 
+        invoke_map_chr(.x) 
+        ) %>% flatten_chr()
+  
+  if_else(x %in% yes,TRUE,FALSE,missing = NA)
+  
+  }
+
+
+# FUNCTION: NAME_TBL_VECTOR ----
 name_tbl_vector <- function(x, name, value){
   x %>% 
     transpose %>% 
