@@ -61,8 +61,12 @@ tp_name_recode <-
                         "WA", "WASHINGTON",
                         "WASH", "WASHINGTON",
                         "WS", "WASHINGTON STATE",
+                        "WASHINGOTN", "WASHINGTON",
+                        "WADNR", "WASHINGTON DNR",
                         "SCH", "SCHOOL",
-                        "SCHL", "SCHOOL"
+                        "SCHL", "SCHOOL",
+                        "SD", "SCHOOL DISTRICT",
+                        "DI", "DISTRICT"
                       )  
 
 names_cleaned <- names %>% 
@@ -174,3 +178,8 @@ names_categorized <-
             CATEGORY = first_not_na(c(CATEGORY.x,CATEGORY.y,CATEGORY))
   )
 
+# VIEW CATEGORIES ----
+
+names_categorized %>% count(CATEGORY, sort = TRUE)
+
+names_categorized %>% filter(is.na(CATEGORY)) %>% count(TAXPAYER_NAME_TRIM, sort = TRUE) %>% print(n=Inf)
