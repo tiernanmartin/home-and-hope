@@ -639,10 +639,11 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
 
   # MAKE PARCEL_READY
 
-  obj_list <- list(acct_ready,p_addr_ready,p_ready,p_sf_ready)
+  obj_list <- list(acct_ready,p_ready,p_sf_ready)
 
   parcel_ready <- obj_list %>%
     reduce(.f = inner_join, by = "PIN") %>%
+    left_join(p_addr_ready, by = "PIN") %>% 
     st_as_sf()
 
   return(parcel_ready)
