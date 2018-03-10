@@ -877,8 +877,8 @@ make_zcta <- function(king_county){
   
 }
 
-# COMMAND: MAKE_ANTIJOIN_OWNER_NAMES ----
-make_antijoin_owner_names <- function(){
+# COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
+make_owner_antijoin_names <- function(){
   
   anti_fp <- here("1-data/2-external/stop-words.csv")
   
@@ -911,15 +911,15 @@ make_antijoin_owner_names <- function(){
     bind_rows(numbers_0_500) %>% 
     filter(word %!in% ok_words)
   
-  antijoin_owner_names <- anti
+  owner_antijoin_names <- anti
 
-  return(antijoin_owner_names)
+  return(owner_antijoin_names)
     
   
 }
 
-# COMMAND: MAKE_NAME_CATEGORY_KEY ----
-make_name_category_key <- function(){
+# COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
+make_owner_name_category_key<- function(){
   
   pub_categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
   
@@ -949,14 +949,14 @@ make_name_category_key <- function(){
     arrange(row) %>% 
     select(-row)
   
-  name_category_key <- cat_ngram_wide
+  owner_name_category_key <- cat_ngram_wide
   
-  return(name_category_key)
+  return(owner_name_category_key)
    
   
 }
 
-# COMMAND: MAKE_NAME_RECODE_KEY ----
+# COMMAND: MAKE_OWNER_NAME_RECODE_KEY ----
 make_owner_name_recode_key <- function(){
 
   recode_key_fp <- here("1-data/1-raw/owner_name_recode_key.rda")

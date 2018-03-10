@@ -28,10 +28,7 @@ miscellaneous_plan <- drake_plan(
   zoning = make_zoning(),
   census_tracts = make_census_tracts(),
   king_county = make_king_county(),
-  zcta = make_zcta(king_county),
-  antijoin_owner_names = make_antijoin_owner_names(),
-  name_category_key = make_name_category_key(),
-  owner_name_recode_key = make_owner_name_recode_key()
+  zcta = make_zcta(king_county)
 )
 
 development_assumptions_plan <- drake_plan(
@@ -59,6 +56,14 @@ suitability_plan <- drake_plan(
   suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
 )
 
+owner_plan <- drake_plan(
+  owner_antijoin_names = make_owner_antijoin_names(),
+  owner_name_category_key = make_owner_name_category_key(),
+  owner_name_recode_key = make_owner_name_recode_key() 
+  
+)
+
+
 building_plan <- drake_plan(
   building_residential = make_building_residential(),
   building_apartment = make_building_apartment(),
@@ -81,6 +86,7 @@ utilization_plan <- drake_plan(
 suit_util_plan <- bind_rows(
   parcel_plan, 
   miscellaneous_plan,
+  owner_plan,
   development_assumptions_plan,
   suitability_criteria_plan,
   suitability_plan,
