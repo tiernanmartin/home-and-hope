@@ -56,13 +56,6 @@ suitability_plan <- drake_plan(
   suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use)
 )
 
-owner_plan <- drake_plan(
-  owner_antijoin_names = make_owner_antijoin_names(),
-  owner_name_category_key = make_owner_name_category_key(),
-  owner_name_recode_key = make_owner_name_recode_key() 
-  
-)
-
 
 building_plan <- drake_plan(
   building_residential = make_building_residential(),
@@ -86,7 +79,6 @@ utilization_plan <- drake_plan(
 suit_util_plan <- bind_rows(
   parcel_plan, 
   miscellaneous_plan,
-  owner_plan,
   development_assumptions_plan,
   suitability_criteria_plan,
   suitability_plan,
@@ -96,6 +88,16 @@ suit_util_plan <- bind_rows(
 )
 
 # MAKE PLANS: FILTERS AND HELPERS ----
+
+owner_plan <- drake_plan(
+  owner_antijoin_names = make_owner_antijoin_names(),
+  owner_name_category_key = make_owner_name_category_key(),
+  owner_name_recode_key = make_owner_name_recode_key(),
+  owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
+  owner = make_owner(owner_public_categories)
+  
+)
+
 
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_ready, census_tracts),
@@ -139,6 +141,7 @@ helper_plan <- drake_plan(
 
 filter_helper_plan <- bind_rows(
   suit_util_plan,
+  owner_plan,
   filter_plan,
   helper_plan
 )
@@ -146,7 +149,7 @@ filter_helper_plan <- bind_rows(
 # MAKE PLANS: INVENTORY_PLAN ----
 
 inventory_plan <- drake_plan(
-  inventory = make_inventory(filters, helpers, suitability,  utilization),
+  inventory = make_inventory(owner, filters, helpers, suitability,  utilization),
   inventory_suitable = make_inventory_suitable(inventory), 
   inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
