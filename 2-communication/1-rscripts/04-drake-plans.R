@@ -29,7 +29,8 @@ miscellaneous_plan <- drake_plan(
   census_tracts = make_census_tracts(),
   king_county = make_king_county(),
   zcta = make_zcta(king_county),
-  antijoin_owner_names = make_antijoin_owner_names()
+  antijoin_owner_names = make_antijoin_owner_names(),
+  name_category_key = make_name_category_key()
 )
 
 development_assumptions_plan <- drake_plan(
