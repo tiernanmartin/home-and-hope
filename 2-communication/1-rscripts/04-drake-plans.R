@@ -30,7 +30,8 @@ miscellaneous_plan <- drake_plan(
   king_county = make_king_county(),
   zcta = make_zcta(king_county),
   antijoin_owner_names = make_antijoin_owner_names(),
-  name_category_key = make_name_category_key()
+  name_category_key = make_name_category_key(),
+  owner_name_recode_key = make_owner_name_recode_key()
 )
 
 development_assumptions_plan <- drake_plan(
