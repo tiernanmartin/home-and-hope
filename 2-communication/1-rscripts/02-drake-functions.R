@@ -1,5 +1,24 @@
-# FUNCTIONS: LOGICAL RECODING ----
+# FUNCTION: GS_READ_ALL ----
 
+# source: https://github.com/jennybc/googlesheets/issues/320#issue-230901546
+
+gs_read_all <- function(ss, delay = 4){ 
+  ws_names <- gs_ws_ls(ss)
+  
+  gs_read_delayed <- function(ss, ws){
+    result <- gs_read(ss, ws)
+    Sys.sleep(delay)
+    return(result) 
+  }
+  
+  worksheets <- map(ws_names, ~ gs_read_delayed(ss, ws = .x))
+  
+  
+  return(worksheets)
+}
+
+
+# FUNCTIONS: LOGICAL RECODING ----
 
 is_logical_yn <- function(x){all(unique(x) %in% c("Y","N",NA_character_))}
 
