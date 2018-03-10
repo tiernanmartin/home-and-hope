@@ -1,4 +1,6 @@
 # SETUP ----
+library(ggraph)
+library(igraph)
 library(tidytext)
 library(janitor)
 library(tigris)
