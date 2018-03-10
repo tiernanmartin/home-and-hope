@@ -1220,10 +1220,12 @@ make_suitability_tax_exempt <- function(parcel_ready){
     st_drop_geometry() %>% 
     mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
            SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
-           SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT) %>% 
+           SUIT_OWNER_OTHER_EXEMPT = if_else(TAX_REASON %in% "exempt",TRUE,FALSE,FALSE),
+           SUIT_OWNER_TAX_E = any(SUIT_OWNER_PUBLIC, SUIT_OWNER_NONPROFIT, SUIT_OWNER_OTHER_EXEMPT)) %>% 
     select(PIN,
            SUIT_OWNER_PUBLIC,
            SUIT_OWNER_NONPROFIT,
+           SUIT_OWNER_OTHER_EXEMPT,
            SUIT_OWNER_TAX_E) 
   
   return(tax_exempt)
