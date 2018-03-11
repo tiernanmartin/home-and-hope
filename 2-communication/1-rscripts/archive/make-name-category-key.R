@@ -6,7 +6,6 @@ make_owner_name_category_key<- function(){
   
   cat_ngram_list$CATEGORIES <- NULL
   
-  
   cat_ngram_long <- cat_ngram_list %>% 
     map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY)) 
   
