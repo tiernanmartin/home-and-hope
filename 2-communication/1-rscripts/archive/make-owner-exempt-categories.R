@@ -1,8 +1,8 @@
-make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key){
+make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key){
   
   
   names <- suitability_tax_exempt %>%  
-    filter(SUIT_OWNER_NONPROFIT) %>% 
+    filter(SUIT_OWNER_OTHER_EXEMPT) %>% 
     inner_join(parcel_ready, by = "PIN") %>% 
     st_drop_geometry() %>% 
     transmute(PIN,
@@ -34,32 +34,32 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
     return(names_trimmed_cnt)
   }
   
-  # view_names_trimmed_cnt()
+  view_names_trimmed_cnt()
   
   # CREATE NGRAMS ----
   
   names_ngrams_1 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    unnest_tokens(EXEMPT_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     select(-OWNER_NAME)
   
   names_ngrams_1_cnt <- names_ngrams_1 %>% 
-    count(NP_NGRAM_1, sort = TRUE)
+    count(EXEMPT_NGRAM_1, sort = TRUE)
   
   names_ngrams_2 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
-    separate(NP_NGRAM_2, c("NP_NGRAM_2_A", "NP_NGRAM_2_B"),sep = " ") %>% 
+    unnest_tokens(EXEMPT_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
+    separate(EXEMPT_NGRAM_2, c("EXEMPT_NGRAM_2_A", "EXEMPT_NGRAM_2_B"),sep = " ") %>% 
     select(-OWNER_NAME)
   
   names_ngrams_2_cnt <- names_ngrams_2 %>% 
-    count(NP_NGRAM_2_A,NP_NGRAM_2_B, sort = TRUE)
+    count(EXEMPT_NGRAM_2_A,EXEMPT_NGRAM_2_B, sort = TRUE)
   
   names_ngrams_3 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
-    separate(NP_NGRAM_3, c("NP_NGRAM_3_A", "NP_NGRAM_3_B", "NP_NGRAM_3_C"),sep = " ") %>% 
+    unnest_tokens(EXEMPT_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
+    separate(EXEMPT_NGRAM_3, c("EXEMPT_NGRAM_3_A", "EXEMPT_NGRAM_3_B", "EXEMPT_NGRAM_3_C"),sep = " ") %>% 
     select(-OWNER_NAME)
   
   names_ngrams_3_cnt <- names_ngrams_3 %>% 
-    count(NP_NGRAM_3_A,NP_NGRAM_3_B,NP_NGRAM_3_C, sort = TRUE)
+    count(EXEMPT_NGRAM_3_A,EXEMPT_NGRAM_3_B,EXEMPT_NGRAM_3_C, sort = TRUE)
   
   names_ngrams <- 
     list(names_cleaned,names_ngrams_1,names_ngrams_2,names_ngrams_3) %>% 
@@ -70,7 +70,7 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
 
 make_bigram_graph <- function(){
   bigram_graph <- names_ngrams_2 %>% 
-  count(NGRAM_2_A,NGRAM_2_B, sort = TRUE) %>% 
+  count(EXEMPT_NGRAM_2_A,EXEMPT_NGRAM_2_B, sort = TRUE) %>% 
   filter(n > 20) %>% 
   graph_from_data_frame
   
@@ -94,17 +94,16 @@ ggraph(bigram_graph, layout = "fr") +
 # CREATE NGRAM CATEGORY KEYS ----
 
 cat_ngram_1 <- owner_name_category_key %>% 
-  select(CATEGORY,NP_NGRAM_1) %>% 
+  select(CATEGORY,EXEMPT_NGRAM_1) %>% 
   drop_na
 
 cat_ngram_2 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NP_NGRAM_2")) %>% 
+  select(CATEGORY,matches("EXEMPT_NGRAM_2")) %>% 
   drop_na
 
 cat_ngram_3 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NP_NGRAM_3")) %>% 
+  select(CATEGORY,matches("EXEMPT_NGRAM_3")) %>% 
   drop_na
-
 
 
 # PUBLIC AND NONPROFIT CATEGORIES ----
@@ -113,26 +112,29 @@ pub_join <- owner_public_categories %>%
   group_by(OWNER_NAME) %>% 
   summarise(PUBLIC = first(OWNER_CATEGORY)) 
 
+np_join <- owner_nonprofit_categories %>% 
+  group_by(OWNER_NAME) %>% 
+  summarise(NONPROFIT = first(OWNER_CATEGORY))
 
 # JOIN CATEGORIES TABLE ----
 
 
 ngram_1_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_1, by = "NP_NGRAM_1") %>% 
+  left_join(cat_ngram_1, by = "EXEMPT_NGRAM_1") %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
   drop_na
 
 ngram_2_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_2, c("NP_NGRAM_2_A", "NP_NGRAM_2_B")) %>% 
+  left_join(cat_ngram_2, c("EXEMPT_NGRAM_2_A", "EXEMPT_NGRAM_2_B")) %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
   drop_na
 
 ngram_3_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_3, c("NP_NGRAM_3_A", "NP_NGRAM_3_B", "NP_NGRAM_3_C")) %>% 
+  left_join(cat_ngram_3, c("EXEMPT_NGRAM_3_A", "EXEMPT_NGRAM_3_B", "EXEMPT_NGRAM_3_C")) %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
@@ -152,20 +154,25 @@ names_categorized <-
   ) %>%
   transmute(PIN,
             OWNER_NAME = OWNER_NAME_CLEAN,
-            OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY), "non-profit",OWNER_CATEGORY,OWNER_CATEGORY)) %>% 
+            OWNER_CATEGORY = OWNER_CATEGORY) %>%
   left_join(pub_join, by = "OWNER_NAME") %>% 
+  left_join(np_join, by = "OWNER_NAME") %>% 
   group_by(PIN) %>% 
   summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_CATEGORY = first_not_na(c(PUBLIC, OWNER_CATEGORY))) %>% 
+            OWNER_CATEGORY = first_not_na(c(OWNER_CATEGORY,PUBLIC,NONPROFIT))) %>% 
   ungroup
 
 
 
 # VIEW CATEGORIES ----
 
-# names_categorized %>% count(OWNER_CATEGORY, sort = TRUE)
+names_categorized %>% count(OWNER_CATEGORY, sort = TRUE)
 
-# names_categorized %>% filter(is.na(OWNER_CATEGORY)) %>% count(OWNER_NAME, sort = TRUE) %>% print(n=Inf)
+names_categorized %>% 
+  filter(is.na(OWNER_CATEGORY)) %>% 
+  count(OWNER_NAME, sort = TRUE) %>% 
+  filter(n>10) %>% 
+  print(n=Inf)
 
 # RETURN----
 
