@@ -94,7 +94,8 @@ owner_plan <- drake_plan(
   owner_name_category_key = make_owner_name_category_key(),
   owner_name_recode_key = make_owner_name_recode_key(),
   owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
-  owner = make_owner(owner_public_categories)
+  owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
+  owner = make_owner(parcel_ready, owner_public_categories, owner_nonprofit_categories)
   
 )
 
@@ -155,7 +156,10 @@ inventory_plan <- drake_plan(
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
   
 ) %>% 
-  bind_rows(filter_helper_plan)
+  bind_rows(filter_helper_plan) %>% 
+  mutate(trigger = if_else(target %in% c("owner_name_category_key"),
+                           "always",
+                           drake::default_trigger()))
 
 # MAKE PLANS: DOCUMENTATION ----
 
