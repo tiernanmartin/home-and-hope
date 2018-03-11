@@ -920,38 +920,27 @@ make_owner_antijoin_names <- function(){
 # COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
 make_owner_name_category_key<- function(){
   
-  pub_categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
+  categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
   
-  cat_ngram_1 <- gs_read(ss = pub_categories_gs,ws = "NGRAM_1")
+  cat_ngram_list <- gs_read_all(categories_gs) 
   
-  cat_ngram_2 <- gs_read(ss = pub_categories_gs,ws = "NGRAM_2")
+  cat_ngram_list$CATEGORIES <- NULL
   
-  cat_ngram_3 <- gs_read(ss = pub_categories_gs,ws = "NGRAM_3")
   
-  cat_ngram_1_long <- cat_ngram_1 %>% 
-    gather(NGRAM_TYPE, WORD, -CATEGORY)
-  
-  cat_ngram_2_long <- cat_ngram_2 %>% 
-    gather(NGRAM_TYPE, WORD, -CATEGORY)
-  
-  cat_ngram_3_long <- cat_ngram_3 %>% 
-    gather(NGRAM_TYPE, WORD, -CATEGORY)
-  
-  cat_ngram_long <- list(cat_ngram_1_long,cat_ngram_2_long,cat_ngram_3_long) %>% 
-    bind_rows() %>% 
-    select(NGRAM_TYPE, WORD, CATEGORY)
+  cat_ngram_long <- cat_ngram_list %>% 
+    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY)) 
   
   cat_ngram_wide <- cat_ngram_long %>%  
     group_by(NGRAM_TYPE) %>% 
     mutate(row = row_number()) %>% 
     spread(NGRAM_TYPE,WORD) %>% 
     arrange(row) %>% 
-    select(-row)
+    select(-row) 
   
   owner_name_category_key <- cat_ngram_wide
   
   return(owner_name_category_key)
-   
+  
   
 }
 
@@ -1052,27 +1041,27 @@ make_owner_public_categories <- function(parcel_ready, suitability_tax_exempt, o
   # CREATE NGRAMS ----
   
   names_ngrams_1 <- names_trimmed %>%  
-    unnest_tokens(NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    unnest_tokens(PUBLIC_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     select(-OWNER_NAME)
   
   names_ngrams_1_cnt <- names_ngrams_1 %>% 
-    count(NGRAM_1, sort = TRUE)
+    count(PUBLIC_NGRAM_1, sort = TRUE)
   
   names_ngrams_2 <- names_trimmed %>%  
-    unnest_tokens(NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
-    separate(NGRAM_2, c("NGRAM_2_A", "NGRAM_2_B"),sep = " ") %>% 
+    unnest_tokens(PUBLIC_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
+    separate(PUBLIC_NGRAM_2, c("PUBLIC_NGRAM_2_A", "PUBLIC_NGRAM_2_B"),sep = " ") %>% 
     select(-OWNER_NAME)
   
   names_ngrams_2_cnt <- names_ngrams_2 %>% 
-    count(NGRAM_2_A,NGRAM_2_B, sort = TRUE)
+    count(PUBLIC_NGRAM_2_A,PUBLIC_NGRAM_2_B, sort = TRUE)
   
   names_ngrams_3 <- names_trimmed %>%  
-    unnest_tokens(NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
-    separate(NGRAM_3, c("NGRAM_3_A", "NGRAM_3_B", "NGRAM_3_C"),sep = " ") %>% 
+    unnest_tokens(PUBLIC_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
+    separate(PUBLIC_NGRAM_3, c("PUBLIC_NGRAM_3_A", "PUBLIC_NGRAM_3_B", "PUBLIC_NGRAM_3_C"),sep = " ") %>% 
     select(-OWNER_NAME)
   
   names_ngrams_3_cnt <- names_ngrams_3 %>% 
-    count(NGRAM_3_A,NGRAM_3_B,NGRAM_3_C, sort = TRUE)
+    count(PUBLIC_NGRAM_3_A,PUBLIC_NGRAM_3_B,PUBLIC_NGRAM_3_C, sort = TRUE)
   
   names_ngrams <- 
     list(names_cleaned,names_ngrams_1,names_ngrams_2,names_ngrams_3) %>% 
@@ -1107,15 +1096,15 @@ ggraph(bigram_graph, layout = "fr") +
 # CREATE NGRAM CATEGORY KEYS ----
 
 cat_ngram_1 <- owner_name_category_key %>% 
-  select(CATEGORY,NGRAM_1) %>% 
+  select(CATEGORY,PUBLIC_NGRAM_1) %>% 
   drop_na
 
 cat_ngram_2 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NGRAM_2")) %>% 
+  select(CATEGORY,matches("PUBLIC_NGRAM_2")) %>% 
   drop_na
 
 cat_ngram_3 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NGRAM_3")) %>% 
+  select(CATEGORY,matches("PUBLIC_NGRAM_3")) %>% 
   drop_na
 
 
@@ -1123,21 +1112,21 @@ cat_ngram_3 <- owner_name_category_key %>%
 
 
 ngram_1_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_1, by = "NGRAM_1") %>% 
+  left_join(cat_ngram_1, by = "PUBLIC_NGRAM_1") %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
   drop_na
 
 ngram_2_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_2, c("NGRAM_2_A", "NGRAM_2_B")) %>% 
+  left_join(cat_ngram_2, c("PUBLIC_NGRAM_2_A", "PUBLIC_NGRAM_2_B")) %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
   drop_na
 
 ngram_3_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_3, c("NGRAM_3_A", "NGRAM_3_B", "NGRAM_3_C")) %>% 
+  left_join(cat_ngram_3, c("PUBLIC_NGRAM_3_A", "PUBLIC_NGRAM_3_B", "PUBLIC_NGRAM_3_C")) %>% 
   group_by(PIN,OWNER_NAME_CLEAN) %>% 
   summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
   select(-OWNER_NAME_CLEAN) %>% 
