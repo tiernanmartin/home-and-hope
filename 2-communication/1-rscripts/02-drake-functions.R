@@ -2,16 +2,18 @@
 
 # source: https://github.com/jennybc/googlesheets/issues/320#issue-230901546
 
-gs_read_all <- function(ss, delay = 4){ 
+gs_read_all <- function(ss, delay_length = 5){ 
   ws_names <- gs_ws_ls(ss)
+   
   
   gs_read_delayed <- function(ss, ws){
     result <- gs_read(ss, ws)
-    Sys.sleep(delay)
+    Sys.sleep(delay_length)
     return(result) 
   }
   
-  worksheets <- map(ws_names, ~ gs_read_delayed(ss, ws = .x))
+  worksheets <- map(ws_names, ~ gs_read_delayed(ss, ws = .x)) %>% 
+    set_names(ws_names)
   
   
   return(worksheets)
