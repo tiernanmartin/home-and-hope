@@ -2262,6 +2262,25 @@ make_filters_zcta <- function(parcel_ready, zcta){
    
 }
 
+# COMMAND: MAKE_FILTERS_OWNER_CATEGORY ----
+
+make_filters_owner_category <- function(parcel_ready, owner){
+  
+  p <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    select(PIN)
+  
+  p_own_cat <- p %>% 
+    left_join(owner, by = "PIN") %>% 
+    transmute(PIN,
+              FILTER_OWNER_CATEGORY = OWNER_CATEGORY)
+  
+  filters_owner_category <- p_own_cat
+  
+  return(filters_owner_category)
+   
+}
+
 # COMMAND: MAKE_FILTERS_PUBLIC_OWNER ----
 make_filters_public_owner <- function(parcel_ready){
   
