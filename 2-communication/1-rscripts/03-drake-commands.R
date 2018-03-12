@@ -904,7 +904,7 @@ make_owner_antijoin_names <- function(){
   
   numbers_0_500 <- tibble(word = as.character(0:500))
   
-  ok_words <- c("STATES")
+  ok_words <- c("STATES", "U", "S", "A", "US")
   
   anti <- transmute(anti_load, word = toupper(word)) %>% 
     bind_rows(numbers_0_500) %>% 
@@ -1378,7 +1378,7 @@ make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, o
     return(names_trimmed_cnt)
   }
   
-  view_names_trimmed_cnt()
+  # view_names_trimmed_cnt()
   
   # CREATE NGRAMS ----
   
@@ -1512,10 +1512,10 @@ names_categorized <-
 
 # names_categorized %>% count(OWNER_CATEGORY, sort = TRUE)
 # 
-# names_categorized %>% 
-#   filter(is.na(OWNER_CATEGORY)) %>% 
-#   count(OWNER_NAME, sort = TRUE) %>% 
-#   filter(n>10) %>% 
+# names_categorized %>%
+#   filter(is.na(OWNER_CATEGORY)) %>%
+#   count(OWNER_NAME, sort = TRUE) %>%
+#   filter(n>10) %>%
 #   print(n=Inf)
 
 # RETURN----
@@ -1535,7 +1535,8 @@ make_owner <- function(parcel_ready, ...){
     select(PIN)
   
   owner <- reduce(list(...), bind_rows) %>% 
-    right_join(p, by = "PIN")
+    right_join(p, by = "PIN") %>% 
+    mutate(OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY),"uncategorized",OWNER_CATEGORY))
   
   return(owner)
 }
@@ -1748,7 +1749,7 @@ make_suitability_tax_exempt <- function(parcel_ready){
     mutate(SUIT_OWNER_PUBLIC = if_else(ASSESSOR_PUB_LIST_LGL,TRUE,FALSE,FALSE),
            SUIT_OWNER_NONPROFIT = if_else(TAX_REASON %in% "non profit exemption",TRUE,FALSE,FALSE),
            SUIT_OWNER_OTHER_EXEMPT = if_else(TAX_REASON %in% "exempt",TRUE,FALSE,FALSE),
-           SUIT_OWNER_TAX_E = any(SUIT_OWNER_PUBLIC, SUIT_OWNER_NONPROFIT, SUIT_OWNER_OTHER_EXEMPT)) %>% 
+           SUIT_OWNER_TAX_E = SUIT_OWNER_PUBLIC | SUIT_OWNER_NONPROFIT | SUIT_OWNER_OTHER_EXEMPT) %>% 
     select(PIN,
            SUIT_OWNER_PUBLIC,
            SUIT_OWNER_NONPROFIT,
