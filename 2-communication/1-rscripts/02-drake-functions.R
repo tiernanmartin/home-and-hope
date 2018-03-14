@@ -1,3 +1,7 @@
+# FUNCTION: STR_TO_clean_upper ----
+
+str_clean_upper <- function(x){str_to_upper(str_trim(str_replace_all(x,"^[:graph:]]","")))}
+
 # FUNCTION: GS_READ_ALL ----
 
 # source: https://github.com/jennybc/googlesheets/issues/320#issue-230901546
