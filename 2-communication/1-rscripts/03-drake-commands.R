@@ -613,22 +613,36 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
     group_by(FIELD_NAME) %>% 
     mutate(ROW = 1:n()) %>% 
     spread(FIELD_NAME,LU_DESCRIPTION) %>% 
-    select(-ROW)
+    select(-ROW) 
   
-  parcel_df_recoded <- 
-    parcel_df %>% 
+  
+  parcel_df_recoded <- parcel_df %>% 
     select_at(vars(fine_cols)) %>% 
     bind_cols(parcel_recode_cols) %>% 
     mutate_if(is_logical_yn, recode_logical_yn) %>% 
-    mutate_if(is_logical_01, recode_logical_01) %>% 
-    mutate_if(is_logical_yesno, recode_logical_yesno)
- 
+    mutate_if(is_logical_01, recode_logical_01) %>%
+    mutate_if(is_logical_yesno, recode_logical_yesno) %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR))
+  
+  parcel_df_recoded_clean_names <- parcel_df_recoded %>% 
+    transmute(PIN,
+              PROPERTY_NAME = if_else(is.na(PROP_NAME),NA_character_, str_clean_upper(PROP_NAME))) %>%  
+    unnest_tokens(ORIG, PROPERTY_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    mutate(ORIG = if_else(str_detect(ORIG,"NA"),NA_character_, ORIG)) %>% 
+    left_join(name_recode_key, by = "ORIG") %>% 
+    mutate(PROPERTY_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
+    group_by(PIN) %>% 
+    summarise(PROPERTY_NAME = str_c(PROPERTY_NAME, collapse = " ")) %>% 
+    right_join(parcel_df_recoded, by = "PIN")
+  
 
   pub_parcel_ready <- pub_parcel %>%
     transmute(PIN,
               ASSESSOR_PUB_LIST_LGL = TRUE)
 
-  p_ready <- parcel_df_recoded %>%
+  p_ready <- parcel_df_recoded_clean_names %>%
    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
            MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
            PIN = str_c(MAJOR,MINOR)) %>%
@@ -636,7 +650,7 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
     left_join(pub_parcel_ready, by = "PIN") %>%
     mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
     select(PIN,
-           PROP_NAME,
+           PROPERTY_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
            ASSESSOR_PUB_LIST_LGL,
            DISTRICT_NAME,
@@ -715,6 +729,7 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
 
   return(parcel_ready)
 }
+
 
 # COMMAND: MAKE_WATERBODIES ----
 
