@@ -1086,7 +1086,7 @@ make_owner_name_recode_key <- function(){
 }
 
 # COMMAND: MAKE_OWNER_PUBLIC_CATEGORIES ----
-make_owner_public_categories <- function(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, owner_name_recode_key){
+make_owner_public_categories <- function(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key){
   
   
   names <- suitability_tax_exempt %>%  
@@ -1100,7 +1100,7 @@ make_owner_public_categories <- function(parcel_ready, suitability_tax_exempt, o
   
   names_cleaned <- names %>% 
     unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(owner_name_recode_key, by = "ORIG") %>% 
+    left_join(name_recode_key, by = "ORIG") %>% 
     mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
     group_by(PIN) %>% 
     summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
@@ -1248,7 +1248,7 @@ return(names_categorized)
 }
 
 # COMMAND: MAKE_OWNER_NONPROFIT_CATEGORIES ----
-make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key){
+make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key){
   
   
   names <- suitability_tax_exempt %>%  
@@ -1262,7 +1262,7 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
   
   names_cleaned <- names %>% 
     unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(owner_name_recode_key, by = "ORIG") %>% 
+    left_join(name_recode_key, by = "ORIG") %>% 
     mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
     group_by(PIN) %>% 
     summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
@@ -1426,7 +1426,7 @@ return(names_categorized)
 
 
 # COMMAND: MAKE_OWNER_EXEMPT_CATEGORIES ----
-make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key){
+make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key){
   
   
   names <- suitability_tax_exempt %>%  
@@ -1440,7 +1440,7 @@ make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, o
   
   names_cleaned <- names %>% 
     unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(owner_name_recode_key, by = "ORIG") %>% 
+    left_join(name_recode_key, by = "ORIG") %>% 
     mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
     group_by(PIN) %>% 
     summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 

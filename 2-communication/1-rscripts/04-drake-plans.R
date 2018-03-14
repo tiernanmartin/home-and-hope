@@ -92,11 +92,10 @@ suit_util_plan <- bind_rows(
 
 owner_plan <- drake_plan(
   owner_antijoin_names = make_owner_antijoin_names(),
-  owner_name_category_key = make_owner_name_category_key(),
-  owner_name_recode_key = make_owner_name_recode_key(),
-  owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
-  owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
-  owner_exempt_categories = make_owner_exempt_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, owner_name_recode_key),
+  owner_name_category_key = make_owner_name_category_key(), 
+  owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key),
+  owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
+  owner_exempt_categories = make_owner_exempt_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
   owner = make_owner(parcel_ready, owner_public_categories, owner_nonprofit_categories,  owner_exempt_categories) 
   
 )
