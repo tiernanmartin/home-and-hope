@@ -1004,7 +1004,7 @@ make_owner_name_category_key<- function(){
   
   categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
   
-  cat_ngram_list <- gs_read_all(categories_gs) 
+  cat_ngram_list <- gs_read_all(categories_gs,delay_length = 6) 
   
   cat_ngram_list$CATEGORIES <- NULL
   
