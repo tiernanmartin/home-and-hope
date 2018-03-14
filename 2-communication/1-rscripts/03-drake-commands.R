@@ -208,7 +208,10 @@ make_present_use_recode <- function(){
                         "Fac\\)", "Facility\\)",
                         "Curr", "Current",
                         "Tmbr", "Timber",
-                        "Dev ", "Development "
+                        "Dev ", "Development ",
+                        "Agric", "Agriculture",
+                        "Desig", "Designated",
+                        "Comm", "Commercial"
                       ) 
                     
                     write_csv(present_use_recode, fp)
@@ -1694,29 +1697,29 @@ make_criteria_developable_zoning <- function(development_assumptions_zoning){
 make_criteria_undevelopable_present_use <- function(){
   
    # list_uses <- function(){
-   #                    parcel_ready %>% 
-   #                      st_drop_geometry() %>% 
-   #                      count(PRESENT_USE, sort = TRUE) %>% 
+   #                    parcel_ready %>%
+   #                      st_drop_geometry() %>%
+   #                      count(PRESENT_USE, sort = TRUE) %>%
    #                      print(n = Inf)
    #                  }
    
    undev_presentuse <- c(
-     "Park, Public(Zoo/Arbor)",
-     "Mortuary/Cemetery/Crematory",
-     "Open Space Tmbr Land/Greenbelt",
-     "Open Space(Curr Use-RCW 84.34)",
-     "Mining/Quarry/Ore Processing",
+     "Park Public Zoo Arbor",
+     "Mortuary Cemetery Crematory",
+     "Open Space Timber Land Greenbelt",
+     "Open Space Current Use RCW 84.34",
+     "Mining Quarry Ore Processing",
      "Farm",
-     "Reserve/Wilderness Area",
-     "Open Space(Agric-RCW 84.34)",
-     "Forest Land(Desig-RCW 84.33)",
-     "Forest Land(Class-RCW 84.33)",
-     "Tideland, 1st Class",
-     "Tideland, 2nd Class",
+     "Reserve Wilderness Area",
+     "Open Space Agriculture RCW 84.34",
+     "Forest Land Designated RCW 84.33",
+     "Forest Land Class RCW 84.33",
+     "Tideland 1st Class",
+     "Tideland 2nd Class",
      "Air Terminal and Hangers",
-     "Terminal(Marine/Comm Fish)",
-     "River/Creek/Stream",
-     "Art Gallery/Museum/Soc Srvc"
+     "Terminal Marine Commercial Fish",
+     "River Creek Stream ",
+     "Art Gallery Museum Social Service"
    )
    
   crit_undev_presentuse <- list( "undevelopable_presentuse" = undev_presentuse) 
