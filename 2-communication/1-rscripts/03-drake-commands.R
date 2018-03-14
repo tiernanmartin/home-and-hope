@@ -264,6 +264,70 @@ make_parcel_lookup <- function(parcel_metadata_table, lu, present_use_recode){
   
 }
 
+# COMMAND: MAKE_NAME_RECODE_KEY ----
+make_name_recode_key <- function(){
+
+  recode_key_fp <- here("1-data/1-raw/name_recode_key.rda")
+  
+  recode_key_dr_id <- as_id("1c5JZlUZsAm1Bjci7hgZc2X-aDBkzRa2Y")
+  
+  recode_key_load <- 
+    make_or_read2(fp = recode_key_fp, dr_id = recode_key_dr_id, skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                      name_recode <- 
+                      tribble(
+                        ~ ORIG, ~ NEW,
+                        "-"," ",
+                        "(|)","",
+                        "CTR", "CENTER",
+                        "CH", "CHURCH",
+                        "DIST", "DISTRICT",
+                        "DIS", "DISTRICT",
+                        "CTY", "CITY",
+                        "SVCS", "SERVICES",
+                        "SVSC", "SERVICES",
+                        "WTR", "WATER",
+                        "AUTH", "AUTHORITY",
+                        "KC", "KING COUNTY",
+                        "WA", "WASHINGTON",
+                        "WASH", "WASHINGTON",
+                        "WS", "WASHINGTON STATE",
+                        "WASHINGOTN", "WASHINGTON",
+                        "WADNR", "WASHINGTON DNR",
+                        "SCH", "SCHOOL",
+                        "SCHL", "SCHOOL",
+                        "SD", "SCHOOL DISTRICT",
+                        "DI", "DISTRICT",
+                        "ASSN", "ASSOCIATION",
+                        "APT", "APARTMENT",
+                        "APTS", "APARTMENTS",
+                        "SFR", "SINGLE FAMILY RESIDENCE",
+                        "RES", "RESIDENCE",
+                        "VAC", "VACANT"
+                      )  
+                      
+                      write_rds(name_recode, fp)
+                      
+                      drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                      
+                      drive_upload(fp, drive_folder) 
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_rds)
+                  },
+                  read_expr = function(fp){read_rds(fp)})
+  
+  name_recode_key <- recode_key_load
+  
+  return(name_recode_key)
+   
+  
+}
+
 # COMMAND: MAKE_PUB_PARCEL ----
 
 make_pub_parcel <- function(){ 
@@ -498,7 +562,7 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
+make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, name_recode_key, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
    
   
   # MAKE P_SF_READY
