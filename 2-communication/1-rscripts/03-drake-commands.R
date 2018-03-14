@@ -964,6 +964,7 @@ make_owner_name_recode_key <- function(){
                         "-"," ",
                         "(|)","",
                         "CTR", "CENTER",
+                        "CH", "CHURCH",
                         "DIST", "DISTRICT",
                         "DIS", "DISTRICT",
                         "CTY", "CITY",
@@ -980,7 +981,8 @@ make_owner_name_recode_key <- function(){
                         "SCH", "SCHOOL",
                         "SCHL", "SCHOOL",
                         "SD", "SCHOOL DISTRICT",
-                        "DI", "DISTRICT"
+                        "DI", "DISTRICT",
+                        "ASSN", "ASSOCIATION"
                       )  
                       
                       write_rds(tp_name_recode, fp)
