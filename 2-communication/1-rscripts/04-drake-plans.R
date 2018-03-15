@@ -223,7 +223,7 @@ export_plan <- drake_plan(
   evaluate_plan(wildcard = "EXTN", values = c("dbf", "prj", "shx")) %>% 
   modify_at("target", drake_here) %>% 
   bind_rows(documentation_plan) %>% 
-  mutate(trigger = if_else(target %in% c("dd_dictionary_version", "dd_google_drive"),
+  mutate(trigger = if_else(target %in% c("owner_name_category_key","dd_dictionary_version", "dd_google_drive"),
                            "always",
                            drake::default_trigger()))
   
