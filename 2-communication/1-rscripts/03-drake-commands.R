@@ -1836,7 +1836,9 @@ make_criteria_undevelopable_present_use <- function(){
      "Air Terminal and Hangers",
      "Terminal Marine Commercial Fish",
      "River Creek Stream ",
-     "Art Gallery Museum Social Service"
+     "Art Gallery Museum Social Service",
+     "Right of Way Utility Road",
+     "Easement"
    )
    
   crit_undev_presentuse <- list( "undevelopable_presentuse" = undev_presentuse) 
