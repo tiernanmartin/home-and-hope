@@ -599,6 +599,7 @@ make_parcel_addr_ready <- function(parcel_addr){
                 is.na(CITY_NAME) ~ CITY_NAME_POSTAL,
                 TRUE ~ CITY_NAME
               ))) %>%
+    mutate_if(is.factor, as.character) %>% 
   group_by(PIN) %>%
     arrange(desc(PRIMARY_ADDR_LGL)) %>%
     slice(1) %>%
@@ -647,11 +648,12 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     transmute(PIN,
               PROPERTY_NAME = if_else(is.na(PROP_NAME),NA_character_, str_clean_upper(PROP_NAME))) %>%  
     unnest_tokens(ORIG, PROPERTY_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    mutate(ORIG = if_else(str_detect(ORIG,"NA"),NA_character_, ORIG)) %>% 
+    mutate(ORIG = if_else(str_detect(ORIG,"NA"),"", ORIG)) %>% 
     left_join(name_recode_key, by = "ORIG") %>% 
     mutate(PROPERTY_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
     group_by(PIN) %>% 
-    summarise(PROPERTY_NAME = str_c(PROPERTY_NAME, collapse = " ")) %>% 
+    summarise(PROPERTY_NAME = str_squish(str_c(PROPERTY_NAME, collapse = " ")),
+              PROPERTY_NAME = if_else(PROPERTY_NAME %in% "",NA_character_,PROPERTY_NAME))  %>% 
     right_join(parcel_df_recoded, by = "PIN")
   
 
@@ -669,7 +671,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     select(PIN,
            PROPERTY_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
-           ASSESSOR_PUB_LIST_LGL,
+           ASSESSOR_PUB_LIST_LGL, 
            DISTRICT_NAME,
            CURRENT_ZONING,
            PRESENT_USE,
@@ -751,11 +753,11 @@ make_parcel_acct_ready <- function(acct, tax_status, tax_reason){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(parcel_sf_ready, parcel_addr_ready, parcel_df_ready, parcel_acct_ready){
+make_parcel_ready <- function(parcel_addr_ready, ...){
 
   # MAKE PARCEL_READY
 
-  obj_list <- list(parcel_acct_ready, parcel_df_ready, parcel_sf_ready)
+  obj_list <- list(...)
 
   parcel_ready <- obj_list %>%
     reduce(.f = inner_join, by = "PIN") %>%
