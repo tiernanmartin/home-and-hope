@@ -1990,18 +1990,15 @@ make_suitability_present_use <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_SUITABILITY ----
-make_suitability <- function(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use){
+make_suitability <- function(parcel_ready, ...){
   
-  suitability <- list(parcel_ready, 
-                      suitability_tax_exempt, 
-                      suitability_water_overlap, 
-                      suitability_within_uga, 
-                      suitability_developable_zoning, 
-                      suitability_present_use) %>% 
+  
+  
+  suitability <- list(parcel_ready, ...) %>% 
     reduce(left_join, by = "PIN") %>% 
     mutate(
       SUITABLE_OWNER_LGL = if_else(SUIT_OWNER_TAX_E == suitability_criteria[["tax_exempt"]],TRUE,FALSE,FALSE),
-      SUITABLE_WATER_OVERLAP_LGL = if_else(SUIT_WATER_OVERLAP_PCT <= suitability_criteria[["water_overlap"]],TRUE,FALSE,FALSE),
+      SUITABLE_WATER_OVERLAP_LGL = if_else(SUIT_WATER_OVERLAP_PCT == suitability_criteria[["water_overlap"]],TRUE,FALSE,FALSE),
       SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
       SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
