@@ -22,7 +22,7 @@ parcel_plan <- drake_plan(
   parcel_addr_ready = make_parcel_addr_ready(parcel_addr),
   parcel_df_ready = make_parcel_df_ready(parcel_lookup, prop_type, name_recode_key, pub_parcel, parcel_df),
   parcel_acct_ready = make_parcel_acct_ready(acct, tax_status, tax_reason),
-  parcel_ready = make_parcel_ready(parcel_sf_ready, parcel_addr_ready, parcel_df_ready, parcel_acct_ready) 
+  parcel_ready = make_parcel_ready(parcel_addr_ready, parcel_acct_ready, parcel_sf_ready, parcel_df_ready) 
 ) %>% bind_rows(lookup_plan)
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----
