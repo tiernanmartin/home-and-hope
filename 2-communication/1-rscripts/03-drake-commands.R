@@ -1835,7 +1835,7 @@ make_criteria_undevelopable_present_use <- function(){
      "Tideland 2nd Class",
      "Air Terminal and Hangers",
      "Terminal Marine Commercial Fish",
-     "River Creek Stream ",
+     "River Creek Stream",
      "Art Gallery Museum Social Service",
      "Right of Way Utility Road",
      "Easement"
