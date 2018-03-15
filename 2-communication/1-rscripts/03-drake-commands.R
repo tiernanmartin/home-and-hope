@@ -1881,6 +1881,7 @@ make_suitability_tax_exempt <- function(parcel_ready){
 make_suitability_water_overlap <- function(parcel_ready, waterbodies){
   # Convert to EPSG 2926 
   p_ready_poly <- parcel_ready %>%  
+    st_set_geometry("geometry") %>% 
     select(PIN) %>% 
     st_transform(2926)
   
@@ -1990,12 +1991,11 @@ make_suitability_present_use <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_SUITABILITY ----
-make_suitability <- function(parcel_ready, ...){
-  
-  
-  
-  suitability <- list(parcel_ready, ...) %>% 
+make_suitability <- function(parcel_ready, suitability_criteria, ...){
+
+  suitability <- list(...) %>% 
     reduce(left_join, by = "PIN") %>% 
+    right_join(parcel_ready, by = "PIN") %>% 
     mutate(
       SUITABLE_OWNER_LGL = if_else(SUIT_OWNER_TAX_E == suitability_criteria[["tax_exempt"]],TRUE,FALSE,FALSE),
       SUITABLE_WATER_OVERLAP_LGL = if_else(SUIT_WATER_OVERLAP_PCT == suitability_criteria[["water_overlap"]],TRUE,FALSE,FALSE),
