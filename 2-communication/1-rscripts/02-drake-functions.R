@@ -77,6 +77,12 @@ empty_as_na <- function(x){
     ifelse(as.character(x)!="", x, NA_character_)
 }
 
+
+# FUNCTION: STR_COMPOSE ----
+str_compose <- function(x){
+  empty_as_na(str_squish(str_c(x, collapse = " ")))
+}
+
 # FUNCTION: EXTRACT_TARGET_PATHS ----
 
 extract_target_paths <- function(plan){
