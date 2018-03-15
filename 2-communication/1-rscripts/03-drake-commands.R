@@ -562,7 +562,7 @@ make_parcel_sf <- function(parcel_sf_poly){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, name_recode_key, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
+make_parcel_ready_OLD <- function(parcel_lookup, prop_type, tax_status, tax_reason, present_use_recode, name_recode_key, pub_parcel, acct, parcel_addr, parcel_df, parcel_sf_poly, parcel_sf){
    
   
   # MAKE P_SF_READY
@@ -730,6 +730,209 @@ make_parcel_ready <- function(parcel_lookup, prop_type, tax_status, tax_reason, 
   return(parcel_ready)
 }
 
+# COMMAND: MAKE_PARCEL_SF_READY ----
+
+make_parcel_sf_ready <- function(parcel_sf){
+   
+  
+  # MAKE P_SF_READY
+
+  p_sf_ready <-  parcel_sf %>%
+    miscgis::subset_duplicated("PIN") %>%
+    group_by(PIN) %>%
+    slice(1) %>%
+    ungroup %>%
+    rbind(subset_duplicated(parcel_sf,"PIN",notin = TRUE)) %>%
+    st_set_geometry("geometry")
+  
+  parcel_sf_ready <- p_sf_ready
+  
+  return(parcel_sf_ready)
+
+  }  
+
+# COMMAND: MAKE_PARCEL_ADDR_READY ----
+
+make_parcel_addr_ready <- function(parcel_addr){
+
+  # MAKE P_ADDR_READY
+  p_addr_ready <- parcel_addr %>%
+    transmute(PIN,
+              ADDRESS_FULL = ADDR_FULL,
+              CITY_NAME = CTYNAME,
+              CITY_NAME_POSTAL = POSTALCTYN,
+              ZIPCODE = factor(ZIP_5),
+              PRIMARY_ADDR_LGL = as.logical(PRIM_ADDR)) %>%
+    mutate(CITY_NAME = factor(case_when(
+                all(is.na(CITY_NAME),is.na(CITY_NAME_POSTAL)) ~ NA_character_,
+                is.na(CITY_NAME) ~ CITY_NAME_POSTAL,
+                TRUE ~ CITY_NAME
+              ))) %>%
+  group_by(PIN) %>%
+    arrange(desc(PRIMARY_ADDR_LGL)) %>%
+    slice(1) %>%
+    ungroup
+
+  parcel_addr_ready <- p_addr_ready
+  
+  return(parcel_addr_ready)
+  
+}
+
+# COMMAND: MAKE_PARCEL_DF_READY ----
+
+make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_parcel, parcel_df){
+  
+  # MAKE P_READY 
+  
+  recode_cols <- unique(parcel_lookup$FIELD_NAME) %>% keep(~.x %in% colnames(parcel_df))
+  
+  fine_cols <- colnames(parcel_df) %>% discard(~.x %in% recode_cols)
+  
+  
+  parcel_recode_cols <- 
+    parcel_df %>%  
+    select_at(vars(recode_cols)) %>% 
+    gather(FIELD_NAME, LU_ITEM) %>% 
+    left_join(parcel_lookup, by = c("FIELD_NAME", "LU_ITEM")) %>% 
+    select(FIELD_NAME, LU_DESCRIPTION) %>% 
+    group_by(FIELD_NAME) %>% 
+    mutate(ROW = 1:n()) %>% 
+    spread(FIELD_NAME,LU_DESCRIPTION) %>% 
+    select(-ROW) 
+  
+  
+  parcel_df_recoded <- parcel_df %>% 
+    select_at(vars(fine_cols)) %>% 
+    bind_cols(parcel_recode_cols) %>% 
+    mutate_if(is_logical_yn, recode_logical_yn) %>% 
+    mutate_if(is_logical_01, recode_logical_01) %>%
+    mutate_if(is_logical_yesno, recode_logical_yesno) %>% 
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR))
+  
+  parcel_df_recoded_clean_names <- parcel_df_recoded %>% 
+    transmute(PIN,
+              PROPERTY_NAME = if_else(is.na(PROP_NAME),NA_character_, str_clean_upper(PROP_NAME))) %>%  
+    unnest_tokens(ORIG, PROPERTY_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    mutate(ORIG = if_else(str_detect(ORIG,"NA"),NA_character_, ORIG)) %>% 
+    left_join(name_recode_key, by = "ORIG") %>% 
+    mutate(PROPERTY_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
+    group_by(PIN) %>% 
+    summarise(PROPERTY_NAME = str_c(PROPERTY_NAME, collapse = " ")) %>% 
+    right_join(parcel_df_recoded, by = "PIN")
+  
+
+  pub_parcel_ready <- pub_parcel %>%
+    transmute(PIN,
+              ASSESSOR_PUB_LIST_LGL = TRUE)
+
+  p_df_ready <- parcel_df_recoded_clean_names %>%
+   mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>%
+    left_join(prop_type, by = "PROP_TYPE") %>%
+    left_join(pub_parcel_ready, by = "PIN") %>%
+    mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
+    select(PIN,
+           PROPERTY_NAME,
+           PROP_TYPE = PROP_TYPE_DESC,
+           ASSESSOR_PUB_LIST_LGL,
+           DISTRICT_NAME,
+           CURRENT_ZONING,
+           PRESENT_USE,
+           SQ_FT_LOT,
+           ACCESS,
+           TOPOGRAPHY,
+           RESTRICTIVE_SZ_SHAPE,
+           PCNT_UNUSABLE,
+           CONTAMINATION,
+           HISTORIC_SITE,
+           CURRENT_USE_DESIGNATION,
+           NATIVE_GROWTH_PROT_ESMT,
+           EASEMENTS,
+           OTHER_DESIGNATION,
+           DEED_RESTRICTIONS,
+           DEVELOPMENT_RIGHTS_PURCH,
+           COAL_MINE_HAZARD,
+           CRITICAL_DRAINAGE,
+           EROSION_HAZARD,
+           LANDFILL_BUFFER,
+           HUNDRED_YR_FLOOD_PLAIN,
+           SEISMIC_HAZARD,
+           LANDSLIDE_HAZARD,
+           STEEP_SLOPE_HAZARD,
+           STREAM,
+           WETLAND,
+           SPECIES_OF_CONCERN,
+           SENSITIVE_AREA_TRACT,
+           WATER_PROBLEMS,
+           TRANSP_CONCURRENCY,
+           OTHER_PROBLEMS 
+    )
+
+
+  parcel_df_ready <- p_df_ready
+  
+  return(parcel_df_ready)
+}
+  
+# COMMAND: MAKE_PARCEL_ACCT_READY ----
+
+make_parcel_acct_ready <- function(acct, tax_status, tax_reason){
+
+  # MAKE ACCT_READY
+
+  acct_frmt <- acct %>%
+    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
+           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
+           PIN = str_c(MAJOR,MINOR)) %>%
+    rename(TAX_STATUS = TAXSTAT,
+           TAX_REASON = TAXVALREASON) %>%
+    left_join(tax_status, by = "TAX_STATUS") %>%
+    left_join(tax_reason, by = "TAX_REASON") %>%
+    select(PIN,
+           TAXPAYER_NAME = TAXPAYERNAME,
+           BILL_YR = BILLYR,
+           TAX_STATUS = TAX_STATUS_DESC,
+           TAX_REASON = TAX_REASON_DESC,
+           APPR_IMPS_VAL = APPRIMPSVAL,
+           APPR_LAND_VAL = APPRLANDVAL,
+           TAXABLE_IMPS_VAL = TAXABLEIMPSVAL,
+           TAXABLE_LAND_VAL = TAXABLELANDVAL
+    )
+
+  p_acct_ready <- acct_frmt %>%
+    miscgis::subset_duplicated("PIN") %>%
+    group_by(PIN) %>%
+    drop_na %>% # remove any duplicates PIN records with NAs
+    slice(1) %>%  # take the first record and discard the rest
+    ungroup %>%
+    bind_rows(subset_duplicated(acct_frmt,"PIN",notin = TRUE)) %>%
+    arrange(PIN)
+
+
+  parcel_acct_ready <- p_acct_ready
+  
+  return(parcel_acct_ready)
+}
+
+# COMMAND: MAKE_PARCEL_READY ----
+
+make_parcel_ready <- function(parcel_sf_ready, parcel_addr_ready, parcel_df_ready, parcel_acct_ready){
+
+  # MAKE PARCEL_READY
+
+  obj_list <- list(parcel_acct_ready, parcel_df_ready, parcel_sf_ready)
+
+  parcel_ready <- obj_list %>%
+    reduce(.f = inner_join, by = "PIN") %>%
+    left_join(parcel_addr_ready, by = "PIN") %>% 
+    st_as_sf()
+
+  return(parcel_ready)
+  }
 
 # COMMAND: MAKE_WATERBODIES ----
 
