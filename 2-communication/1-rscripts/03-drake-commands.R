@@ -652,8 +652,8 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     left_join(name_recode_key, by = "ORIG") %>% 
     mutate(PROPERTY_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
     group_by(PIN) %>% 
-    summarise(PROPERTY_NAME = str_squish(str_c(PROPERTY_NAME, collapse = " ")),
-              PROPERTY_NAME = if_else(PROPERTY_NAME %in% "",NA_character_,PROPERTY_NAME))  %>% 
+    summarise(PROPERTY_NAME = str_squish(str_c(PROPERTY_NAME, collapse = " ")))  %>% 
+    mutate(PROPERTY_NAME = if_else(PROPERTY_NAME %in% "",NA_character_,PROPERTY_NAME)) %>% 
     right_join(parcel_df_recoded, by = "PIN")
   
 
