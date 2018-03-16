@@ -675,6 +675,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
            DISTRICT_NAME,
            CURRENT_ZONING,
            PRESENT_USE,
+           HBU_AS_IF_VACANT,
            SQ_FT_LOT,
            ACCESS,
            TOPOGRAPHY,
@@ -1097,7 +1098,9 @@ make_owner_name_recode_key <- function(){
                         "SCHL", "SCHOOL",
                         "SD", "SCHOOL DISTRICT",
                         "DI", "DISTRICT",
-                        "ASSN", "ASSOCIATION"
+                        "ASSN", "ASSOCIATION",
+                        "RR", "RAIL ROAD",
+                        "R W", "RAILWAY"
                       )  
                       
                       write_rds(tp_name_recode, fp)
