@@ -1,3 +1,17 @@
+# FUNCTION: DRIVE_GET_DATETIME_MODIFIED ----
+
+drive_get_datetime_modified <- function(dr_id_string){
+  
+  dr_id <- as_id(dr_id_string)
+  
+  datetime_modified <- dr_id %>% 
+    drive_get %>% 
+    mutate(modified = lubridate::as_datetime(map_chr(drive_resource, "modifiedTime"))) %>% 
+    pull
+  
+  return(datetime_modified)
+}
+
 # FUNCTION: ST_AREA_RATIO ----
 
 st_area_ratio <- function(x){ 

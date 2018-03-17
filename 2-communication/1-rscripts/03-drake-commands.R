@@ -1037,7 +1037,9 @@ make_owner_antijoin_names <- function(){
 }
 
 # COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
-make_owner_name_category_key<- function(){
+make_owner_name_category_key<- function(...){
+  
+  trigger <- list(...)
   
   categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
   
@@ -3285,7 +3287,10 @@ make_dd_dictionary_version <- function(dd_field_name_dev, version_string){
 
 # COMMAND: MAKE_DD_GOOGLE_DRIVE ----
 
-make_dd_google_drive <- function(...){
+make_dd_google_drive <- function(trigger_dd_google_drive, ...){
+  
+  trigger <- trigger_dd_google_drive
+  
   dd_gd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
   
   sheet_key <- as_id("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0")

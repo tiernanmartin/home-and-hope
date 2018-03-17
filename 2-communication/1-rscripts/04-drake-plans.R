@@ -1,5 +1,11 @@
 # MAKE PLANS: PARCEL ----
 
+triggers_plan <- drake_plan(
+  trigger_owner_name_category_key = drive_get_datetime_modified("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg"),
+  trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
+  strings_in_dots = "literals"
+)
+
 lookup_plan <- drake_plan( 
   parcel_metadata_table = make_parcel_metadata_table(),
   lu = make_lu(),
@@ -9,7 +15,8 @@ lookup_plan <- drake_plan(
   present_use_recode = make_present_use_recode(), 
   parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu, present_use_recode),
   name_recode_key = make_name_recode_key()
-)
+) %>% 
+  bind_rows(triggers_plan)
  
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
@@ -98,7 +105,7 @@ suit_util_plan <- bind_rows(
 
 owner_plan <- drake_plan(
   owner_antijoin_names = make_owner_antijoin_names(),
-  owner_name_category_key = make_owner_name_category_key(), 
+  owner_name_category_key = make_owner_name_category_key(trigger_owner_name_category_key), 
   owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key),
   owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
   owner_exempt_categories = make_owner_exempt_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
@@ -166,7 +173,7 @@ inventory_plan <- drake_plan(
   
 ) %>% 
   bind_rows(filter_helper_plan) %>% 
-  mutate(trigger = if_else(target %in% c("owner_name_category_key"),
+  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key"),
                            "always",
                            drake::default_trigger()))
 
@@ -178,7 +185,7 @@ data_dictionary_plan <- drake_plan(
   dd_field_format = make_dd_field_format(inventory),
   dd_data_source = make_dd_data_source(),
   dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.2"),
-  dd_google_drive = make_dd_google_drive(dd_field_name_dev, dd_field_format, dd_dictionary_version),
+  dd_google_drive = make_dd_google_drive(trigger_dd_google_drive, dd_field_name_dev, dd_field_format, dd_dictionary_version),
   dd = make_dd(dd_google_drive), 
   strings_in_dots = "literals"
 ) 
@@ -187,7 +194,7 @@ documentation_plan <- bind_rows(
   inventory_plan,
   data_dictionary_plan
 ) %>%  
-  mutate(trigger = if_else(target %in% c("owner_name_category_key"),
+  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key"),
                            "always",
                            drake::default_trigger()))
 
@@ -225,7 +232,7 @@ export_plan <- drake_plan(
   evaluate_plan(wildcard = "EXTN", values = c("dbf", "prj", "shx")) %>% 
   modify_at("target", drake_here) %>% 
   bind_rows(documentation_plan) %>% 
-  mutate(trigger = if_else(target %in% c("owner_name_category_key","dd_dictionary_version", "dd_google_drive"),
+  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key","dd_dictionary_version", "trigger_dd_google_drive"),
                            "always",
                            drake::default_trigger()))
   
