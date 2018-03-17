@@ -1,3 +1,16 @@
+# FUNCTION: ST_AREA_RATIO ----
+
+st_area_ratio <- function(x){ 
+    
+    x$poly_area <- st_area(x)
+    x$min_bound_cicle <- lwgeom::st_minimum_bounding_circle(x, nQuadSegs = 10)
+    x$min_bound_cicle_area <- st_area(x$min_bound_cicle)
+    x$area_ratio <- as.double(x$poly_area/x$min_bound_cicle_area)
+    
+    return(x$area_ratio)
+    
+  }
+
 # FUNCTION: STR_TO_clean_upper ----
 
 str_clean_upper <- function(x){str_to_upper(str_trim(str_replace_all(x,"^[:graph:]]","")))}
@@ -68,6 +81,7 @@ name_tbl_vector <- function(x, name, value){
 # FUNCTION: ANY_NOT_NA ----
 
 any_not_na <- function(x){ reduce( map(x, is.na), `+`) != ncol(x)}
+
 
 
 # FUNCTION: EMPTY_AS_NA ----
