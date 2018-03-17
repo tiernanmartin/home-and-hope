@@ -1885,9 +1885,9 @@ make_suitability_tax_exempt <- function(parcel_ready){
 }
 # COMMAND: MAKE_SUITABILITY_WATER_OVERLAP ----
 
-make_suitability_water_overlap <- function(parcel_ready, waterbodies){
+make_suitability_water_overlap <- function(parcel_sf_ready, waterbodies){
   # Convert to EPSG 2926 
-  p_ready_poly <- parcel_ready %>%  
+  p_ready_poly <- parcel_sf_ready %>%  
     st_set_geometry("geometry") %>% 
     select(PIN) %>% 
     st_transform(2926)
@@ -1935,9 +1935,9 @@ make_suitability_water_overlap <- function(parcel_ready, waterbodies){
 
 # COMMAND: MAKE_SUITABILITY_WITHIN_UGA ----
 
-make_suitability_within_uga <- function(parcel_ready, uga){
+make_suitability_within_uga <- function(parcel_sf_ready, uga){
   
-  p_ready_pt <- parcel_ready %>% 
+  p_ready_pt <- parcel_sf_ready %>% 
     st_set_geometry("geom_pt") %>% 
     st_transform(2926)
   
@@ -1959,7 +1959,7 @@ make_suitability_within_uga <- function(parcel_ready, uga){
 
 # COMMAND: MAKE_SUITABILITY_DEVELOPABLE_ZONING ----
 
-make_suitability_developable_zoning <- function(parcel_ready, zoning){
+make_suitability_developable_zoning <- function(parcel_sf_ready, zoning){
   
   p_pt <- parcel_ready %>% 
     st_set_geometry("geom_pt") %>% 
