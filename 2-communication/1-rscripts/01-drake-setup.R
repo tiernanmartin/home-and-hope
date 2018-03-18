@@ -1,4 +1,5 @@
 # SETUP ----
+library(units)
 library(ggraph)
 library(igraph)
 library(tidytext)

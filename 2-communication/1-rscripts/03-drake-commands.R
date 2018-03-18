@@ -1854,7 +1854,18 @@ make_criteria_undevelopable_present_use <- function(){
   
 }
 
- # COMMAND: MAKE_CRITERIA_AREA_RATIO ----
+
+# COMMAND: MAKE_CRITERIA_AREA ----
+
+make_criteria_area <- function(){ 
+  
+  criteria_area <- list("area" = set_units(as.integer(10), acre))  # This is an educated-guess placeholder and may need to be adjusted 
+  
+  return(criteria_area)
+  
+}
+
+# COMMAND: MAKE_CRITERIA_AREA_RATIO ----
 
 make_criteria_area_ratio <- function(){
   
@@ -1870,13 +1881,14 @@ make_criteria_area_ratio <- function(){
 
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
-make_suitability_criteria <- function(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use, criteria_area_ratio){
+make_suitability_criteria <- function(...){
   suitability_criteria <- c(
     criteria_tax_exempt,
     criteria_max_water_overlap_pct ,
     criteria_within_uga,
     criteria_developable_zoning ,
     criteria_undevelopable_present_use,
+    criteria_area,
     criteria_area_ratio
   )
 
@@ -2014,6 +2026,32 @@ make_suitability_present_use <- function(parcel_ready){
   return(present_use)
 }
 
+
+# COMMAND: MAKE_SUITABILITY_PARCEL_AREA ----
+make_suitability_parcel_area <- function(parcel_sf_ready){
+  
+  # ~ 10 min. operation
+  
+  # select the largest polygon within the multipolygons
+  p_area_poly <- parcel_sf_ready %>% 
+    st_set_geometry("geometry") %>% 
+    select_if(not_sfc) %>%  
+    st_cast("POLYGON") %>% 
+    mutate(SUIT_PARCEL_AREA = set_units(st_area(.), acre)) %>%
+    group_by(PIN) %>% 
+    arrange(desc(SUIT_PARCEL_AREA)) %>% 
+    slice(1) %>% 
+    ungroup %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+              SUIT_PARCEL_AREA)
+  
+  suitability_parcel_area <- p_area_poly
+  
+  
+  return(suitability_parcel_area) 
+}
+
 # COMMAND: MAKE_SUITABILITY_PARCEL_AREA_RATIO ----
 make_suitability_parcel_area_ratio <- function(parcel_sf_ready){
   
@@ -2052,6 +2090,7 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
       SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
+      SUITABLE_PARCEL_AREA_LGL = if_else(SUIT_PARCEL_AREA <= suitability_criteria[["area"]],TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
       SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL
     ) %>% 
@@ -2221,7 +2260,7 @@ make_building_commercial <- function(){
 
 # COMMAND: MAKE_BUILDING ----
 
-make_building <- function(building_residential, building_apartment, building_condo, building_commercial){
+make_building <- function(...){
   
   bldg_empty <- tibble(PIN = as.character(""), 
                        BLDG_NBR = as.integer(""),
@@ -2368,7 +2407,7 @@ make_utilization_potential <- function(suitability, development_assumptions_lot,
 
 # COMMAND: MAKE_UTILILIZATION ----
 
-make_utilization <- function(suitability, utilization_present, utilization_potential){
+make_utilization <- function(...){
   
   util <- suitability %>% 
     st_drop_geometry() %>% 

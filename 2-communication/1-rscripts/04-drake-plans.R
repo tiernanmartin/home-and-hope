@@ -56,8 +56,9 @@ suitability_criteria_plan <- drake_plan(
   criteria_within_uga = make_criteria_within_uga(),
   criteria_developable_zoning = make_criteria_developable_zoning(development_assumptions_zoning),
   criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
+  criteria_area = make_criteria_area(),
   criteria_area_ratio = make_criteria_area_ratio(),
-  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use, criteria_area_ratio)
+  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use, criteria_area, criteria_area_ratio)
 )
 
 suitability_plan <- drake_plan(
@@ -66,8 +67,9 @@ suitability_plan <- drake_plan(
   suitability_within_uga = make_suitability_within_uga(parcel_ready, uga),
   suitability_developable_zoning = make_suitability_developable_zoning(parcel_ready, zoning),
   suitability_present_use = make_suitability_present_use(parcel_ready),
+  suitability_parcel_area = make_suitability_parcel_area(parcel_sf_ready),
   suitability_parcel_area_ratio = make_suitability_parcel_area_ratio(parcel_sf_ready),
-  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_parcel_area_ratio)
+  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_parcel_area, suitability_parcel_area_ratio)
 )
 
 
