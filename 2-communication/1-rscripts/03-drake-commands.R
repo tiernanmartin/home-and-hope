@@ -2351,7 +2351,8 @@ make_utilization_present <- function(parcel_ready, building){
     st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(building, by = "PIN") %>% 
-    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0))
+    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0),
+           UTIL_PRESENT_TRIPLE = UTIL_PRESENT*3)
   
   utilization_present <- util_present
   
@@ -2415,12 +2416,18 @@ make_utilization <- function(...){
     select(PIN) %>% 
     left_join(utilization_present, by = "PIN") %>% 
     left_join(utilization_potential, by = "PIN") %>% 
-    mutate(UTIL_UNDER_UTILIZED_LGL = if_else(UTIL_PRESENT < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA)) %>% 
-    mutate(UTILIZATION = case_when( 
-      !UTIL_UNDER_UTILIZED_LGL ~ "fully-utilized",
-      UTIL_UNDER_UTILIZED_LGL ~ "under-utilized", 
-      TRUE ~ LOT_SIZE_TYPE 
-    ))
+    mutate(UTIL_UNDER_UTILIZED_MODERATE_LGL = if_else(UTIL_PRESENT_TRIPLE < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA),
+           UTIL_UNDER_UTILIZED_AGGR_LGL = if_else(UTIL_PRESENT < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA)) %>% 
+    mutate(
+      UTILIZATION_MODERATE = case_when( 
+      !UTIL_UNDER_UTILIZED_MODERATE_LGL ~ "fully-utilized",
+      UTIL_UNDER_UTILIZED_MODERATE_LGL ~ "under-utilized", 
+      TRUE ~ LOT_SIZE_TYPE  ),
+      UTILIZATION_AGGR = case_when( 
+      !UTIL_UNDER_UTILIZED_AGGR_LGL ~ "fully-utilized",
+      UTIL_UNDER_UTILIZED_AGGR_LGL ~ "under-utilized", 
+      TRUE ~ LOT_SIZE_TYPE  )
+    )
   
   utilization <- util
   return(utilization)
