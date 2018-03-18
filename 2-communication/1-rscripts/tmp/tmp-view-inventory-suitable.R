@@ -16,6 +16,10 @@ tmp <- inventory_suitable %>%
             SUIT_PARCEL_AREA,
             SUIT_PARCEL_AREA_RATIO,
             PRESENT_USE,
+            UTIL_PRESENT,
+            UTIL_POTENTIAL_UTILIZATION_SQFT,
+            UTIL_DEVELOPABLE_LOT_COVERAGE_PCT = fct_lump(factor(UTIL_DEVELOPABLE_LOT_COVERAGE_PCT),n = 2), 
+            UTILIZATION_MODERATE,
             HELPERS_URL_PARCEL_VIEWER)
 
 
@@ -30,4 +34,4 @@ qplot(data = tmp2, x = as.double(SUIT_PARCEL_AREA))
 
 qplot(data = tmp3, x = as.double(SUIT_PARCEL_AREA))
 
-mapview(tmp3, zcol = "SUIT_PARCEL_AREA", legend = TRUE)
+mapview(tmp, zcol = "UTILIZATION_MODERATE", legend = TRUE)
