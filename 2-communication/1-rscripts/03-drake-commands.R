@@ -1859,7 +1859,8 @@ make_criteria_undevelopable_present_use <- function(){
 
 make_criteria_area <- function(){ 
   
-  criteria_area <- list("area" = set_units(as.integer(40), acre))  # This is an educated-guess placeholder and may need to be adjusted 
+  criteria_area <- list("area_max" = set_units(as.integer(40), acre),
+                        "area_min" = set_units(as.double(1/8), acre))  # This is an educated-guess placeholder and may need to be adjusted 
   
   return(criteria_area)
   
@@ -2090,7 +2091,7 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
       SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
-      SUITABLE_PARCEL_AREA_LGL = if_else(SUIT_PARCEL_AREA <= suitability_criteria[["area"]],TRUE,FALSE,FALSE),
+      SUITABLE_PARCEL_AREA_LGL = if_else(SUIT_PARCEL_AREA %within_range% c(suitability_criteria[["area_min"]], suitability_criteria[["area_max"]]),TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
       SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_PARCEL_AREA_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL
     ) %>% 
