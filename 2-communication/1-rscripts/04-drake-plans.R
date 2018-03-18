@@ -1,6 +1,7 @@
 # MAKE PLANS: PARCEL ----
 
 triggers_plan <- drake_plan(
+  trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"),
   trigger_owner_name_category_key = drive_get_datetime_modified("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg"),
   trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
   strings_in_dots = "literals"
@@ -14,7 +15,7 @@ lookup_plan <- drake_plan(
   tax_reason = make_tax_reason(),
   present_use_recode = make_present_use_recode(), 
   parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu, present_use_recode),
-  name_recode_key = make_name_recode_key()
+  name_recode_key = make_name_recode_key(trigger_name_recode_key)
 ) %>% 
   bind_rows(triggers_plan)
  
@@ -63,9 +64,9 @@ suitability_criteria_plan <- drake_plan(
 
 suitability_plan <- drake_plan(
   suitability_tax_exempt = make_suitability_tax_exempt(parcel_ready),
-  suitability_water_overlap = make_suitability_water_overlap(parcel_ready, waterbodies),
-  suitability_within_uga = make_suitability_within_uga(parcel_ready, uga),
-  suitability_developable_zoning = make_suitability_developable_zoning(parcel_ready, zoning),
+  suitability_water_overlap = make_suitability_water_overlap(parcel_sf_ready, waterbodies),
+  suitability_within_uga = make_suitability_within_uga(parcel_sf_ready, uga),
+  suitability_developable_zoning = make_suitability_developable_zoning(parcel_sf_ready, zoning),
   suitability_present_use = make_suitability_present_use(parcel_ready),
   suitability_parcel_area = make_suitability_parcel_area(parcel_sf_ready),
   suitability_parcel_area_ratio = make_suitability_parcel_area_ratio(parcel_sf_ready),
@@ -175,7 +176,7 @@ inventory_plan <- drake_plan(
   
 ) %>% 
   bind_rows(filter_helper_plan) %>% 
-  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key"),
+  mutate(trigger = if_else(str_detect(target, "trigger"),
                            "always",
                            drake::default_trigger()))
 
@@ -196,7 +197,7 @@ documentation_plan <- bind_rows(
   inventory_plan,
   data_dictionary_plan
 ) %>%  
-  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key"),
+  mutate(trigger = if_else(str_detect(target, "trigger"),
                            "always",
                            drake::default_trigger()))
 
@@ -234,7 +235,7 @@ export_plan <- drake_plan(
   evaluate_plan(wildcard = "EXTN", values = c("dbf", "prj", "shx")) %>% 
   modify_at("target", drake_here) %>% 
   bind_rows(documentation_plan) %>% 
-  mutate(trigger = if_else(target %in% c("trigger_owner_name_category_key","dd_dictionary_version", "trigger_dd_google_drive"),
+  mutate(trigger = if_else(str_detect(target, "trigger")| target %in% c("dd_dictionary_version"),
                            "always",
-                           drake::default_trigger()))
+                           drake::default_trigger())) 
   

@@ -265,70 +265,21 @@ make_parcel_lookup <- function(parcel_metadata_table, lu, present_use_recode){
 }
 
 # COMMAND: MAKE_NAME_RECODE_KEY ----
-make_name_recode_key <- function(){
-
+make_name_recode_key <- function(...){
+  
+  trigger <- list(...)
+  
   recode_key_fp <- here("1-data/1-raw/name_recode_key.rda")
   
-  recode_key_dr_id <- as_id("1c5JZlUZsAm1Bjci7hgZc2X-aDBkzRa2Y")
+  recode_key_gs <- gs_key("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s")
   
-  recode_key_load <- 
-    make_or_read2(fp = recode_key_fp, dr_id = recode_key_dr_id, skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    
-                      name_recode <- 
-                      tribble(
-                        ~ ORIG, ~ NEW,
-                        "-"," ",
-                        "(|)","",
-                        "CTR", "CENTER",
-                        "CH", "CHURCH",
-                        "DIST", "DISTRICT",
-                        "DIS", "DISTRICT",
-                        "CTY", "CITY",
-                        "SVCS", "SERVICES",
-                        "SVSC", "SERVICES",
-                        "WTR", "WATER",
-                        "AUTH", "AUTHORITY",
-                        "KC", "KING COUNTY",
-                        "CHONG WA", "CHONG WAH",
-                        "WA", "WASHINGTON",
-                        "WASH", "WASHINGTON",
-                        "WS", "WASHINGTON STATE",
-                        "WASHINGOTN", "WASHINGTON",
-                        "WADNR", "WASHINGTON DNR",
-                        "SCH", "SCHOOL",
-                        "SCHL", "SCHOOL",
-                        "SD", "SCHOOL DISTRICT",
-                        "DI", "DISTRICT",
-                        "ASSN", "ASSOCIATION",
-                        "APT", "APARTMENT",
-                        "APTS", "APARTMENTS",
-                        "SFR", "SINGLE FAMILY RESIDENCE",
-                        "RES", "RESIDENCE",
-                        "VAC", "VACANT",
-                        "SDA", "SEVENTH-DAY ADVENTISTS",
-                        "RR", "RAIL ROAD",
-                        "R W", "RAILWAY"
-                      )  
-                      
-                      write_rds(name_recode, fp)
-                      
-                      drive_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
-                      
-                      drive_upload(fp, drive_folder) 
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_rds)
-                  },
-                  read_expr = function(fp){read_rds(fp)})
+  recode_key <- gs_read(recode_key_gs) %>% 
+    replace_na(list(NEW = ""))
   
-  name_recode_key <- recode_key_load
+  write_rds(recode_key, recode_key_fp)
   
-  return(name_recode_key)
-   
+  return(recode_key)
+  
   
 }
 
@@ -1045,6 +996,8 @@ make_owner_name_category_key<- function(...){
   
   trigger <- list(...)
   
+  owner_name_category_key_fp <- here("1-data/1-raw/owner_name_category_key.rda")
+  
   categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
   
   cat_ngram_list <- gs_read_all(categories_gs,delay_length = 6) 
@@ -1063,6 +1016,8 @@ make_owner_name_category_key<- function(...){
     select(-row) 
   
   owner_name_category_key <- cat_ngram_wide
+  
+  write_rds(owner_name_category_key, owner_name_category_key_fp)
   
   return(owner_name_category_key)
   
