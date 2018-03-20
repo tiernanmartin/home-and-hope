@@ -1,4 +1,5 @@
 # SETUP ----
+library(osmdata)
 library(units)
 library(ggraph)
 library(igraph)
