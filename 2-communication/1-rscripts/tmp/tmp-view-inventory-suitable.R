@@ -35,3 +35,8 @@ qplot(data = tmp2, x = as.double(SUIT_PARCEL_AREA))
 qplot(data = tmp3, x = as.double(SUIT_PARCEL_AREA))
 
 mapview(tmp, zcol = "UTILIZATION_MODERATE", legend = TRUE)
+
+inventory_suitable %>% 
+  st_set_geometry("geometry") %>% 
+  transmute(PIN,FILTER_PROXIMITY_TRANSIT = as.character(FILTER_PROXIMITY_TRANSIT), TRANSIT_STOP_TYPES, HELPERS_URL_PARCEL_VIEWER) %>% 
+  mapview(zcol = "FILTER_PROXIMITY_TRANSIT", legend = TRUE)
