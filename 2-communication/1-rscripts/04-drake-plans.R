@@ -41,7 +41,8 @@ miscellaneous_plan <- drake_plan(
   zoning = make_zoning(),
   census_tracts = make_census_tracts(),
   king_county = make_king_county(),
-  zcta = make_zcta(king_county)
+  zcta = make_zcta(king_county),
+  school_districts = make_school_districts()
 )
 
 development_assumptions_plan <- drake_plan(
@@ -128,7 +129,7 @@ filter_plan <- drake_plan(
   filters_proximity_open_space = make_filters_proximity_open_space(parcel_ready),
   filters_potential_units = make_filters_potential_units(parcel_ready),
   filters_leg_district = make_filters_leg_district(parcel_ready),
-  filters_school_district = make_filters_school_district(parcel_ready),
+  filters_school_district = make_filters_school_district(parcel_sf_ready, school_districts),
   filters_historic = make_filters_historic(parcel_ready),
   filters_afford_expir_date = make_filters_afford_expir_date(parcel_ready),
   filters_eligibility_nmtc = make_filters_eligibility_nmtc(filters_census_tract),

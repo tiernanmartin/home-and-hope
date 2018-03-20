@@ -950,6 +950,42 @@ make_zcta <- function(king_county){
   return(zcta)
   
 }
+# COMMAND: MAKE_SCHOOL_DISTRICTS ----
+make_school_districts <- function(){
+  
+  school_dist_fp <- here("1-data/2-external/schdst")
+  
+  school_dist_dr_id <- as_id("11K9yTC7C1PnKAtTIPqLsKxZE6qF6p-QO")
+  
+  school_dist_load <- 
+    make_or_read2(fp = school_dist_fp,
+                  dr_id = school_dist_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/schdst_SHP.zip
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "schdst"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  
+  school_districts <- rename_if(school_dist_load, not_sfc, to_screaming_snake_case)
+  
+  return(school_districts)
+  
+}
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
   
@@ -1987,14 +2023,15 @@ make_suitability_within_uga <- function(parcel_sf_ready, uga){
 
 # COMMAND: MAKE_SUITABILITY_DEVELOPABLE_ZONING ----
 
-make_suitability_developable_zoning <- function(parcel_sf_ready, zoning){
+make_suitability_developable_zoning <- function(...){
   
-  p_pt <- parcel_ready %>% 
+  p_pt <- parcel_sf_ready %>% 
     st_set_geometry("geom_pt") %>% 
     st_transform(2926) %>% 
     select(PIN)
   
-  zng <- zoning %>% st_transform(2926) %>% 
+  zng <- zoning %>% 
+    st_transform(2926) %>% 
     st_subdivide(max_vertices = 100) %>% 
     st_collection_extract() 
   
@@ -2619,25 +2656,29 @@ make_filters_leg_district <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_SCHOOL_DISTRICT ----
-make_filters_school_district <- function(parcel_ready){
+make_filters_school_district <- function(...){
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
   
-  school_districts <- c(
-"Seattle", "Federal Way", "Enumclaw", "Mercer Island", "Highline", "Vashon Island", "Renton", "Skykomish", "Bellevue", "Tukwila", "Riverview", "Auburn", "Tahoma", "Snoqualmie Valley", "Issaquah", "Shoreline", "Lake Washington", "Kent", "Northshore", "Fife"
-)
-
+  schl <- school_districts %>% 
+    transmute(SCHOOL_DISTRICT = NAME) %>% 
+    st_transform(2926) %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
   
-   p_ready_sd<- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_SCHOOL_DISTRICT = sample(school_districts,n(), replace = TRUE)
-              )
+  p_schl <- p_pt
   
-  filters_school_district <- p_ready_sd
+  p_schl$FILTER_SCHOOL_DISTRICT <- st_over(p_schl, schl, "SCHOOL_DISTRICT") 
   
-  return(filters_school_district)
-   
+  p_schl_ready <- st_drop_geometry(p_schl)
+  
+  school_district <- p_schl_ready
+  
+  return(school_district)
+  
 }
 
 # COMMAND: MAKE_FILTERS_HISTORIC ----
