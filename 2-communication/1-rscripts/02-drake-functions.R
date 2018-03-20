@@ -1,3 +1,15 @@
+# FUNCTION: STR_COUNT_FACTOR ----
+
+str_count_factor <- function(x){ 
+  
+  x_summary <- summary(factor(x))
+  
+  summary_string <- map2_chr(names(x_summary),x_summary,~ str_c(.x,": ",.y)) %>% str_c(collapse = "; ")
+  
+  return(summary_string)
+}
+
+
 # FUNCTION: DRIVE_GET_DATETIME_MODIFIED ----
 
 drive_get_datetime_modified <- function(dr_id_string){

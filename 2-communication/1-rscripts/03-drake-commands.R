@@ -1033,6 +1033,64 @@ make_bus_stops_metro <- function(){
   
   return(bus_stops_metro)
 }
+# COMMAND: MAKE_TRANSIT_STOPS_OSM ----
+
+make_transit_stops_osm <- function(){
+  
+  ts_fp <- here("1-data/2-external/transit-stops-osm.gpkg")
+  
+  ts_dr_id <- as_id("1kcEMuGu4QdKpva61Lf5CN-ZfWCk59leA")
+  
+  ts_load <- 
+    make_or_read2(fp = ts_fp, dr_id = ts_dr_id, skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    q <- opq(bbox = "King County, Washington") %>% 
+                      add_osm_feature(key = "public_transport", value = "",value_exact = FALSE)
+                    
+                    transit_pts <- q %>% 
+                      osmdata_sf() %>% 
+                      pluck("osm_points") %>% 
+                      rename_all(to_screaming_snake_case)
+                    
+                    st_write(transit_pts, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                    
+                    drive_upload(fp, drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf)
+                  },
+                  read_expr = function(fp){read_sf(fp)}
+                    )
+  
+  ts_pts <- ts_load %>% 
+    transmute( OSM_ID = as.character(OSM_ID)) %>% 
+    st_transform(2926)
+  
+  ts_ready <- ts_load %>% 
+    st_drop_geometry() %>% 
+    select(OSM_ID ,NAME,BUS, TRAIN, STEETCAR = TRAM, FERRY, PUBLIC_TRANSPORT, SOURCE) %>% 
+    gather(TRANSIT_TYPE, VALUE, -OSM_ID, -NAME,-PUBLIC_TRANSPORT, -SOURCE) %>% 
+    filter(!is.na(VALUE)) %>%  
+    transmute(TRANSIT_STOP_OSM_ID = OSM_ID,
+              TRANSIT_STOP_NAME = NAME,
+              TRANSIT_STOP_TYPE = TRANSIT_TYPE,
+              TRANSIT_STOP_SOURCE = SOURCE) %>% 
+    mutate_if(is.factor, as.character) %>% 
+    left_join(ts_pts, by = c(TRANSIT_STOP_OSM_ID = "OSM_ID")) %>% 
+    st_sf
+  
+  view_ts_ready <- function(){mapview(ts_ready, zcol = "TRANSIT_STOP_TYPE", legend = TRUE)}
+  
+  transit_stops_osm <- ts_ready
+  
+  return(transit_stops_osm)
+  
+  
+}
 
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
@@ -2582,14 +2640,13 @@ make_filters_owner_category <- function(parcel_ready, owner){
 }
 
 # COMMAND: MAKE_FILTERS_PUBLIC_OWNER ----
-make_filters_public_owner <- function(parcel_ready){
+make_filters_public_owner <- function(...){ 
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED
-  
-  p_ready_po <- parcel_ready %>% 
-    st_drop_geometry() %>% 
+  p_ready_po <- owner %>%  
     transmute(PIN, 
-              FILTER_PUBLIC_OWNER = str_trim(TAXPAYER_NAME))
+              FILTER_PUBLIC_OWNER = if_else(OWNER_CATEGORY %in% c("non-profit","uncategorized", "homeowners association"),
+                                            NA_character_,
+                                            OWNER_NAME_CONSOLIDATED))
   
   filters_public_owner <- p_ready_po
   
@@ -2612,6 +2669,85 @@ make_filters_surplus_status <- function(parcel_ready){
   return(filters_surplus_status)
    
 }
+ 
+# COMMAND: MAKE_FILTERS_PROXIMITY_TRANSIT ----
+make_filters_proximity_transit <- function(...){
+   
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    transmute(PIN)
+  
+  buffer_dist_qtr <- set_units(1/4, "mile")
+  buffer_dist_half <- set_units(1/2, "mile")
+  
+  ts_buff <- transit_stops_osm
+  
+  ts_buff$geom_qtr_mi_buff <- st_buffer(st_geometry(ts_buff), buffer_dist_qtr)
+  
+  ts_buff$geom_half_mi_buff <- st_buffer(st_geometry(ts_buff), buffer_dist_half)
+  
+  append_qtr <- function(x) str_c(x,"QTR",  sep = "_")
+  
+  append_half <- function(x) str_c(x, "HALF",  sep = "_")
+  
+  ts_buff_qtr <- ts_buff %>% 
+    st_set_geometry("geom_qtr_mi_buff") %>% 
+    select_if(not_sfc) %>% 
+    rename_all(append_qtr)
+  
+  ts_buff_half <- ts_buff %>% 
+    st_set_geometry("geom_half_mi_buff") %>% 
+    select_if(not_sfc) %>% 
+    rename_all(append_half)
+
+  
+  # ~ 1 min. operation
+  p_ts_qtr <- st_join(p_pt, ts_buff_qtr)
+  
+  # ~ 8 min. operation
+  p_ts_half <- st_join(p_pt, ts_buff_half)
+  
+  # ~ 8 min. operation
+  p_prox_trans_qtr <- p_ts_qtr %>% 
+    st_drop_geometry() %>%    
+    group_by(PIN) %>%  
+    nest %>% 
+    mutate(FILTER_PROXIMITY_TRANSIT_QTR = map_lgl(data, ~ !all(map_lgl(.x$TRANSIT_STOP_OSM_ID_QTR,is.na))),
+           TRANSIT_STOP_TYPES_QTR = map_chr(data, ~ str_count_factor(.x$TRANSIT_STOP_TYPE_QTR))) %>% 
+    transmute(PIN,
+              FILTER_PROXIMITY_TRANSIT_QTR,
+              TRANSIT_STOP_TYPES_QTR = if_else(FILTER_PROXIMITY_TRANSIT_QTR,TRANSIT_STOP_TYPES_QTR, NA_character_)) 
+  
+  # ~ 13 min. operation
+  p_prox_trans_half <- p_ts_half %>% 
+    st_drop_geometry() %>%    
+    group_by(PIN) %>%  
+    nest %>% 
+    mutate(FILTER_PROXIMITY_TRANSIT_HALF = map_lgl(data, ~ !all(map_lgl(.x$TRANSIT_STOP_OSM_ID_HALF,is.na))),
+           TRANSIT_STOP_TYPES_HALF = map_chr(data, ~ str_count_factor(.x$TRANSIT_STOP_TYPE_HALF))) %>% 
+    transmute(PIN,
+              FILTER_PROXIMITY_TRANSIT_HALF,
+              TRANSIT_STOP_TYPES_HALF = if_else(FILTER_PROXIMITY_TRANSIT_HALF,TRANSIT_STOP_TYPES_HALF, NA_character_)) 
+  
+  p_prox_trans <- full_join(p_prox_trans_qtr,p_prox_trans_half, by = "PIN") %>% 
+    mutate(FILTER_PROXIMITY_TRANSIT = case_when(
+      FILTER_PROXIMITY_TRANSIT_QTR ~ "1/4 mile",
+      FILTER_PROXIMITY_TRANSIT_HALF ~ "1/2 mile",
+      TRUE ~ "Greater than 1/2 mile"
+    ))
+  
+  
+  filters_proximity_transit <- p_prox_trans
+  
+  return(filters_proximity_transit)
+   
+}
+
+
+
+
+
 
 # COMMAND: MAKE_FILTERS_PROXIMITY_MARIJUANA ----
 make_filters_proximity_marijuana <- function(parcel_ready){

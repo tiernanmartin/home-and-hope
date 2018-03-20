@@ -46,11 +46,7 @@ miscellaneous_plan <- drake_plan(
 )
 
 transit_plan <- drake_plan(
-  bus_stops_metro = make_bus_stops_metro(),
-  bus_stops_st = make_bus_stops_st(),
-  lightrail_stations = make_lightrail_stations(),
-  commuter_rail_stations = make_commuter_rail_stations(),
-  streetcar_stops = make_streetcar_stops()
+  transit_stops_osm = make_transit_stops_osm()
 )
 
 development_assumptions_plan <- drake_plan(
@@ -105,6 +101,7 @@ utilization_plan <- drake_plan(
 suit_util_plan <- bind_rows(
   parcel_plan, 
   miscellaneous_plan,
+  transit_plan,
   development_assumptions_plan,
   suitability_criteria_plan,
   suitability_plan,
@@ -130,8 +127,9 @@ filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_sf_ready, census_tracts),
   filters_zcta = make_filters_zcta(parcel_sf_ready, zcta),
   filters_owner_category = make_filters_owner_category(parcel_ready, owner),
-  filters_public_owner = make_filters_public_owner(parcel_ready),
+  filters_public_owner = make_filters_public_owner(owner),
   filters_surplus_status = make_filters_surplus_status(parcel_ready),
+  filters_proximity_transit = make_filters_proximity_transit(parcel_sf_ready, transit_stops_osm),
   filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_ready),
   filters_proximity_preschool = make_filters_proximity_preschool(parcel_ready),
   filters_proximity_open_space = make_filters_proximity_open_space(parcel_ready),
@@ -149,6 +147,7 @@ filter_plan <- drake_plan(
                          filters_owner_category,
                          filters_public_owner, 
                          filters_surplus_status, 
+                         filters_proximity_transit,
                          filters_proximity_marijuana, 
                          filters_proximity_preschool, 
                          filters_proximity_open_space, 
@@ -224,7 +223,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180314.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180320.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),
