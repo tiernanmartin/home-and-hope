@@ -46,7 +46,8 @@ miscellaneous_plan <- drake_plan(
 )
 
 transit_plan <- drake_plan(
-  bus_stops = make_bus_stops(),
+  bus_stops_metro = make_bus_stops_metro(),
+  bus_stops_st = make_bus_stops_st(),
   lightrail_stations = make_lightrail_stations(),
   commuter_rail_stations = make_commuter_rail_stations(),
   streetcar_stops = make_streetcar_stops()
