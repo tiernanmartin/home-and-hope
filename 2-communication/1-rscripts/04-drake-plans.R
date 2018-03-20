@@ -45,6 +45,13 @@ miscellaneous_plan <- drake_plan(
   school_districts = make_school_districts()
 )
 
+transit_plan <- drake_plan(
+  bus_stops = make_bus_stops(),
+  lightrail_stations = make_lightrail_stations(),
+  commuter_rail_stations = make_commuter_rail_stations(),
+  streetcar_stops = make_streetcar_stops()
+)
+
 development_assumptions_plan <- drake_plan(
   city_block_sqft = make_city_block_sqft(),
   lot_types = make_lot_types(city_block_sqft),
