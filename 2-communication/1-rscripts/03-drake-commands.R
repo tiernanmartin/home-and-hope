@@ -978,7 +978,7 @@ make_owner_antijoin_names <- function(){
   
   numbers_0_500 <- tibble(word = as.character(0:500))
   
-  ok_words <- c("STATES", "U", "S", "A", "US")
+  ok_words <- c("STATE","STATES", "U", "S", "A", "US")
   
   anti <- transmute(anti_load, word = toupper(word)) %>% 
     bind_rows(numbers_0_500) %>% 
@@ -1025,8 +1025,13 @@ make_owner_name_category_key<- function(...){
 }
 
 # COMMAND: MAKE_OWNER_PUBLIC_CATEGORIES ----
-make_owner_public_categories <- function(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key){
+make_owner_public_categories <- function(...){
   
+  # loadd(parcel_ready) 
+  # loadd(suitability_tax_exempt) 
+  # loadd(owner_antijoin_names) 
+  # loadd(owner_name_category_key) 
+  # loadd(name_recode_key) 
   
   names <- suitability_tax_exempt %>%  
     filter(SUIT_OWNER_PUBLIC) %>% 
@@ -1552,8 +1557,8 @@ return(names_categorized)
 # COMMAND: MAKE_OWNER ----
 
 make_owner <- function(parcel_ready, ...){
-  
-  p <- parcel_ready %>% 
+ # BIND OWNER CATEGORIES AND JOIN TO PARCEL_READY ----    
+   p <- parcel_ready %>% 
     st_drop_geometry() %>% 
     select(PIN)
   
@@ -1561,7 +1566,103 @@ make_owner <- function(parcel_ready, ...){
     right_join(p, by = "PIN") %>% 
     mutate(OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY),"uncategorized",OWNER_CATEGORY))
   
-  return(owner)
+  # CREAT CLEAN NAMES ----
+  
+  city_names_clean <- parcel_ready %>% 
+    pluck("DISTRICT_NAME") %>% 
+    unique() %>% 
+    discard(is.na) %>% 
+    c("TACOMA", "VASHON ISLAND") %>% 
+    toupper %>% 
+    str_replace_all("KING COUNTY", "UNINCORPORATED AREA") %>% 
+    {tibble(OWNER_NAME_CLEAN = .)}
+  
+  city_names_clean_long <- city_names_clean %>% 
+    mutate(OWNER_NAME_CLEAN_FULL = OWNER_NAME_CLEAN) %>% 
+    unnest_tokens(TOKEN, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    select(TOKEN, OWNER_NAME_CLEAN_FULL) %>% 
+    mutate(OWNER_NAME_CLEAN_FULL = if_else(OWNER_NAME_CLEAN_FULL %in% c("KING COUNTY", "UNINCORPORATED AREA"),
+                                           OWNER_NAME_CLEAN_FULL,
+                                           str_c("CITY OF ",OWNER_NAME_CLEAN_FULL)))
+  
+  tribe_names_clean <- tibble(TOKEN = c("MUCKLESHOOT",
+                                        "SNOQUALMIE",
+                                        "COWLITZ"),
+                              OWNER_NAME_CLEAN_FULL = c("MUCKLESHOOT INDIAN TRIBE",
+                                                        "SNOQUALMIE INDIAN TRIBE",
+                                                        "COWLITZ INDIAN TRIBE"))
+  
+  # CREAT ANTI_JOIN TABLES ----   
+  new_owner_antijoin_names <- tibble(TOKEN = c("CITY", "OF"))
+  
+  tribe_owner_antijoin_names <- tibble(TOKEN = c("INDIAN", "TRIBE"))
+  
+  # CREAT JOIN TABLES ----   
+  
+  clean_name_tbl <- 
+    tribble(
+      ~ OWNER_CATEGORY, ~OWNER_NAME_CLEAN,
+      "uncategorized", NA_character_,
+      "city", NA_character_,
+      "county", "KING COUNTY",
+      "non-profit", NA_character_,
+      "school district", NA_character_,
+      "federal", "US GOVERNMENT",
+      "state", "WASHINGTON STATE",
+      "special purpose district", NA_character_,
+      "homeowners association", NA_character_,
+      "port", "PORT OF SEATTLE",
+      "tribal", NA_character_, 
+      "regional transit authority", "SOUND TRANSIT"
+    ) 
+  
+  city_names_join_tbl <- 
+    owner %>%  
+    mutate(OWNER_NAME_TOKEN = OWNER_NAME) %>% 
+    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>%  
+    filter(OWNER_CATEGORY %in% "city") %>% 
+    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    anti_join(new_owner_antijoin_names ) %>% 
+    stringdist_left_join(city_names_clean_long, by = c(TOKEN = "TOKEN"),  max_dist = 1, distance_col = "DIST") %>% 
+    group_by(PIN) %>% 
+    summarise(OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN_FULL)) %>%  
+    select(-OWNER_NAME) 
+  
+  tribe_names_join_tbl <- 
+    owner %>% 
+    mutate(OWNER_NAME_TOKEN = OWNER_NAME) %>% 
+    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>%
+    filter(OWNER_CATEGORY %in% "tribal") %>%
+    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>%
+    anti_join(tribe_owner_antijoin_names) %>%
+    stringdist_left_join(tribe_names_clean, by = c(TOKEN = "TOKEN"),  max_dist = 1, distance_col = "DIST") %>%
+    group_by(PIN) %>%
+    summarise(OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN_FULL)) %>%
+    select(-OWNER_NAME)
+  
+  # JOIN THE TABLES ----   
+  
+  owner_names_consolidated <- 
+    owner %>%  
+    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>% 
+    left_join(city_names_join_tbl, by = "PIN") %>% 
+    left_join(tribe_names_join_tbl, by = "PIN") %>% 
+    group_by(PIN) %>% 
+    summarize(OWNER_CATEGORY = first(OWNER_CATEGORY),
+              OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_CLEAN = first_not_na(c(OWNER_NAME_CLEAN.x, OWNER_NAME_CLEAN.y))) %>% 
+    transmute(PIN,
+              OWNER_NAME,
+              OWNER_NAME_CONSOLIDATED = if_else(is.na(OWNER_NAME_CLEAN), OWNER_NAME,OWNER_NAME_CLEAN),
+              OWNER_CATEGORY)
+  
+  # RETURN ----   
+  
+  owner_ready <- owner_names_consolidated
+  
+  return(owner_ready)
 }
 # COMMAND: MAKE_CITY_BLOCK_SQFT ----
 
@@ -2332,11 +2433,12 @@ make_utilization <- function(...){
 }
 
 # COMMAND: MAKE_FILTERS_TRACT ----
-make_filters_census_tract <- function(parcel_ready, census_tracts){
+make_filters_census_tract <- function(parcel_sf_ready, census_tracts){
   
-  p_ready_pt <- parcel_ready %>% 
+  p_ready_pt <- parcel_sf_ready %>% 
     st_set_geometry("geom_pt") %>% 
-    st_transform(2926)
+    st_transform(2926) %>% 
+    transmute(PIN)
   
   tr_subdivide <- st_subdivide(census_tracts, 100) %>% 
     st_collection_extract() 
@@ -2354,9 +2456,12 @@ make_filters_census_tract <- function(parcel_ready, census_tracts){
 }
 
 # COMMAND: MAKE_FILTERS_ZCTA ----
-make_filters_zcta <- function(parcel_ready, zcta){
+make_filters_zcta <- function(parcel_sf_ready, zcta){
   
-  p <- parcel_ready %>% select(PIN)
+  p <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    transmute(PIN)
   
   zcta_subdivide <- st_subdivide(zcta, 100) %>% 
     st_collection_extract() %>% 
