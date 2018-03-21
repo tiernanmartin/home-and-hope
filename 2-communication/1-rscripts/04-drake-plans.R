@@ -49,6 +49,10 @@ transit_plan <- drake_plan(
   transit_stops_osm = make_transit_stops_osm()
 )
 
+play_spaces_plan <- drake_plan(
+  play_spaces_osm = make_play_spaces_osm()
+)
+
 development_assumptions_plan <- drake_plan(
   city_block_sqft = make_city_block_sqft(),
   lot_types = make_lot_types(city_block_sqft),
