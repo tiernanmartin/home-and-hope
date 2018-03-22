@@ -2927,6 +2927,7 @@ make_filters_proximity_preschool <- function(parcel_ready){
 # COMMAND: MAKE_FILTERS_PROXIMITY_OPEN_SPACE ----
 make_filters_proximity_open_space <- function(parcel_ready){
   
+  # THIS IS NOT CURRENTLY IMPLEMENTED IN THE DRAKE PLAN (3/22/2018)
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
   
    p_ready_prox_os<- parcel_ready %>% 
