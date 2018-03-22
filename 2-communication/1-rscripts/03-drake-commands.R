@@ -2532,17 +2532,33 @@ make_criteria_lot_size <- function(city_block_sqft, lot_types){
   
   quarter_block <- city_block_sqft/4
   
-  crit_lot_size <- list("breaks" = c(-Inf,eight_block,quarter_block, Inf),
-                      "labels" =  lot_types$LOT_SIZE_DESC)
+  crit_lot_size <- list("lot_size_breaks" = c(-Inf,eight_block,quarter_block, Inf),
+                      "lot_size_labels" =  lot_types$LOT_SIZE_DESC)
   criteria_lot_size <- crit_lot_size
  
    return(criteria_lot_size)
 }
 
+# COMMAND: MAKE_CRITERIA_UTILIZATION_RATIO ----
+
+make_criteria_utilization_ratio <- function(){
+  
+ crit_util_ratio <- list("ratio_gentle" = 1e-2,
+                         "ratio_moderate" = 2/3,
+                         "ratio_aggressive" = as.double(1)
+ )
+  
+ criteria_utilization_ratio <- crit_util_ratio
+ 
+ return(criteria_utilization_ratio)
+  
+  
+}
+
 # COMMAND: MAKE_UTILIZATION_CRITERIA ----
 
-make_utilization_criteria <- function(criteria_underutilized){
-  utilization_criteria <- c(criteria_lot_size)
+make_utilization_criteria <- function(...){
+  utilization_criteria <- c(...)
   
   return(utilization_criteria)
 }
@@ -2555,8 +2571,7 @@ make_utilization_present <- function(parcel_ready, building){
     st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(building, by = "PIN") %>% 
-    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0),
-           UTIL_PRESENT_TRIPLE = UTIL_PRESENT*3)
+    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0))
   
   utilization_present <- util_present
   
@@ -2565,14 +2580,14 @@ make_utilization_present <- function(parcel_ready, building){
 
 
 # COMMAND: MAKE_UTILIZATION_LOT_SIZE----
-make_utilization_lot_size <- function(parcel_ready, criteria_lot_size){
+make_utilization_lot_size <- function(...){
   
   util_ls <- parcel_ready %>% 
     st_drop_geometry() %>% 
     transmute(PIN,
               LOT_SIZE_DESC = as.character(cut(SQ_FT_LOT,
-                               breaks = criteria_lot_size[["breaks"]],
-                               labels = criteria_lot_size[["labels"]])))
+                               breaks = utilization_criteria[["lot_size_breaks"]],
+                               labels = utilization_criteria[["lot_size_labels"]])))
   
   utilization_lot_size <- util_ls
   return(utilization_lot_size)
@@ -2614,26 +2629,25 @@ make_utilization_potential <- function(suitability, development_assumptions_lot,
 # COMMAND: MAKE_UTILILIZATION ----
 
 make_utilization <- function(...){
+   
   
-  util <- suitability %>% 
+  util_join <- suitability %>% 
     st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(utilization_present, by = "PIN") %>% 
-    left_join(utilization_potential, by = "PIN") %>% 
-    mutate(UTIL_UNDER_UTILIZED_MODERATE_LGL = if_else(UTIL_PRESENT_TRIPLE < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA),
-           UTIL_UNDER_UTILIZED_AGGR_LGL = if_else(UTIL_PRESENT < UTIL_POTENTIAL_UTILIZATION_SQFT,TRUE,FALSE,NA)) %>% 
-    mutate(
-      UTILIZATION_MODERATE = case_when( 
-      !UTIL_UNDER_UTILIZED_MODERATE_LGL ~ "fully-utilized",
-      UTIL_UNDER_UTILIZED_MODERATE_LGL ~ "under-utilized", 
-      TRUE ~ LOT_SIZE_TYPE  ),
-      UTILIZATION_AGGR = case_when( 
-      !UTIL_UNDER_UTILIZED_AGGR_LGL ~ "fully-utilized",
-      UTIL_UNDER_UTILIZED_AGGR_LGL ~ "under-utilized", 
-      TRUE ~ LOT_SIZE_TYPE  )
-    )
+    left_join(utilization_potential, by = "PIN") 
   
-  utilization <- util
+  util_ready <-  util_join %>%  
+    mutate(UTILIZATION_RATIO = (UTIL_PRESENT + 1e-5)/UTIL_POTENTIAL_UTILIZATION_SQFT,
+           UTIL_UNDER_UTILIZED_GENTLE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_gentle"],TRUE,FALSE,NA),
+           UTIL_UNDER_UTILIZED_MODERATE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_moderate"],TRUE,FALSE,NA),
+           UTIL_UNDER_UTILIZED_AGGR_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_aggressive"],TRUE,FALSE,NA),
+           UTILIZATION_GENTLE = if_else(!UTIL_UNDER_UTILIZED_GENTLE_LGL, "fully-utilized", "under-utilized", LOT_SIZE_TYPE),
+           UTILIZATION_MODERATE = if_else(!UTIL_UNDER_UTILIZED_MODERATE_LGL, "fully-utilized", "under-utilized", LOT_SIZE_TYPE), 
+           UTILIZATION_AGGR = if_else(!UTIL_UNDER_UTILIZED_AGGR_LGL, "fully-utilized", "under-utilized", LOT_SIZE_TYPE))
+  
+  utilization <- util_ready
+  
   return(utilization)
   
 }

@@ -92,14 +92,16 @@ building_plan <- drake_plan(
 )
 
 utilization_criteria_plan <-  drake_plan(
-  criteria_lot_size = make_criteria_lot_size(city_block_sqft, lot_types)
+  criteria_lot_size = make_criteria_lot_size(city_block_sqft, lot_types),
+  criteria_utilization_ratio =  make_criteria_utilization_ratio(),
+  utilization_criteria = make_utilization_criteria(criteria_lot_size, criteria_utilization_ratio)
 )
 
 utilization_plan <- drake_plan(
   utilization_present = make_utilization_present(parcel_ready, building),
-  utilization_lot_size = make_utilization_lot_size(parcel_ready, criteria_lot_size),
+  utilization_lot_size = make_utilization_lot_size(parcel_ready, utilization_criteria),
   utilization_potential = make_utilization_potential(suitability, development_assumptions_lot, utilization_lot_size),
-  utilization = make_utilization(suitability, utilization_present, utilization_potential)
+  utilization = make_utilization(utilization_criteria, suitability, utilization_present, utilization_potential)
 )
 
 suit_util_plan <- bind_rows(
