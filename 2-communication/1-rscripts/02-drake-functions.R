@@ -1,3 +1,18 @@
+# FUNCTION: SAFE_DIVIDE ----
+
+safe_divide <- function(x,y){ 
+  
+  x <- if_else(is.na(x),0,x,0)
+  
+  dividend <- x/y
+  
+  result <- if_else(dividend %in% c(Inf,NaN), 0, dividend) 
+  
+  return(result)
+  
+}
+
+
 # FUNCTION: STR_COUNT_FACTOR ----
 
 str_count_factor <- function(x){ 
