@@ -2638,7 +2638,7 @@ make_utilization <- function(...){
     left_join(utilization_potential, by = "PIN") 
   
   util_ready <-  util_join %>%  
-    mutate(UTILIZATION_RATIO = (UTIL_PRESENT + 1e-5)/UTIL_POTENTIAL_UTILIZATION_SQFT,
+    mutate(UTILIZATION_RATIO = round(safe_divide(UTIL_PRESENT, UTIL_POTENTIAL_UTILIZATION_SQFT),2),
            UTIL_UNDER_UTILIZED_GENTLE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_gentle"],TRUE,FALSE,NA),
            UTIL_UNDER_UTILIZED_MODERATE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_moderate"],TRUE,FALSE,NA),
            UTIL_UNDER_UTILIZED_AGGR_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_aggressive"],TRUE,FALSE,NA),
