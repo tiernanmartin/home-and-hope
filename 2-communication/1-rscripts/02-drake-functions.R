@@ -1,3 +1,13 @@
+# FUNCTION: IS_OUTLIER ----
+
+# uses the Tukey method of outlier detection
+# SOURCE: https://stackoverflow.com/q/40200555/5170276
+
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
+}
+
+
 # FUNCTION: SAFE_DIVIDE ----
 
 safe_divide <- function(x,y){ 
