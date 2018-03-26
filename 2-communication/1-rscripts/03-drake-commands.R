@@ -1869,9 +1869,23 @@ make_owner <- function(parcel_ready, ...){
   
   return(owner_ready)
 }
-# COMMAND: MAKE_CITY_BLOCK_SQFT ----
+# COMMAND: MAKE_CITY_BLOCK_SQFT   ----
 
-make_city_block_sqft <- function(){as.integer(66000)} 
+make_city_block_sqft <- function(){
+  city_block_sqft <- set_units(66000,ft^2)
+  
+  return(city_block_sqft)
+  } 
+
+# COMMAND: MAKE_CITY_BLOCK_ACRE   ----
+
+make_city_block_acre <- function(...){
+  
+  city_block_acre <- set_units(city_block_sqft, acre)
+  
+  return(city_block_acre)
+  
+  } 
 
 
 # COMMAND: MAKE_LOT_TYPES ----
@@ -1886,6 +1900,31 @@ make_lot_types <- function(city_block_sqft){
 
   
   return(lot_types)
+}
+
+
+# COMMAND: MAKE_LOT_SIZE_BREAKS ----
+
+make_lot_size_breaks <- function(...){
+  
+  lot_brks <- list(names = c("under-sized",
+                             "quarter-block",
+                             "half-block", 
+                             "whole-block", 
+                             "over-sized (developable)", 
+                             "over-sized (undevelopable)"),
+                    breaks = c( set_units(-Inf, acre),
+                                set_units(0.1, acre), 
+                                1/4 * city_block_acre, 
+                                1/2 * city_block_acre, 
+                                city_block_acre, 
+                                set_units(27.5, acre) , 
+                                set_units(Inf,acre) ))
+  
+  lot_size_breaks <- lot_brks
+  
+  return(lot_size_breaks)
+  
 }
 
 # COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_ZONING ----
@@ -1966,6 +2005,9 @@ make_development_assumptions_lot <- function(lot_types, development_assumptions_
   return(development_assumptions_lot)
 
 }
+
+
+
 
 # COMMAND: MAKE_CRITERIA_TAX_EXEMPT ----
 
@@ -2058,14 +2100,22 @@ make_criteria_undevelopable_present_use <- function(){
   
 }
 
-# COMMAND: MAKE_CRITERIA_AREA ----
+# COMMAND: MAKE_CRITERIA_LOT_SIZE ----
 
-make_criteria_area <- function(){ 
+make_criteria_lot_size <- function(...){ 
   
-  criteria_area <- list("area_max" = set_units(as.integer(40), acre),
-                        "area_min" = set_units(as.double(1/8), acre))  # This is an educated-guess placeholder and may need to be adjusted 
+  # criteria_area <- list("area_max" = set_units(as.integer(40), acre),
+  #                       "area_min" = set_units(as.double(1/8), acre))  # This is an educated-guess placeholder and may need to be adjusted 
   
-  return(criteria_area)
+  lot_sizes_discard <- c("under-sized", "over-sized (undevelopable)")
+  
+  criteria_lot_size <- lot_size_breaks %>% 
+    pluck("names") %>% 
+    discard(~ .x %in% lot_sizes_discard ) %>% 
+    list %>% 
+    set_names("lot_size")
+  
+  return(criteria_lot_size)
   
 }
 
@@ -2092,7 +2142,7 @@ make_suitability_criteria <- function(...){
     criteria_within_uga,
     criteria_developable_zoning ,
     criteria_undevelopable_present_use,
-    criteria_area,
+    criteria_lot_size,
     criteria_area_ratio
   )
 
@@ -2232,8 +2282,8 @@ make_suitability_present_use <- function(parcel_ready){
 }
 
 
-# COMMAND: MAKE_SUITABILITY_PARCEL_AREA ----
-make_suitability_parcel_area <- function(parcel_sf_ready){
+# COMMAND: MAKE_SUITABILITY_LOT_SIZE ----
+make_suitability_lot_size <- function(...){
   
   # ~ 10 min. operation
   
@@ -2242,14 +2292,19 @@ make_suitability_parcel_area <- function(parcel_sf_ready){
     st_set_geometry("geometry") %>% 
     select_if(not_sfc) %>%  
     st_cast("POLYGON") %>% 
-    mutate(SUIT_PARCEL_AREA = set_units(st_area(.), acre)) %>%
+    mutate(SUIT_PARCEL_AREA = set_units(st_area(.), acre),
+           SUIT_LOT_SIZE = cut(SUIT_PARCEL_AREA,
+                               breaks = lot_size_breaks$breaks,
+                               labels = lot_size_breaks$names)
+           ) %>%
     group_by(PIN) %>% 
     arrange(desc(SUIT_PARCEL_AREA)) %>% 
     slice(1) %>% 
     ungroup %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
-              SUIT_PARCEL_AREA)
+              SUIT_PARCEL_AREA,
+              SUIT_LOT_SIZE)
   
   suitability_parcel_area <- p_area_poly
   
@@ -2295,9 +2350,9 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_WITHIN_UGA_LGL = if_else(SUIT_WITHIN_UGA == suitability_criteria[["within_uga"]],TRUE,FALSE,FALSE),
       SUITABLE_ZONING_CONSOL_20_LGL = if_else(SUIT_ZONING_CONSOL_20 %in% suitability_criteria[["developable_zoning"]],TRUE,FALSE,FALSE) ,
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
-      SUITABLE_PARCEL_AREA_LGL = if_else(SUIT_PARCEL_AREA %within_range% c(suitability_criteria[["area_min"]], suitability_criteria[["area_max"]]),TRUE,FALSE,FALSE),
+      SUITABLE_LOT_SIZE_LGL = if_else(SUIT_LOT_SIZE %in% suitability_criteria[["lot_size"]],TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
-      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_PARCEL_AREA_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL
+      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL
     ) %>% 
     st_sf
   
@@ -2527,7 +2582,7 @@ make_building <- function(...){
 
 # COMMAND: MAKE_CRITERIA_LOT_SIZE ----
 
-make_criteria_lot_size <- function(city_block_sqft, lot_types){
+make_util_criteria_lot_size <- function(city_block_sqft, lot_types){
   eight_block <- city_block_sqft/8
   
   quarter_block <- city_block_sqft/4
@@ -2541,7 +2596,7 @@ make_criteria_lot_size <- function(city_block_sqft, lot_types){
 
 # COMMAND: MAKE_CRITERIA_UTILIZATION_RATIO ----
 
-make_criteria_utilization_ratio <- function(){
+make_util_criteria_utilization_ratio <- function(){
   
  crit_util_ratio <- list("ratio_gentle" = 1e-2,
                          "ratio_moderate" = 2/3,
