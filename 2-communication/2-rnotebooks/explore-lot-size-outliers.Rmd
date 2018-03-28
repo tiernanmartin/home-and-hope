@@ -1,0 +1,242 @@
+---
+title: 'EDA: Lot Size Outliers'
+output:
+  html_document:
+    df_print: paged
+---
+
+### Overview
+
+This is an exploratory analysis of the parcel size (`PARCEL_AREA`) and parcel size ratio (`PARCEL_AREA_RATIO`) fields.
+
+The focus questions for this exploration are:
+
+  * Q1
+  * Q2
+  * Q3
+
+```{r setup, include=FALSE }
+
+source(here::here("2-communication/1-rscripts/01-drake-setup.R"))
+source(here("2-communication/1-rscripts/02-drake-functions.R"))
+
+library(skimr)
+library(visdat)
+library(mapview)
+library(patchwork)
+
+Sys.setlocale("LC_CTYPE", "Chinese")
+theme_set(theme_bw())
+
+```
+
+```{r load-objects, include=FALSE}
+
+loadd(inventory)
+loadd(parcel_sf_ready) 
+
+
+```
+
+### Setup
+
+Create the `inv` object that will be used to explore the data and provide answers to the questions above:
+
+```{r make-inv}
+
+sf <- c("Single-Family Residential")
+mf <- c("General Mixed Use", "Multi-Family Residential", "Mixed Use Commercial/Residential")
+
+inv <- inventory %>% 
+  st_drop_geometry() %>% 
+  transmute(PIN, 
+            SUITABLE_LGL,
+            SUITABLE = if_else(SUITABLE_LGL, "suitable", "not") %>% factor() %>% fct_rev,
+            NEW_SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL,
+         PROPERTY_NAME, 
+         OWNER_CATEGORY, 
+         ZONING = SUIT_ZONING_CONSOL_20,
+         ZONING_TYPE = case_when(
+           ZONING %in% sf ~ "single family",
+           ZONING %in% mf ~ "multi-family",
+           TRUE ~ "other"
+         ) %>% factor(levels = c("single family", "multi-family", "other")),
+         SUIT_PARCEL_AREA = as.double(SUIT_PARCEL_AREA),  
+         SUIT_PARCEL_AREA_OUTLIER = is_outlier(sqrt(SUIT_PARCEL_AREA)),
+         SUIT_PARCEL_AREA_RATIO,
+         SUIT_PARCEL_AREA_RATIO_OUTLIER = is_outlier(SUIT_PARCEL_AREA_RATIO),
+         AREA_CITY_BLOCK = if_else(SUIT_PARCEL_AREA >= .75,"greater than a block","less than a block","less than a block") %>% factor() %>% fct_rev(),
+         AREA_CITY_BLOCK_DETAIL = cut(SUIT_PARCEL_AREA, 
+                                      breaks=c(-Inf, 0.1, 0.378, .75, 1.5, Inf ), 
+                                      labels=c("under-sized","quarter-block","half-block", "whole-block", "over-sized")),
+         BLDG_LGL = if_else(BLDG_NBR>1,TRUE,FALSE,FALSE),
+         BDLG_FCT = BLDG_NBR %>% 
+           factor(ordered = TRUE) %>% 
+           fct_explicit_na(0) %>% 
+           fct_lump(n = 4,  other_level = "more than 3") %>% 
+           fct_relevel(c("0","1","2","3","more than 3")))
+
+```
+
+```{r explore-parcel-area-glimpse}
+glimpse(inv)
+
+skim(inv)
+```
+
+
+### Histograms
+
+```{r explore-parcel-area-hist, message = FALSE}
+
+gg1 <- ggplot(data = inv, mapping = aes(x = SUIT_PARCEL_AREA))
+gg1 <- gg1 + geom_histogram() 
+gg1 <- gg1 + facet_wrap(~ BDLG_FCT, scales = "free")  
+gg1
+
+```
+
+
+
+
+
+### 2d Density: parcel area x area ratio x number of buildings
+
+```{r explore-parcel-area-2d-density, message = FALSE}
+
+gg2 <- ggplot(data = inv, mapping = aes(x = SUIT_PARCEL_AREA, y = SUIT_PARCEL_AREA_RATIO))
+gg2 <- gg2 + geom_bin2d()
+gg2 <- gg2 + geom_density2d(color = "orange", alpha = .25)
+gg2 <- gg2 + scale_x_sqrt() 
+gg2 <- gg2 + facet_wrap(~BDLG_FCT, nrow = 1)
+gg2 <- gg2 + coord_fixed(25) 
+gg2
+
+```
+
+
+
+
+### What about the zoning divide?
+
+Exploratory questions:
+  * How are the parcels with buildings distributed within the zoning categories?
+  * How are the parcels distributed: parcel area x area ratio x lot size category x zoning?
+  
+```{r explore-parcel-area-2d-density-zoning-count, message = FALSE}
+
+inv %>% filter(BLDG_LGL) %>% count(ZONING_TYPE, sort = TRUE) %>% print(n=Inf)
+
+```
+
+```{r explore-parcel-area-2d-density-zoning-plot, message = FALSE}
+
+inv_bldg <- inv %>% 
+  filter(BLDG_LGL)
+
+gg3 <- ggplot(data = inv_bldg, mapping = aes(x = SUIT_PARCEL_AREA, y = SUIT_PARCEL_AREA_RATIO))
+gg3 <- gg3 + geom_bin2d()
+gg3 <- gg3 + geom_density2d(color = "orange", alpha = .25)
+gg3 <- gg3 + scale_x_sqrt() 
+gg3 <- gg3 + facet_grid(ZONING_TYPE ~ AREA_CITY_BLOCK_DETAIL, scales = "free_x")
+gg3 <- gg3 + labs(title = "All Parcels", subtitle = "(with buildings)") 
+
+gg3_suit <- ggplot(data = filter(inv_bldg, NEW_SUITABLE_LGL), mapping = aes(x = SUIT_PARCEL_AREA, y = SUIT_PARCEL_AREA_RATIO))
+gg3_suit <- gg3_suit + geom_bin2d()
+gg3_suit <- gg3_suit + geom_density2d(color = "orange", alpha = .25) 
+gg3_suit <- gg3_suit + facet_grid(ZONING_TYPE ~ AREA_CITY_BLOCK_DETAIL, scales = "free_x")
+gg3_suit <- gg3_suit + labs(title = "Suitable Parcels", subtitle = "(with buildings)") 
+
+gg3 + gg3_suit + plot_layout(ncol = 1)
+
+```
+
+### What about the outliers?
+
+Exploratory questions:
+
+  * What is the maximum parcel size for outliers and non-outliers?
+  * What is the distribution of parcel area x outlier status?
+  * What is the distribution of parcel area x parcel area ratio x outlier status?
+  * Where are these outliers located? Do they pass the "sniff test" when viewed in a map?
+  
+```{r explore-parcel-area-outliers, message = FALSE}
+
+inv_out <-list(inv,
+     filter(inv, !SUIT_PARCEL_AREA_OUTLIER)) %>% 
+    bind_rows(.id = "OUTLIERS") %>% 
+    mutate(OUTLIERS_FCT = if_else(OUTLIERS == 1,  "WITH OUTLIERS", "WITHOUT OUTLIERS") ) %>% 
+    select(OUTLIERS_FCT, everything())
+ 
+
+inv_bldg_oversized <- inv %>% 
+  filter(BLDG_LGL & as.character(AREA_CITY_BLOCK_DETAIL) %in% "over-sized") %>% 
+  transmute(PIN,
+            SUIT_PARCEL_AREA, 
+            SUIT_PARCEL_AREA_RATIO,
+            AREA_CITY_BLOCK_DETAIL,
+            AREA_CAT_OUTLIER = is_outlier(sqrt(SUIT_PARCEL_AREA)),
+            AREA_CAT_OUTLIER_FCT = if_else(AREA_CAT_OUTLIER, "OUTLIER", "NOT OUTLIER") %>% factor() %>% fct_rev,
+            SUIT_PARCEL_AREA)
+
+```
+
+```{r explore-parcel-area-outliers-max, message = FALSE}
+
+inv_bldg_oversized %>% 
+  group_by(AREA_CAT_OUTLIER_FCT) %>% 
+  summarise(MAX = max(SUIT_PARCEL_AREA))
+
+```
+```{r explore-parcel-area-outliers-hist, message = FALSE}
+
+gg5 <- ggplot(data = inv_out, aes(x = SUIT_PARCEL_AREA))
+gg5 <- gg5 + geom_histogram()
+gg5 <- gg5 + facet_wrap(~ OUTLIERS_FCT, scales = "free_x") 
+gg5
+
+```
+
+```{r explore-parcel-area-outliers-2d, message = FALSE}
+
+gg4_os <- ggplot(data = inv_bldg_oversized, mapping = aes(x = SUIT_PARCEL_AREA, y = SUIT_PARCEL_AREA_RATIO))
+gg4_os <- gg4_os + geom_bin2d()
+gg4_os <- gg4_os + geom_density2d(color = "orange", alpha = .25) 
+gg4_os <- gg4_os + facet_wrap(~ AREA_CAT_OUTLIER_FCT, scales = "free_x")
+gg4_os
+
+```
+
+```{r explore-parcel-area-outliers-map, eval = FALSE}
+
+inv_bldg_oversized_sf <- inv_bldg_oversized %>% 
+  inner_join(parcel_sf_ready, by = "PIN") %>% 
+  st_sf %>% 
+  st_set_geometry("geometry") %>% 
+  select_if(not_sfc)
+
+mapview(inv_bldg_oversized_sf, zcol = "AREA_CAT_OUTLIER_FCT")
+
+```
+
+
+```{r explore-parcel-area-outliers-map2, eval = FALSE}
+
+
+inv_sf <- inv %>% 
+  filter(SUITABLE_LGL) %>% 
+  mutate_if(is.logical, as.factor) %>%  
+  inner_join(parcel_sf_ready, by = "PIN") %>% 
+  st_sf %>% 
+  st_set_geometry("geometry") %>% 
+  select_if(not_sfc)
+
+mapview(inv_sf, zcol = "SUIT_PARCEL_AREA_OUTLIER", legend = TRUE)
+
+```
+
+
+
+
+ 
+
