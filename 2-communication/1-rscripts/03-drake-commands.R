@@ -3137,7 +3137,7 @@ make_filters_eligibility_nmtc <- function(filters_census_tract){
     rename_all(to_screaming_snake_case) %>% 
     transmute(CENSUS_TRACT = X_2010_CENSUS_TRACT_NUMBER_FIPS_CODE_GEOID,
               NMTC = DOES_CENSUS_TRACT_QUALIFY_FOR_NMTC_LOW_INCOME_COMMUNITY_LIC_ON_POVERTY_OR_INCOME_CRITERIA,
-              FILTER_ELIGIBILITY_NMTC = if_else(NMTC %in% "Yes",TRUE,FALSE)
+              FILTER_ELIGIBILITY_NMTC = if_else(NMTC %in% "Yes",TRUE,FALSE, missing = FALSE)
               ) 
   
   
@@ -3145,8 +3145,8 @@ make_filters_eligibility_nmtc <- function(filters_census_tract){
     st_drop_geometry() %>% 
     select(PIN, CENSUS_TRACT) %>% 
     left_join(elig_nmtc, by = "CENSUS_TRACT") %>% 
-    select(PIN,
-           FILTER_ELIGIBILITY_NMTC)
+    transmute(PIN,
+           FILTER_ELIGIBILITY_NMTC = if_else(FILTER_ELIGIBILITY_NMTC, TRUE, FALSE, missing = FALSE))
   
   filters_eligibility_nmtc <- p_ready_eligibility_nmtc
   
@@ -3193,7 +3193,7 @@ make_filters_eligibility_dda <- function(filters_zcta){
   elig_dda <- filters_zcta %>% 
     left_join(zcta_dda, by = "ZCTA") %>% 
     transmute(PIN,
-              FILTER_ELIGIBILITY_DDA = if_else(is.na(FILTER_ELIGIBILITY_DDA),FALSE,FILTER_ELIGIBILITY_DDA))
+              FILTER_ELIGIBILITY_DDA = if_else(FILTER_ELIGIBILITY_DDA,TRUE,FALSE, missing = FALSE))
   
   filters_eligibility_dda <- elig_dda
   
@@ -3239,7 +3239,7 @@ make_filters_eligibility_qct <- function(filters_census_tract){
     select(PIN, CENSUS_TRACT) %>% 
     left_join(elig_qtc, by = "CENSUS_TRACT") %>% 
     transmute(PIN,
-              FILTER_ELIGIBILITY_QCT = if_else(is.na(FILTER_ELIGIBILITY_QCT),FALSE,FILTER_ELIGIBILITY_QCT))
+              FILTER_ELIGIBILITY_QCT = if_else(FILTER_ELIGIBILITY_QCT, TRUE, FALSE, missing = FALSE))
   
   filters_eligibility_qct <- p_ready_eligibility_qct
   
