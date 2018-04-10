@@ -18,10 +18,11 @@ lookup_plan <- drake_plan(
   name_recode_key = make_name_recode_key(trigger_name_recode_key)
 ) %>% 
   bind_rows(triggers_plan)
- 
+
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
   acct = make_acct(),
+  env_restrictions = make_env_restrictions(),
   parcel_addr = make_parcel_addr(),
   parcel_df = make_parcel_df(),
   parcel_sf_poly = make_parcel_sf_poly(),
