@@ -537,10 +537,8 @@ make_parcel_sf <- function(parcel_sf_poly){
   
   p_sf_2926$geom_pt <- st_centroid(st_geometry(p_sf_2926)) 
   
-  p_sf_ready <- p_sf_2926 %>% 
-    mutate(MAJOR = str_pad(MAJOR, 6, "left", "0"),
-           MINOR = str_pad(MINOR, 4, "left", "0")) %>% 
-    transmute(PIN = str_c(MAJOR,MINOR),
+  p_sf_ready <- p_sf_2926 %>%  
+    transmute(PIN = make_pin(MAJOR, MINOR),
               geom_pt) %>% 
     drop_na() %>% 
     st_set_geometry("geometry") %>% 
@@ -632,9 +630,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     mutate_if(is_logical_yn, recode_logical_yn) %>% 
     mutate_if(is_logical_01, recode_logical_01) %>%
     mutate_if(is_logical_yesno, recode_logical_yesno) %>% 
-    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
-           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
-           PIN = str_c(MAJOR,MINOR))
+    mutate(PIN = make_pin(MAJOR, MINOR))
   
   parcel_df_recoded_clean_names <- parcel_df_recoded %>% 
     transmute(PIN,
@@ -654,9 +650,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
               ASSESSOR_PUB_LIST_LGL = TRUE)
 
   p_df_ready <- parcel_df_recoded_clean_names %>%
-   mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
-           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
-           PIN = str_c(MAJOR,MINOR)) %>%
+   mutate(PIN = make_pin(MAJOR, MINOR)) %>%
     left_join(prop_type, by = "PROP_TYPE") %>%
     left_join(pub_parcel_ready, by = "PIN") %>%
     mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
@@ -711,9 +705,7 @@ make_parcel_acct_ready <- function(acct, tax_status, tax_reason){
   # MAKE ACCT_READY
 
   acct_frmt <- acct %>%
-    mutate(MAJOR = str_pad(string = MAJOR,width = 6,side = "left",pad = "0"),
-           MINOR = str_pad(string = MINOR,width = 4,side = "left",pad = "0"),
-           PIN = str_c(MAJOR,MINOR)) %>%
+    mutate(PIN = make_pin(MAJOR, MINOR)) %>%
     rename(TAX_STATUS = TAXSTAT,
            TAX_REASON = TAXVALREASON) %>%
     left_join(tax_status, by = "TAX_STATUS") %>%
