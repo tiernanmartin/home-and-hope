@@ -1,3 +1,12 @@
+# FUNCTION: MAKE_PIN ----
+
+make_pin <- function( major, minor){
+  res <- str_c(str_pad(string = major, width = 6,side = "left",pad = "0"),
+               str_pad(string = minor, width = 4,side = "left",pad = "0"))
+  return(res)
+}
+
+
 # FUNCTION: IS_OUTLIER ----
 
 # uses the Tukey method of outlier detection
