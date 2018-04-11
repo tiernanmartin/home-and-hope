@@ -763,7 +763,7 @@ make_parcel_env_ready <- function(env_restrictions){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(parcel_addr_ready, ...){
+make_parcel_ready <- function(parcel_addr_ready, parcel_env_ready, ...){
 
   # MAKE PARCEL_READY
 
@@ -772,6 +772,7 @@ make_parcel_ready <- function(parcel_addr_ready, ...){
   parcel_ready <- obj_list %>%
     reduce(.f = inner_join, by = "PIN") %>%
     left_join(parcel_addr_ready, by = "PIN") %>% 
+    left_join(parcel_env_ready, by = "PIN") %>% 
     st_as_sf()
 
   return(parcel_ready)
