@@ -391,7 +391,7 @@ make_env_restrictions <- function(){
                   make_expr = function(fp, dr_id){
                     zip_dir <- here("1-data/2-external")
                     
-                    target_name <- "EXTR_EnvironmentalRestriction_V"
+                    target_name <- "EXTR_EnvironmentalRestriction_V.csv"
                     
                     drive_read_zip(
                       dr_id = dr_id,
