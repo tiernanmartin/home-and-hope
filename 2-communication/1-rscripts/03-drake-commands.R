@@ -654,11 +654,11 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     left_join(prop_type, by = "PROP_TYPE") %>%
     left_join(pub_parcel_ready, by = "PIN") %>%
     mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
-    select(PIN,
+    transmute(PIN,
            PROPERTY_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
            ASSESSOR_PUB_LIST_LGL, 
-           DISTRICT_NAME,
+           DISTRICT_NAME = toupper(DISTRICT_NAME),
            CURRENT_ZONING,
            PRESENT_USE,
            HBU_AS_IF_VACANT,
@@ -1462,9 +1462,9 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
     transmute(PIN,
               OWNER_NAME = str_trim(toupper(TAXPAYER_NAME)))
   
- # CLEAN/RECODE NAMES ----
+ # CLEAN/RECODE NAMES ---- 
   
-  names_cleaned <- names %>% 
+  names_cleaned_ngrams_1 <- names %>% 
     unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
     left_join(name_recode_key, by = "ORIG") %>% 
     mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
@@ -1472,6 +1472,22 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
     summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
     full_join(names, by = "PIN") %>%  
     select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  
+  names_cleaned_ngrams_2 <- names_cleaned_ngrams_1 %>% 
+    unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 2, to_lower = FALSE) %>%  
+    left_join(name_recode_key, by = "ORIG") %>% 
+    mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>%  
+    arrange(PIN) %>% 
+    separate(OWNER_NAME, c("WORD_1", "WORD_2"), sep = " ") %>%  
+    gather(WORD, NAME_WORD, WORD_1:WORD_2) %>%  
+    group_by(PIN) %>% 
+    nest() %>% 
+    group_by(PIN) %>% 
+    summarise(OWNER_NAME_CLEAN = map_chr(data, ~ pluck(.x, "NAME_WORD") %>% unique %>% str_c(collapse = " "))) %>%
+    full_join(names, by = "PIN") %>%  
+    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  
+  names_cleaned <- names_cleaned_ngrams_2
   
   names_trimmed <- names_cleaned %>% 
     unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
@@ -1829,19 +1845,20 @@ make_owner <- function(parcel_ready, ...){
   # CREAT CLEAN NAMES ----
   
   city_names_clean <- parcel_ready %>% 
-    pluck("DISTRICT_NAME") %>% 
+    pluck("DISTRICT_NAME") %>%  
     unique() %>% 
+    toupper() %>% 
     discard(is.na) %>% 
     c("TACOMA", "VASHON ISLAND") %>% 
     toupper %>% 
-    str_replace_all("KING COUNTY", "UNINCORPORATED AREA") %>% 
+    str_replace_all("KING COUNTY", "UNINCORPORATED KING COUNTY") %>% 
     {tibble(OWNER_NAME_CLEAN = .)}
   
   city_names_clean_long <- city_names_clean %>% 
     mutate(OWNER_NAME_CLEAN_FULL = OWNER_NAME_CLEAN) %>% 
     unnest_tokens(TOKEN, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     select(TOKEN, OWNER_NAME_CLEAN_FULL) %>% 
-    mutate(OWNER_NAME_CLEAN_FULL = if_else(OWNER_NAME_CLEAN_FULL %in% c("KING COUNTY", "UNINCORPORATED AREA"),
+    mutate(OWNER_NAME_CLEAN_FULL = if_else(OWNER_NAME_CLEAN_FULL %in% c("KING COUNTY", "UNINCORPORATED KING COUNTY"),
                                            OWNER_NAME_CLEAN_FULL,
                                            str_c("CITY OF ",OWNER_NAME_CLEAN_FULL)))
   
@@ -1851,6 +1868,25 @@ make_owner <- function(parcel_ready, ...){
                               OWNER_NAME_CLEAN_FULL = c("MUCKLESHOOT INDIAN TRIBE",
                                                         "SNOQUALMIE INDIAN TRIBE",
                                                         "COWLITZ INDIAN TRIBE"))
+  
+  nonprofit_names_clean <- owner_nonprofit_categories 
+  
+  nonprofit_names_trim <- owner_nonprofit_categories %>% 
+    count(OWNER_NAME, sort = TRUE) %>% 
+    filter(n > 3) %>% 
+    drop_na() %>% 
+    transmute(ID = row_number(),
+              OWNER_NAME,
+              TOKEN = OWNER_NAME) %>% 
+    unnest_tokens(WORD, TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    anti_join(owner_antijoin_names, by = c("WORD" = "word")) %>% 
+    group_by(ID) %>% 
+    summarize(OWNER_NAME_CLEAN = first(OWNER_NAME),
+              OWNER_NAME_TRIM = str_c(WORD, collapse = " ")) %>% 
+    filter(!duplicated(OWNER_NAME_TRIM)) %>% 
+    select(OWNER_NAME_CLEAN, OWNER_NAME_TRIM)
+    
+  
   
   # CREAT ANTI_JOIN TABLES ----   
   new_owner_antijoin_names <- tibble(TOKEN = c("CITY", "OF"))
@@ -1902,6 +1938,22 @@ make_owner <- function(parcel_ready, ...){
               OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN_FULL)) %>%
     select(-OWNER_NAME)
   
+  nonprofit_names_join_tbl <- 
+    owner %>% 
+    mutate(PIN,
+           OWNER_NAME_TOKEN = OWNER_NAME) %>%  
+    filter(OWNER_CATEGORY %in% "non-profit") %>%
+    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>%
+    anti_join(owner_antijoin_names, by = c("TOKEN" = "word")) %>% 
+    group_by(PIN) %>% 
+    summarize(OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_TRIM = str_c(TOKEN, collapse = " ")) %>% 
+    stringdist_left_join(nonprofit_names_trim, by = c(OWNER_NAME_TRIM = "OWNER_NAME_TRIM"),  max_dist = 3, distance_col = "DIST") %>% 
+    group_by(PIN) %>%
+    summarise(OWNER_NAME_CLEAN = if_else(is.na(OWNER_NAME_CLEAN),OWNER_NAME,OWNER_NAME_CLEAN))  
+  
+  
+  
   # JOIN THE TABLES ----   
   
   owner_names_consolidated <- 
@@ -1909,10 +1961,12 @@ make_owner <- function(parcel_ready, ...){
     left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>% 
     left_join(city_names_join_tbl, by = "PIN") %>% 
     left_join(tribe_names_join_tbl, by = "PIN") %>% 
+    left_join(nonprofit_names_join_tbl, by = "PIN") %>%  
+    gather(OLD_FIELD, OWNER_NAME_CLEAN, matches("OWNER_NAME_CLEAN")) %>% 
     group_by(PIN) %>% 
     summarize(OWNER_CATEGORY = first(OWNER_CATEGORY),
-              OWNER_NAME = first(OWNER_NAME),
-              OWNER_NAME_CLEAN = first_not_na(c(OWNER_NAME_CLEAN.x, OWNER_NAME_CLEAN.y))) %>% 
+              OWNER_NAME = first(OWNER_NAME), 
+              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN)) %>% 
     transmute(PIN,
               OWNER_NAME,
               OWNER_NAME_CONSOLIDATED = if_else(is.na(OWNER_NAME_CLEAN), OWNER_NAME,OWNER_NAME_CLEAN),
@@ -2076,7 +2130,7 @@ make_criteria_tax_exempt <- function(){
   
 }
 
-# COMMAND: MAKE_CRITERIA_MAX_WATER_OVERLAP_PCT----
+# COMMAND: MAKE_CRITERIA_MAX_WATER_OVERLAP_PCT ----
 
 make_criteria_max_water_overlap_pct <- function(){
   

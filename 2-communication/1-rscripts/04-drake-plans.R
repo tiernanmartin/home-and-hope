@@ -129,7 +129,7 @@ owner_plan <- drake_plan(
   owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key),
   owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
   owner_exempt_categories = make_owner_exempt_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
-  owner = make_owner(parcel_ready, owner_public_categories, owner_nonprofit_categories,  owner_exempt_categories) 
+  owner = make_owner(parcel_ready, owner_public_categories, owner_nonprofit_categories,  owner_exempt_categories, owner_antijoin_names) 
   
 )
 
