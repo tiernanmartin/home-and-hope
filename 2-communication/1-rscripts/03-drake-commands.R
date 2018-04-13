@@ -3184,7 +3184,7 @@ make_filters_leg_district <- function(...){
     select(PIN)
   
   leg <- leg_districts %>% 
-    transmute(LEGISLATIVE_DISTRICT = str_c("DISTRICT ",LEGDST)) %>% 
+    transmute(LEGISLATIVE_DISTRICT = str_c("District ",LEGDST)) %>% 
     st_transform(2926) 
   
   leg_subd <- leg %>% 
