@@ -1042,6 +1042,43 @@ make_school_districts <- function(){
   
 }
 
+# COMMAND: MAKE_LEG_DISTRICTS ----
+make_leg_districts <- function(){
+  
+  leg_dist_fp <- here("1-data/2-external/legdst")
+  
+  leg_dist_dr_id <- as_id("https://drive.google.com/open?id=17S93IPka-lzv6nX7deDx08EmRHLulm_Q")
+  
+  leg_dist_load <- 
+    make_or_read2(fp = leg_dist_fp,
+                  dr_id = leg_dist_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/legdist_SHP.zip
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "legdst"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  
+  leg_districts <- rename_if(leg_dist_load, not_sfc, to_screaming_snake_case)
+  
+  return(leg_districts)
+  
+}
+
 # COMMAND: MAKE_BUS_STOPS_METRO ----
 make_bus_stops_metro <- function(){
   
