@@ -1284,6 +1284,73 @@ make_play_spaces_osm <- function(){
   
 }
 
+# COMMAND: MAKE_MJ_BUSINESSES ----
+
+make_mj_businesses <- function(){
+  
+  mj_biz_fp <- here("1-data/2-external/MarijuanaApplicants.xls")
+  
+  mj_biz_dr_id <- as_id("1qrMPnRCq2giSyZbF3hdDMDEyljVd7d28")
+  
+  read_mj_biz <- function(sheet){
+    make_or_read2(fp = mj_biz_fp,
+                  dr_id = mj_biz_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: https://lcb.wa.gov/sites/default/files/publications/Public_Records/2018/MarijuanaApplicants.xls
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel, sheet)
+                  },
+                  read_expr = function(fp){read_excel(fp, sheet)})
+  }
+    
+  sheet_list <- list("Retailers 4-10-18", "Producers 4-10-18", "Processors 4-10-18", "Marijuana Transporter 4-10-18")
+  
+  mj_biz <- map_dfr(sheet_list, read_mj_biz) %>% 
+    janitor::clean_names(case = "screaming_snake") %>%  
+     transmute(TRADENAME,
+              PRIV_DESC = PRIV_DESC,
+              PRIVILEGE_STATUS = PRIVILEGE_STATUS,
+              ZIP_CODE = str_extract(ZIP_CODE,"^.{0,5}"),
+              COUNTY = COUNTY,
+              ADDRESS_FULL = str_c( STREET_ADDRESS, CITY, STATE, ZIP_CODE, sep = ", "))
+  
+  # filter to King County then geocode
+
+  geocode_fun <- function(address){
+    geocode_url(address, 
+                auth="standard_api", 
+                privkey="AIzaSyAC19c3TtQwrSiQYKYDaf-9nDIqahirnD8",
+                clean=TRUE, 
+                add_date='today', 
+                verbose=TRUE) 
+  }
+    
+  mj_biz_geocoded <- mj_biz %>% 
+    filter(COUNTY %in% "KING") %>%  
+    filter(str_detect(PRIVILEGE_STATUS,"ACTIVE|PENDING") ) %>% 
+    arrange(desc(as.integer(ZIP_CODE))) %>%  
+    mutate(geocode_output = map(ADDRESS_FULL, geocode_fun)) %>% 
+    unnest() %>% 
+    rename_all(to_screaming_snake_case)
+  
+  mj_biz_sf <- mj_biz_geocoded %>% 
+    filter(!is.na(LAT)) %>% 
+    st_as_sf(coords = c("LNG", "LAT")) %>% 
+    st_set_crs(4326) %>% 
+    st_transform(2926)
+  
+ mj_businesses <- mj_biz_sf
+  return(mj_businesses)
+  
+}
+
+
+
 
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){

@@ -48,7 +48,8 @@ miscellaneous_plan <- drake_plan(
   zcta = make_zcta(king_county),
   school_districts = make_school_districts(),
   leg_districts = make_leg_districts(),
-  kc_council_districts = make_kc_council_districts()
+  kc_council_districts = make_kc_council_districts(),
+  mj_businesses = make_mj_businesses()
 )
 
 transit_plan <- drake_plan(
