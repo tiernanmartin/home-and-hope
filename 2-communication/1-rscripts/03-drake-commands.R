@@ -3175,24 +3175,57 @@ make_filters_potential_units <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_LEG_DISTRICT ----
-make_filters_leg_district <- function(parcel_ready){
+
+make_filters_leg_district <- function(...){
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
   
-  leg_districts <- c(34,11,37,43,46,36,32,33,45,41,30,1,47,5,31,48,39) %>% 
-    map_chr(~str_c("District ",.x))
+  leg <- leg_districts %>% 
+    transmute(LEGISLATIVE_DISTRICT = str_c("DISTRICT ",LEGDST)) %>% 
+    st_transform(2926) 
   
-   p_ready_ld<- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_LEG_DISTRICT = sample(leg_districts,n(), replace = TRUE)
-              )
+  leg_subd <- leg %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
   
-  filters_leg_district <- p_ready_ld
+  p_leg <- p_pt
   
-  return(filters_leg_district)
-   
+  p_leg$FILTER_LEGISLATIVE_DISTRICT <- st_over(p_leg, leg_subd, "LEGISLATIVE_DISTRICT") 
+  
+  # Deal with outliers
+  
+  outside_pins <- p_leg %>% 
+    filter(is.na(FILTER_LEGISLATIVE_DISTRICT)) %>% 
+    pluck("PIN")
+  
+  p_outside <- filter(p_pt, PIN %in% outside_pins)
+  
+  leg_buff_2000 <- st_buffer(leg, dist = 2000)
+  
+  p_outside$FILTER_LEGISLATIVE_DISTRICT_OUTSIDE <- st_over(p_outside, leg_buff_2000,"LEGISLATIVE_DISTRICT") %>% 
+    st_drop_geometry()
+  
+  # Merge together
+  
+  p_leg_ready <- st_drop_geometry(p_leg) %>% 
+    left_join(st_drop_geometry(p_outside), by = "PIN") %>% 
+    arrange(FILTER_LEGISLATIVE_DISTRICT_OUTSIDE) %>% 
+    transmute(PIN,
+              FILTER_LEGISLATIVE_DISTRICT = case_when(
+                !is.na(FILTER_LEGISLATIVE_DISTRICT_OUTSIDE) ~ FILTER_LEGISLATIVE_DISTRICT_OUTSIDE,
+                !is.na(FILTER_LEGISLATIVE_DISTRICT) ~ FILTER_LEGISLATIVE_DISTRICT,
+                TRUE ~ "Outside King County"
+              ))
+  
+  leg_district <- p_leg_ready
+  
+  return(leg_district)
+  
 }
+
 
 # COMMAND: MAKE_FILTERS_SCHOOL_DISTRICT ----
 make_filters_school_district <- function(...){
