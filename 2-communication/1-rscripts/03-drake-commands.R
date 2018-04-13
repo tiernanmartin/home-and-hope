@@ -1047,7 +1047,7 @@ make_leg_districts <- function(){
   
   leg_dist_fp <- here("1-data/2-external/legdst")
   
-  leg_dist_dr_id <- as_id("https://drive.google.com/open?id=17S93IPka-lzv6nX7deDx08EmRHLulm_Q")
+  leg_dist_dr_id <- as_id("17S93IPka-lzv6nX7deDx08EmRHLulm_Q")
   
   leg_dist_load <- 
     make_or_read2(fp = leg_dist_fp,
@@ -1078,6 +1078,44 @@ make_leg_districts <- function(){
   return(leg_districts)
   
 }
+
+# COMMAND: MAKE_KC_COUNCIL_DISTRICTS ----
+make_kc_council_districts <- function(){
+  
+  kcc_dist_fp <- here("1-data/2-external/kccdst")
+  
+  kcc_dist_dr_id <- as_id("17CoZ7cl__hZOproY6udM0wClT-4NPpJg")
+  
+  kcc_dist_load <- 
+    make_or_read2(fp = kcc_dist_fp,
+                  dr_id = kcc_dist_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/legdist_SHP.zip
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "kccdst"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  
+  kc_council_districts <- rename_if(kcc_dist_load, not_sfc, to_screaming_snake_case)
+  
+  return(kc_council_districts)
+  
+}
+
 
 # COMMAND: MAKE_BUS_STOPS_METRO ----
 make_bus_stops_metro <- function(){
@@ -3225,6 +3263,67 @@ make_filters_leg_district <- function(...){
   return(leg_district)
   
 }
+
+# COMMAND: MAKE_FILTERS_KC_COUNCIL_DISTRICT ----
+
+make_filters_kc_council_district <- function(...){
+  
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
+  
+  kcc <- kc_council_districts %>% 
+    transmute(KC_COUNCIL_DISTRICT = str_c("District ",KCCDST),
+              KC_COUNCIL_MEMBER = COUNCILMEM) %>% 
+    st_transform(2926) 
+  
+  kcc_members <- kcc %>% 
+    st_drop_geometry %>% 
+    select(KC_COUNCIL_DISTRICT,KC_COUNCIL_MEMBER) %>% 
+    distinct()
+  
+  kcc_subd <- kcc %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
+  
+  p_kcc <- p_pt
+  
+  p_kcc$FILTER_KC_COUNCIL_DISTRICT <- st_over(p_kcc, kcc_subd, "KC_COUNCIL_DISTRICT") 
+  
+  # Deal with outliers
+  
+  outside_pins <- p_kcc %>% 
+    filter(is.na(FILTER_KC_COUNCIL_DISTRICT)) %>% 
+    pluck("PIN")
+  
+  p_outside <- filter(p_pt, PIN %in% outside_pins)
+  
+  kcc_buff_2000 <- st_buffer(kcc, dist = 2000)
+  
+  p_outside$FILTER_KC_COUNCIL_DISTRICT_OUTSIDE <- st_over(p_outside, kcc_buff_2000,"KC_COUNCIL_DISTRICT") %>% 
+    st_drop_geometry()
+  
+  # Merge together
+  
+  p_kcc_ready <- st_drop_geometry(p_kcc) %>% 
+    left_join(st_drop_geometry(p_outside), by = "PIN") %>% 
+    arrange(FILTER_KC_COUNCIL_DISTRICT_OUTSIDE) %>% 
+    transmute(PIN,
+              FILTER_KC_COUNCIL_DISTRICT = case_when(
+                !is.na(FILTER_KC_COUNCIL_DISTRICT_OUTSIDE) ~ FILTER_KC_COUNCIL_DISTRICT_OUTSIDE,
+                !is.na(FILTER_KC_COUNCIL_DISTRICT) ~ FILTER_KC_COUNCIL_DISTRICT,
+                TRUE ~ "Outside King County"
+              )) %>% 
+    left_join(kcc_members, by = c(FILTER_KC_COUNCIL_DISTRICT = "KC_COUNCIL_DISTRICT"))
+  
+  kc_council_district <- p_kcc_ready
+  
+  return(kc_council_district)
+  
+}
+
+
 
 
 # COMMAND: MAKE_FILTERS_SCHOOL_DISTRICT ----

@@ -47,7 +47,8 @@ miscellaneous_plan <- drake_plan(
   king_county = make_king_county(),
   zcta = make_zcta(king_county),
   school_districts = make_school_districts(),
-  leg_districts = make_leg_districts()
+  leg_districts = make_leg_districts(),
+  kc_council_districts = make_kc_council_districts()
 )
 
 transit_plan <- drake_plan(
@@ -149,7 +150,8 @@ filter_plan <- drake_plan(
   filters_proximity_preschool = make_filters_proximity_preschool(parcel_ready),
   filters_proximity_open_space = make_filters_proximity_open_space(parcel_ready),
   filters_potential_units = make_filters_potential_units(parcel_ready),
-  filters_leg_district = make_filters_leg_district(parcel_sf_ready, leg_districts),
+  filters_leg_district = make_filters_leg_district(parcel_sf_ready, leg_districts), 
+  filters_kc_council_district = make_filters_kc_council_district(parcel_sf_ready, kc_council_districts),
   filters_school_district = make_filters_school_district(parcel_sf_ready, school_districts),
   filters_historic = make_filters_historic(parcel_ready),
   filters_afford_expir_date = make_filters_afford_expir_date(parcel_ready),
@@ -165,8 +167,9 @@ filter_plan <- drake_plan(
                          filters_proximity_transit,
                          filters_proximity_play_space,
                          filters_proximity_marijuana, 
+                         filters_proximity_preschool,   
                          filters_leg_district,
-                         filters_proximity_preschool,  
+                         filters_kc_council_district,
                          filters_school_district, 
                          filters_historic, 
                          filters_afford_expir_date,
