@@ -1,4 +1,4 @@
-# MAKE PLANS: PARCEL ----
+# MAKE PLANS: TRIGGERS ----
 
 triggers_plan <- drake_plan(
   trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"),
@@ -6,6 +6,8 @@ triggers_plan <- drake_plan(
   trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
   strings_in_dots = "literals"
 )
+
+# MAKE PLANS: PARCEL ----
 
 lookup_plan <- drake_plan( 
   parcel_metadata_table = make_parcel_metadata_table(),
