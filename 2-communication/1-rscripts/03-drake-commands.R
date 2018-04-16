@@ -1349,9 +1349,6 @@ make_mj_businesses <- function(){
   
 }
 
-
-
-
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
   
@@ -3036,22 +3033,6 @@ make_filters_public_owner <- function(...){
   return(filters_public_owner)
    
 }
-
-# COMMAND: MAKE_FILTERS_SURPLUS_STATUS ----
-make_filters_surplus_status <- function(parcel_ready){
-  
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED
-  
-  p_ready_ss <- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_SURPLUS_STATUS_LGL = sample(c(TRUE,FALSE),n(),replace = TRUE))
-  
-  filters_surplus_status <- p_ready_ss
-  
-  return(filters_surplus_status)
-   
-}
  
 # COMMAND: MAKE_FILTERS_PROXIMITY_TRANSIT ----
 make_filters_proximity_transit <- function(...){
@@ -3209,12 +3190,12 @@ make_filters_proximity_play_space <- function(...){
 }
 
 # COMMAND: MAKE_FILTERS_PROXIMITY_MARIJUANA ----
-make_filters_proximity_marijuana <- function(parcel_ready){
+make_filters_proximity_marijuana <- function(...){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED
   
   
-  p_ready_prox_mj <- parcel_ready %>% 
+  p_ready_prox_mj <- parcel_sf_ready %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
               FILTER_PROXIMITY_MARIJUANA = spatial_dummy(n(), mean = 25, sd = 10)
@@ -3437,7 +3418,7 @@ make_filters_historic <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_AFFORD_EXPIR_DATE ----
-make_filters_afford_expir_date <- function(parcel_ready){
+make_filters_afford_expir_date <- function(...){
   
   # THIS IS DUMMY DATA + SHOULD BE REPLACED  
  
@@ -3446,7 +3427,7 @@ make_filters_afford_expir_date <- function(parcel_ready){
     map_dbl(pluck,1) %>% 
     as_date
   
-   p_ready_afford_expir_date <- parcel_ready %>% 
+   p_ready_afford_expir_date <- parcel_sf_ready %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
               FILTER_AFFORD_EXPIR_DATE = sample(sample_dates,n(), replace = TRUE)
