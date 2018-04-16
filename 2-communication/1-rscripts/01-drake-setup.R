@@ -1,4 +1,5 @@
 # SETUP ----
+library(janitor)
 library(placement)
 library(osmdata)
 library(units)
