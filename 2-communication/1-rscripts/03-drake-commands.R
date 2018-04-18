@@ -3501,13 +3501,11 @@ make_filters_school_district <- function(...){
 
 # COMMAND: MAKE_FILTERS_HISTORIC ----
 make_filters_historic <- function(parcel_ready){
-  
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
- 
+   
    p_ready_hist<- parcel_ready %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
-              FILTER_HISTORIC_LGL = sample(c(TRUE,FALSE),n(), replace = TRUE)
+              FILTER_HISTORIC_LGL = if_else(HISTORIC_SITE %in% "DESIGNATED",TRUE,FALSE, missing = FALSE)
               )
   
   filters_historic <- p_ready_hist
