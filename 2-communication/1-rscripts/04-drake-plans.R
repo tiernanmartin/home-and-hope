@@ -51,7 +51,8 @@ miscellaneous_plan <- drake_plan(
   leg_districts = make_leg_districts(),
   kc_council_districts = make_kc_council_districts(),
   mj_businesses = make_mj_businesses(),
-  el_facilities = make_el_facilities()
+  el_facilities = make_el_facilities(),
+  other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other)
 )
 
 transit_plan <- drake_plan(

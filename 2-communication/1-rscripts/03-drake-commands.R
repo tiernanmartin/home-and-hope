@@ -1383,6 +1383,27 @@ make_el_facilities <- function(){
   
 }
 
+
+# COMMAND: MAKE_OTHER_SUITABILITY_CHARACTERISTICS ----
+make_other_suitability_characteristics <- function(...){
+  
+  trigger <- list(...)
+  
+  other_suitability_characteristics_fp <- here("1-data/1-raw/other_suitability_characteristic.rda")
+  
+  other_gs <- gs_key("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU")
+  
+  other <- gs_read(other_gs, sheet = "SUIT_OTHER", col_types = "ccc") 
+  
+  write_rds(other, other_suitability_characteristics_fp)
+  
+  other_suitability_characteristics <- other
+  
+  return(other_suitability_characteristics)
+  
+  
+}
+
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
   
