@@ -3045,7 +3045,8 @@ make_filters_owner_category <- function(parcel_ready, owner){
   p_own_cat <- p %>% 
     left_join(owner, by = "PIN") %>% 
     transmute(PIN,
-              FILTER_OWNER_CATEGORY = OWNER_CATEGORY)
+              FILTER_OWNER_CATEGORY = if_else(OWNER_CATEGORY == "homeowners association", "non-profit", OWNER_CATEGORY) 
+              )
   
   filters_owner_category <- p_own_cat
   
