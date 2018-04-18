@@ -2435,7 +2435,6 @@ make_criteria_area_ratio <- function(){
 }
 
 
-
 # COMMAND: MAKE_CRITERIA_STEEP_VACANT ----
 
 make_criteria_steep_vacant <- function(){
@@ -3299,7 +3298,8 @@ make_filters_proximity_marijuana <- function(...){
    p_prox_mj <-  parcel_sf_ready %>% 
     st_buffer(dist = set_units(1000, "ft")) %>% 
     transmute(PIN,
-              FILTER_PROX_MJ = st_intersects_any(.,mj_businesses)) %>% 
+              FILTER_PROX_MJ_1000FT = st_intersects_any(.,mj_businesses),
+              FILTER_PROX_MJ = if_else(FILTER_PROX_MJ_1000FT, "Less than 1000ft", "Greater than 1000ft")) %>% 
     st_drop_geometry()
   
   filters_proximity_marijuana <- p_prox_mj
@@ -3314,7 +3314,8 @@ make_filters_proximity_el_facilities <- function(...){
   p_prox_el <-  parcel_sf_ready %>% 
     st_buffer(dist = set_units(500, "ft")) %>% 
     transmute(PIN,
-              FILTER_PROX_EL_FACILITIES = st_intersects_any(., el_facilities)) %>% 
+              FILTER_PROX_EL_FACILITIES_500FT = st_intersects_any(., el_facilities),
+              FILTER_PROX_EL_FACILITIES = if_else(FILTER_PROX_EL_FACILITIES_500FT, "Less than 500ft", "Greater than 500ft")) %>% 
     st_drop_geometry()
   
   filters_proximity_el_facilities <- p_prox_el
