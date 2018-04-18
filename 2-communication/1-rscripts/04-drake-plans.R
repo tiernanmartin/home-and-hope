@@ -3,6 +3,7 @@
 triggers_plan <- drake_plan(
   trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"),
   trigger_owner_name_category_key = drive_get_datetime_modified("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg"),
+  trigger_suit_other = drive_get_datetime_modified("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU"),
   trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
   strings_in_dots = "literals"
 )
