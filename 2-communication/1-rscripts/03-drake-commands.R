@@ -2415,18 +2415,21 @@ make_criteria_area_ratio <- function(){
 }
 
 
+# COMMAND: MAKE_CRITERIA_OTHER ----
+
+make_criteria_other <- function(){
+  
+  crit_other <- list("other" = FALSE)
+  
+  criteria_other <- crit_other
+  
+  return(criteria_other)
+}
+
 # COMMAND: MAKE_SUITABILITY_CRITERIA ----
 
 make_suitability_criteria <- function(...){
-  suitability_criteria <- c(
-    criteria_tax_exempt,
-    criteria_max_water_overlap_pct ,
-    criteria_within_uga,
-    criteria_developable_zoning ,
-    criteria_undevelopable_present_use,
-    criteria_lot_size,
-    criteria_area_ratio
-  )
+  suitability_criteria <- list(...) %>% reduce(c)
 
 }
 

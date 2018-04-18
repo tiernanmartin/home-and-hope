@@ -79,7 +79,8 @@ suitability_criteria_plan <- drake_plan(
   criteria_undevelopable_present_use = make_criteria_undevelopable_present_use(),
   criteria_lot_size = make_criteria_lot_size(lot_size_breaks),
   criteria_area_ratio = make_criteria_area_ratio(),
-  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use, criteria_lot_size, criteria_area_ratio)
+  criteria_other = make_criteria_other(),
+  suitability_criteria = make_suitability_criteria(criteria_tax_exempt, criteria_max_water_overlap_pct, criteria_within_uga, criteria_developable_zoning, criteria_undevelopable_present_use, criteria_lot_size, criteria_area_ratio, criteria_other)
 )
 
 suitability_plan <- drake_plan(
