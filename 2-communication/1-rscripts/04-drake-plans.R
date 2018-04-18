@@ -92,7 +92,8 @@ suitability_plan <- drake_plan(
   suitability_present_use = make_suitability_present_use(parcel_ready),
   suitability_lot_size = make_suitability_lot_size(parcel_sf_ready, lot_size_breaks),
   suitability_parcel_area_ratio = make_suitability_parcel_area_ratio(parcel_sf_ready),
-  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_lot_size, suitability_parcel_area_ratio)
+  suitability_other = make_suitability_other(parcel_sf_ready, other_suitability_characteristics),
+  suitability = make_suitability(parcel_ready, suitability_criteria, suitability_tax_exempt, suitability_water_overlap, suitability_within_uga, suitability_developable_zoning, suitability_present_use, suitability_lot_size, suitability_parcel_area_ratio, suitability_other)
 )
 
 

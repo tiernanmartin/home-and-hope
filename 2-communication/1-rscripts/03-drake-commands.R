@@ -1383,7 +1383,6 @@ make_el_facilities <- function(){
   
 }
 
-
 # COMMAND: MAKE_OTHER_SUITABILITY_CHARACTERISTICS ----
 make_other_suitability_characteristics <- function(...){
   
@@ -2644,6 +2643,26 @@ make_suitability_parcel_area_ratio <- function(parcel_sf_ready){
 }
 
 
+# COMMAND: MAKE_SUITABILITY_OTHER ----
+
+make_suitability_other <- function(...){
+  
+  p_ready_other <- parcel_sf_ready %>% 
+    st_drop_geometry() %>% 
+    left_join(other_suitability_characteristics, by = "PIN") %>% 
+    transmute(PIN,
+              SUIT_OTHER_TYPE = SUIT_OTHER,
+              SUIT_OTHER = if_else(is.na(SUIT_OTHER),FALSE, TRUE, missing = FALSE),
+              SUIT_OTHER_NOTE
+              ) %>% 
+    select(PIN,
+           SUIT_OTHER,
+           SUIT_OTHER_TYPE,
+           SUIT_OTHER_NOTE) 
+  
+  return(p_ready_other)
+  
+}
 # COMMAND: MAKE_SUITABILITY ----
 make_suitability <- function(parcel_ready, suitability_criteria, ...){
 
@@ -2658,7 +2677,8 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
       SUITABLE_LOT_SIZE_LGL = if_else(SUIT_LOT_SIZE %in% suitability_criteria[["lot_size"]],TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
-      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL
+      SUITABLE_OTHER_LGL = if_else(SUIT_OTHER == suitability_criteria[["other"]], TRUE, FALSE, FALSE),
+      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL & SUITABLE_OTHER_LGL
     ) %>% 
     st_sf
   
