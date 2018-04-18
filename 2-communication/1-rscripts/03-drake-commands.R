@@ -2435,6 +2435,16 @@ make_criteria_area_ratio <- function(){
 }
 
 
+
+# COMMAND: MAKE_CRITERIA_STEEP_VACANT ----
+
+make_criteria_steep_vacant <- function(){
+  
+  criteria_steep_vacant <- list("steep_vacant" = FALSE) 
+  
+  return(criteria_steep_vacant)
+}
+
 # COMMAND: MAKE_CRITERIA_OTHER ----
 
 make_criteria_other <- function(){
@@ -2643,6 +2653,21 @@ make_suitability_parcel_area_ratio <- function(parcel_sf_ready){
 }
 
 
+
+# COMMAND: MAKE_SUITABILITY_STEEP_VACANT ----
+
+make_suitability_steep_vacant <- function(...){
+  
+  p_ready_steep_vacant <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              SUIT_STEEP_VACANT = if_else(PRESENT_USE == "Vacant Single family" & TOPOGRAPHY, TRUE, FALSE, FALSE)
+    )
+  
+  return(p_ready_steep_vacant)
+  
+}
+
 # COMMAND: MAKE_SUITABILITY_OTHER ----
 
 make_suitability_other <- function(...){
@@ -2677,8 +2702,9 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_PRESENT_USE_LGL = if_else(! SUIT_PRESENT_USE %in% suitability_criteria[["undevelopable_presentuse"]],TRUE,FALSE,FALSE),
       SUITABLE_LOT_SIZE_LGL = if_else(SUIT_LOT_SIZE %in% suitability_criteria[["lot_size"]],TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
+      SUITABLE_STEEP_VACANT_LGL = if_else(SUIT_STEEP_VACANT == suitability_criteria[["steep_vacant"]], TRUE, FALSE, FALSE),
       SUITABLE_OTHER_LGL = if_else(SUIT_OTHER == suitability_criteria[["other"]], TRUE, FALSE, FALSE),
-      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL & SUITABLE_OTHER_LGL
+      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL & SUITABLE_STEEP_VACANT_LGL & SUITABLE_OTHER_LGL
     ) %>% 
     st_sf
   
