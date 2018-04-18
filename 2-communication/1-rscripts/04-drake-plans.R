@@ -49,7 +49,8 @@ miscellaneous_plan <- drake_plan(
   school_districts = make_school_districts(),
   leg_districts = make_leg_districts(),
   kc_council_districts = make_kc_council_districts(),
-  mj_businesses = make_mj_businesses()
+  mj_businesses = make_mj_businesses(),
+  el_facilities = make_el_facilities()
 )
 
 transit_plan <- drake_plan(
@@ -146,8 +147,8 @@ filter_plan <- drake_plan(
   filters_public_owner = make_filters_public_owner(owner), 
   filters_proximity_transit = make_filters_proximity_transit(parcel_sf_ready, transit_stops_osm),
   filters_proximity_play_space = make_filters_proximity_play_space(parcel_sf_ready, play_spaces_osm),
-  filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_sf_ready),
-  filters_proximity_preschool = make_filters_proximity_preschool(parcel_sf_ready), 
+  filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_sf_ready, mj_businesses),
+  filters_proximity_el_facilities = make_filters_proximity_el_facilities(parcel_sf_ready, el_facilities), 
   filters_potential_units = make_filters_potential_units(parcel_ready),
   filters_leg_district = make_filters_leg_district(parcel_sf_ready, leg_districts), 
   filters_kc_council_district = make_filters_kc_council_district(parcel_sf_ready, kc_council_districts),
@@ -165,7 +166,7 @@ filter_plan <- drake_plan(
                          filters_proximity_transit,
                          filters_proximity_play_space,
                          filters_proximity_marijuana,
-                         filters_proximity_preschool,   
+                         filters_proximity_el_facilities,   
                          filters_leg_district,
                          filters_kc_council_district,
                          filters_school_district, 

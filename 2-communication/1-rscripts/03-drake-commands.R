@@ -1349,6 +1349,40 @@ make_mj_businesses <- function(){
   
 }
 
+# COMMAND: MAKE_EL_FACILITIES ----
+
+make_el_facilities <- function(){
+  
+  el_site_fp <- here("1-data/2-external/FutureWise EC Facility Data Request.xlsx")
+  
+  el_site_dr_id <- as_id("1h-VzyMczgy_py70vP-iCeyjac_BoTuYK")
+  
+  el_site_load <- 
+    make_or_read2(fp = el_site_fp,
+                  dr_id = el_site_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE: partners at 3SI
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel, sheet = "Provider Data")
+                  },
+                  read_expr = function(fp){read_excel(fp, sheet = "Provider Data")})
+  
+   
+  
+  el_site_sf <- el_site_load %>%  
+    clean_names(case = "screaming_snake") %>%  
+    st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>% 
+    st_set_crs(4326) %>% 
+    st_transform(2926) 
+  
+ el_facilities <- el_site_sf
+
+ return(el_facilities)
+  
+}
+
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
   
@@ -3190,38 +3224,31 @@ make_filters_proximity_play_space <- function(...){
 }
 
 # COMMAND: MAKE_FILTERS_PROXIMITY_MARIJUANA ----
-make_filters_proximity_marijuana <- function(...){
+make_filters_proximity_marijuana <- function(...){ 
+   p_prox_mj <-  parcel_sf_ready %>% 
+    st_buffer(dist = set_units(1000, "ft")) %>% 
+    transmute(PIN,
+              FILTER_PROX_MJ = st_intersects_any(.,mj_businesses)) %>% 
+    st_drop_geometry()
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED
-  
-  
-  p_ready_prox_mj <- parcel_sf_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_PROXIMITY_MARIJUANA = spatial_dummy(n(), mean = 25, sd = 10)
-              )
-  
-  filters_proximity_marijuana <- p_ready_prox_mj
+  filters_proximity_marijuana <- p_prox_mj
   
   return(filters_proximity_marijuana)
    
 }
 
-# COMMAND: MAKE_FILTERS_PROXIMITY_PRESCHOOL ----
-make_filters_proximity_preschool <- function(parcel_ready){
+# COMMAND: MAKE_FILTERS_PROXIMITY_EL_FACILITIES ----
+make_filters_proximity_el_facilities <- function(...){ 
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED
+  p_prox_el <-  parcel_sf_ready %>% 
+    st_buffer(dist = set_units(500, "ft")) %>% 
+    transmute(PIN,
+              FILTER_PROX_EL_FACILITIES = st_intersects_any(., el_facilities)) %>% 
+    st_drop_geometry()
   
+  filters_proximity_el_facilities <- p_prox_el
   
-  p_ready_prox_ps <- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_PROXIMITY_PRESCHOOL = spatial_dummy(n(), mean = 10, sd = 10)
-              )
-  
-  filters_proximity_preschool <- p_ready_prox_ps
-  
-  return(filters_proximity_preschool)
+  return(filters_proximity_el_facilities)
    
 }
 
