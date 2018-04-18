@@ -658,7 +658,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
            PROPERTY_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
            ASSESSOR_PUB_LIST_LGL, 
-           DISTRICT_NAME = toupper(DISTRICT_NAME),
+           MUNICIPALITY = if_else(toupper(DISTRICT_NAME) == "KING COUNTY", "UNINCORPORATED KING COUNTY", toupper(DISTRICT_NAME)),
            CURRENT_ZONING,
            PRESENT_USE,
            HBU_AS_IF_VACANT,
@@ -2038,7 +2038,7 @@ make_owner <- function(parcel_ready, ...){
   # CREAT CLEAN NAMES ----
   
   city_names_clean <- parcel_ready %>% 
-    pluck("DISTRICT_NAME") %>%  
+    pluck("MUNICIPALITY") %>%  
     unique() %>% 
     toupper() %>% 
     discard(is.na) %>% 
@@ -3859,7 +3859,7 @@ make_dd_field_name_user <- function(){
                                 "PROP_NAME",                                          "Property Name",
                                 "PROP_TYPE",                                          "Property Type",
                     "ASSESSOR_PUB_LIST_LGL",                   "T/F: Assessor Public-Ownership List?",
-                            "DISTRICT_NAME",                                          "District Name",
+                            "MUNICIPALITY",                                          "Municipality",
                            "CURRENT_ZONING",                                         "Current Zoning",
                               "PRESENT_USE",                                            "Present Use",
                                 "SQ_FT_LOT",                                        "Lot Size (SqFt)",
@@ -3970,7 +3970,7 @@ make_dd_field_tags <- function(){
                                  "PROP_NAME",                 TRUE,             FALSE,              FALSE,             TRUE,            FALSE,
                                  "PROP_TYPE",                FALSE,             FALSE,              FALSE,             TRUE,            FALSE,
                      "ASSESSOR_PUB_LIST_LGL",                FALSE,             FALSE,              FALSE,             TRUE,            FALSE,
-                             "DISTRICT_NAME",                FALSE,              TRUE,              FALSE,             TRUE,            FALSE,
+                             "MUNICIPALITY",                FALSE,              TRUE,              FALSE,             TRUE,            FALSE,
                             "CURRENT_ZONING",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                                "PRESENT_USE",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
                                  "SQ_FT_LOT",                FALSE,             FALSE,               TRUE,             TRUE,            FALSE,
@@ -4107,7 +4107,7 @@ tibble::tribble(
                            "PROP_NAME",  "King County Department of Assessments",
                            "PROP_TYPE",  "King County Department of Assessments",
                "ASSESSOR_PUB_LIST_LGL",  "King County Department of Assessments",
-                       "DISTRICT_NAME",  "King County Department of Assessments",
+                       "MUNICIPALITY",  "King County Department of Assessments",
                       "CURRENT_ZONING",  "King County Department of Assessments",
                          "PRESENT_USE",  "King County Department of Assessments",
                            "SQ_FT_LOT",  "King County Department of Assessments",
