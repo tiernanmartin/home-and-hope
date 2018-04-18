@@ -3034,9 +3034,9 @@ make_filters_zcta <- function(parcel_sf_ready, zcta){
    
 }
 
-# COMMAND: MAKE_FILTERS_OWNER_CATEGORY ----
+# COMMAND: MAKE_FILTERS_OWNER_TYPE ----
 
-make_filters_owner_category <- function(parcel_ready, owner){
+make_filters_owner_type <- function(parcel_ready, owner){
   
   p <- parcel_ready %>% 
     st_drop_geometry() %>% 
@@ -3045,12 +3045,12 @@ make_filters_owner_category <- function(parcel_ready, owner){
   p_own_cat <- p %>% 
     left_join(owner, by = "PIN") %>% 
     transmute(PIN,
-              FILTER_OWNER_CATEGORY = if_else(OWNER_CATEGORY == "homeowners association", "non-profit", OWNER_CATEGORY) 
+              FILTER_OWNER_TYPE = if_else(OWNER_CATEGORY == "homeowners association", "non-profit", OWNER_CATEGORY) 
               )
   
-  filters_owner_category <- p_own_cat
+  filters_owner_type <- p_own_cat
   
-  return(filters_owner_category)
+  return(filters_owner_type)
    
 }
 

@@ -143,7 +143,7 @@ owner_plan <- drake_plan(
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_sf_ready, census_tracts),
   filters_zcta = make_filters_zcta(parcel_sf_ready, zcta),
-  filters_owner_category = make_filters_owner_category(parcel_ready, owner),
+  filters_owner_type = make_filters_owner_type(parcel_ready, owner),
   filters_public_owner = make_filters_public_owner(owner), 
   filters_proximity_transit = make_filters_proximity_transit(parcel_sf_ready, transit_stops_osm),
   filters_proximity_play_space = make_filters_proximity_play_space(parcel_sf_ready, play_spaces_osm),
@@ -161,7 +161,7 @@ filter_plan <- drake_plan(
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
-                         filters_owner_category,
+                         filters_owner_type,
                          filters_public_owner,  
                          filters_proximity_transit,
                          filters_proximity_play_space,
