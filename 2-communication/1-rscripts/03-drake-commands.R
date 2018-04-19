@@ -1403,6 +1403,64 @@ make_other_suitability_characteristics <- function(...){
   
 }
 
+# COMMAND: MAKE_AFFORDABLE_HOUSING_SUBSIDIES ----
+
+make_affordable_housing_subsidies <- function(){
+  
+  subsidies_fp <- here("1-data/2-external/NHPD Subsidies Only Export.xlsx")
+  
+  subsidies_dr_id <- as_id("1s6XINugZf7aixbriH_rhzkuxC81PKp6z")
+  
+  subsidies_load <- 
+    make_or_read2(fp = subsidies_fp,
+                  dr_id = subsidies_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE: http://nhpd.preservationdatabase.org/Data
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel)
+                  },
+                  read_expr = function(fp){read_excel(fp)})
+  
+  subsidies_df <- subsidies_load %>% 
+    clean_names(case = "screaming_snake") %>% 
+    filter(SUBSIDY_STATUS %in% c("Active","Inconclusive")) %>%  
+    select(SUBSIDY_NAME:MANAGER_TYPE, -LATITUDE, -LONGITUDE) %>% 
+    mutate(ADDRESS_FULL = str_c( STREET_ADDRESS, CITY, STATE, ZIP_CODE, sep = ", "))
+    
+  geocode_fun <- function(address){
+    geocode_url(address, 
+                auth="standard_api", 
+                privkey="AIzaSyCYhgjxQ0PRqo9VTHUrK1KnzaI65AGwZgs",
+                clean=TRUE, 
+                add_date='today', 
+                verbose=TRUE) 
+  }
+  
+  subsidies_geocode_ready <- subsidies_df %>% 
+    slice(1) %>% 
+    bind_rows(subsidies_df)
+  
+  subsidies_geocoded <- subsidies_geocode_ready %>% 
+    mutate(geocode_output = map(ADDRESS_FULL, geocode_fun))  
+  
+  subsidies_sf <- subsidies_geocoded %>% 
+    unnest() %>% 
+    clean_names(case = "screaming_snake") %>% 
+    filter(!is.na(LAT)) %>% 
+    st_as_sf(coords = c("LNG", "LAT")) %>%   
+    st_set_crs(4326) %>% 
+    st_transform(2926) %>% 
+    distinct
+  
+  
+  affordable_housing_subsidies <- subsidies_sf 
+  
+  return(affordable_housing_subsidies)
+  
+}
+
 # COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
 make_owner_antijoin_names <- function(){
   
@@ -4027,6 +4085,23 @@ write_inventory_xlsx <- function(x, path){
     select_if(not_sfc)  
   
   write_xlsx(inventory_table, path)
+
+}
+
+
+# COMMAND: WRITE_INVENTORY_XML ----
+
+write_inventory_xml <- function(inventory_suitable, dd, path){
+  
+  table_fields <- dd %>% 
+    filter(FIELD_TAG_TABLE) %>% 
+    pull(FIELD_NAME_DEV)
+  
+  inventory_table <- inventory_suitable %>% 
+    st_drop_geometry() %>% 
+    select_at(vars(table_fields))  
+  
+  rio::export(inventory_table, file = path)
 
 }
 
