@@ -1,4 +1,5 @@
 # SETUP ----
+library(rio)
 library(janitor)
 library(placement)
 library(osmdata)
