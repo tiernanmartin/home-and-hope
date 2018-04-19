@@ -52,7 +52,8 @@ miscellaneous_plan <- drake_plan(
   kc_council_districts = make_kc_council_districts(),
   mj_businesses = make_mj_businesses(),
   el_facilities = make_el_facilities(),
-  other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other)
+  other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other),
+  affordable_housing_subsidies = make_affordable_housing_subsidies()
 )
 
 transit_plan <- drake_plan(
@@ -160,7 +161,7 @@ filter_plan <- drake_plan(
   filters_kc_council_district = make_filters_kc_council_district(parcel_sf_ready, kc_council_districts),
   filters_school_district = make_filters_school_district(parcel_sf_ready, school_districts),
   filters_historic = make_filters_historic(parcel_ready),
-  filters_afford_expir_date = make_filters_afford_expir_date(parcel_sf_ready),
+  filters_afford_expir_date = make_filters_afford_expir_date(parcel_sf_ready, affordable_housing_subsidies),
   filters_eligibility_nmtc = make_filters_eligibility_nmtc(filters_census_tract),
   filters_eligibility_dda = make_filters_eligibility_dda(filters_zcta),
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
@@ -236,13 +237,14 @@ documentation_plan <- bind_rows(
 # MAKE PLANS: EXPORT ----
 
 export_plan <- drake_plan( 
-  write_csv(dd, file_out(here("1-data/4-ready/data_dictionary.csv"))),
+  write_csv(dd, file_out(here("1-data/4-ready/data_dictionary.csv"))), 
   write_inventory_csv(inventory, file_out(here("1-data/4-ready/inventory_table.csv"))), 
   write_inventory_rda(inventory, file_out(here("1-data/4-ready/inventory_table.rda"))), 
   write_inventory_xlsx(inventory, file_out(here("1-data/4-ready/inventory_table.xlsx"))), 
   write_inventory_csv(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.csv"))), 
   write_inventory_rda(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.rda"))), 
   write_inventory_xlsx(inventory_suitable, file_out(here("1-data/4-ready/inventory_suitable_table.xlsx"))), 
+  write_inventory_xml(inventory_suitable, dd, file_out(here("1-data/4-ready/inventory_suitable_table.xml"))),
   write_inventory_shp(inventory_suitable_poly, file_out(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
@@ -254,6 +256,7 @@ export_plan <- drake_plan(
                                                                             file_in(here("1-data/4-ready/inventory_suitable_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_table.xlsx")),
+                                                                            file_in(here("1-data/4-ready/inventory_suitable_table.xml")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_poly.shp")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_point.shp")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_poly.dbf")),

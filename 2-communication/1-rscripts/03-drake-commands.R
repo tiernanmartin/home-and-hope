@@ -3573,27 +3573,26 @@ make_filters_historic <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_AFFORD_EXPIR_DATE ----
-make_filters_afford_expir_date <- function(...){
+make_filters_afford_expir_date <- function(...){ 
   
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
- 
-  sample_dates <- c("20181231","20191231","20201231") %>% 
-    map(ymd) %>% 
-    map_dbl(pluck,1) %>% 
-    as_date
-  
-   p_ready_afford_expir_date <- parcel_sf_ready %>% 
+   p_ready_afford_expir_date <- parcel_sf_ready %>%  
+     st_join(affordable_housing_subsidies) %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
-              FILTER_AFFORD_EXPIR_DATE = sample(sample_dates,n(), replace = TRUE)
-              )
-  
+              FILTER_AFFORD_TYPE = SUBSIDY_NAME,
+              FILTER_AFFORD_UNITS = ASSISTED_UNITS,
+              FILTER_AFFORD_EXPIR_DATE = as.Date(END_DATE)
+              ) %>% 
+     group_by(PIN) %>% 
+     arrange(FILTER_AFFORD_EXPIR_DATE) %>% 
+     slice(1) %>% 
+     ungroup 
+   
   filters_afford_expir_date <- p_ready_afford_expir_date
   
   return(filters_afford_expir_date)
    
 }
-
 # COMMAND: MAKE_FILTERS_ELIGIBILITY_NMTC ----
 make_filters_eligibility_nmtc <- function(filters_census_tract){
   
