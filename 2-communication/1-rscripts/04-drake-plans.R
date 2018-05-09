@@ -165,6 +165,7 @@ filter_plan <- drake_plan(
   filters_eligibility_nmtc = make_filters_eligibility_nmtc(filters_census_tract),
   filters_eligibility_dda = make_filters_eligibility_dda(filters_zcta),
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
+  filters_eligibility_oc = make_filters_eligibility_oc(filters_census_tract),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
@@ -181,7 +182,8 @@ filter_plan <- drake_plan(
                          filters_afford_expir_date,
                          filters_eligibility_nmtc,
                          filters_eligibility_dda,
-                         filters_eligibility_qct)
+                         filters_eligibility_qct,
+                         filters_eligibility_oz)
 )
 
 helper_plan <- drake_plan(

@@ -3727,6 +3727,42 @@ make_filters_eligibility_qct <- function(filters_census_tract){
   
 }
 
+# COMMAND: MAKE_FILTERS_ELIGIBILITY_OZ ----
+make_filters_eligibility_oz <- function(filters_census_tract){
+  
+  elig_oz_fp <- here("1-data/3-interim/KC-Opportunity-Zones-2018.xlsx")
+  
+  elig_oz_dr_id <- as_id("1-xCiQoCCO1esgmUUdlVt6Wlm-HLN4ONw0lUwrBYoXZA")
+  
+  elig_oz_load <- 
+    make_or_read2(fp = elig_oz_fp,
+                  dr_id = elig_oz_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE:  http://www.commerce.wa.gov/growing-the-economy/opportunity-zones/
+                  },
+                  make_expr = function(fp, dr_id){
+                     drive_read(dr_id = elig_oz_dr_id, .tempfile = FALSE, path = fp, read_fun = read_excel)
+                  },
+                  read_expr = function(fp){
+                    read_excel(fp)
+                  })
+  
+  elig_oz <- elig_oz_load %>% 
+    transmute(CENSUS_TRACT = as.character(GEOID),
+              FILTER_ELIGIBILITY_OZ = TRUE)
+    
+  
+  p_ready_eligibility_oz <- filters_census_tract %>%   
+    left_join(elig_oz, by = "CENSUS_TRACT") %>% 
+    transmute(PIN,
+              FILTER_ELIGIBILITY_OZ = if_else(FILTER_ELIGIBILITY_OZ, TRUE, FALSE, missing = FALSE))
+  
+  filters_eligibility_oz <- p_ready_eligibility_oz
+  
+  return(filters_eligibility_oz)
+  
+}
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   
