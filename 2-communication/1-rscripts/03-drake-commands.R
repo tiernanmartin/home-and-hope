@@ -1442,6 +1442,35 @@ make_other_suitability_characteristics <- function(...){
   
 }
 
+# COMMAND: MAKE_SEATTLE_DEV_CAP ----
+make_seattle_dev_cap <- function(){
+  
+  sea_dev_cap_fp <- here("1-data/2-external/Capacity_For_All_Parcels_2015.csv")
+  
+  sea_dev_cap_dr_id <- as_id("1x8ZXulkzESeZBq5Ms2JrN0mnY9qH5uUv")
+  
+  sea_dev_cap_load <- 
+    make_or_read2(fp = sea_dev_cap_fp,
+                  dr_id = sea_dev_cap_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # Source: https://data.seattle.gov/Land-Base/Capacity-For-All-Parcels-2015/n2mk-9di2
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    
+                    drive_read(dr_id = dr_id, .tempfile = FALSE, path = fp,read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  seattle_dev_cap <- sea_dev_cap_load %>% 
+    clean_names(case = "screaming_snake")
+  
+  return(seattle_dev_cap)
+  
+}
+
 # COMMAND: MAKE_AFFORDABLE_HOUSING_SUBSIDIES ----
 
 make_affordable_housing_subsidies <- function(){

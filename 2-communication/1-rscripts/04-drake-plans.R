@@ -57,7 +57,8 @@ external_data_plan <- drake_plan(
   other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other),
   affordable_housing_subsidies = make_affordable_housing_subsidies(),
   transit_stops_osm = make_transit_stops_osm(),
-  play_spaces_osm = make_play_spaces_osm()
+  play_spaces_osm = make_play_spaces_osm(),
+  seattle_dev_cap = make_seattle_dev_cap()
 )
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----
