@@ -1117,6 +1117,45 @@ make_kc_council_districts <- function(){
 }
 
 
+# COMMAND: MAKE_SEATTLE_COUNCIL_DISTRICTS ----
+make_seattle_council_districts <- function(){
+  
+  seacc_dist_fp <- here("1-data/2-external/sccdst")
+  
+  seacc_dist_dr_id <- as_id("1XYq-tbAS2qJ57COhuQXZJfZOOlSRN-Fs")
+  
+  seacc_dist_load <- 
+    make_or_read2(fp = seacc_dist_fp,
+                  dr_id = seacc_dist_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/sccdst_SHP.zip
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "sccdst"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  
+  seattle_council_districts <- rename_if(seacc_dist_load, not_sfc, to_screaming_snake_case) %>% 
+    transmute(SEATTLE_COUNCIL_DISTRICT = str_c("District", str_extract(SCCDST,"\\d"),sep = " "))
+  
+  return(seattle_council_districts)
+  
+}
+
+
 # COMMAND: MAKE_BUS_STOPS_METRO ----
 make_bus_stops_metro <- function(){
   
@@ -3525,6 +3564,36 @@ make_filters_kc_council_district <- function(...){
   kc_council_district <- p_kcc_ready
   
   return(kc_council_district)
+  
+}
+
+
+
+
+# COMMAND: MAKE_FILTERS_SEA_COUNCIL_DISTRICT ----
+
+make_filters_seattle_council_district <- function(...){
+  
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    select(PIN)
+  
+  seacc <- seattle_council_districts %>%   
+    st_transform(2926) 
+  
+  seacc_subd <- seacc %>% 
+    st_subdivide(max_vertices = 100) %>% 
+    st_collection_extract() 
+  
+  p_seacc <- p_pt
+  
+  p_seacc$FILTER_SEATTLE_COUNCIL_DISTRICT <- st_over(p_seacc, seacc_subd, "SEATTLE_COUNCIL_DISTRICT")  
+  
+  filter_seattle_council_district <- p_seacc %>% 
+    st_drop_geometry()
+  
+  return(filter_seattle_council_district)
   
 }
 
