@@ -3016,13 +3016,14 @@ make_building <- function(...){
     spread(COL_NAME, CAT_LGL) %>% 
     mutate_at(vars(TYPE_APARTMENT_LGL:TYPE_RESIDENTIAL_LGL), ~ if_else(is.na(.),FALSE,.)) %>% 
     group_by(PIN) %>%  
-    summarise(BLDG_NBR = max(n()),  
+    summarise(BLDG_NBR = max(n(),na.rm = TRUE),  
               BLDG_NET_SQ_FT = sum(BLDG_NET_SQ_FT, na.rm = TRUE),
               BLDG_LIVING_UNITS = sum(NBR_LIVING_UNITS, na.rm = TRUE),
               BLDG_TYPE_APARTMENT_LGL = any(TYPE_APARTMENT_LGL),
               BLDG_TYPE_COMMERCIAL_LGL = any(TYPE_COMMERCIAL_LGL),
               BLDG_TYPE_CONDO_LGL = any(TYPE_CONDO_LGL),
               BLDG_TYPE_RESIDENTIAL_LGL = any(TYPE_RESIDENTIAL_LGL))
+    
   
   
   building <- bldg_all_sum
@@ -3074,7 +3075,10 @@ make_utilization_present <- function(parcel_ready, building){
     st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(building, by = "PIN") %>% 
-    mutate(UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0))
+    mutate(BLDG_NBR = if_else(is.na(BLDG_NBR), as.integer(0), BLDG_NBR),
+           UTIL_PRESENT = if_else(is.na(BLDG_NET_SQ_FT),0,as.double(BLDG_NET_SQ_FT),missing = 0),
+           UTIL_BUILDING = if_else(BLDG_NBR > 0, TRUE, FALSE, missing = TRUE)
+           )
   
   utilization_present <- util_present
   
