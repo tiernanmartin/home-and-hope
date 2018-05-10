@@ -38,9 +38,10 @@ parcel_plan <- drake_plan(
   parcel_ready = make_parcel_ready(parcel_addr_ready, parcel_env_ready, parcel_acct_ready, parcel_sf_ready, parcel_df_ready) 
 ) %>% bind_rows(lookup_plan) 
 
-# MAKE PLANS: SUITABILITY AND UTILIZATION ----
 
-miscellaneous_plan <- drake_plan(
+# MAKE PLANS: EXTERNAL_DATA ----
+
+external_data_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
   zoning = make_zoning(),
@@ -54,16 +55,12 @@ miscellaneous_plan <- drake_plan(
   mj_businesses = make_mj_businesses(),
   el_facilities = make_el_facilities(),
   other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other),
-  affordable_housing_subsidies = make_affordable_housing_subsidies()
-)
-
-transit_plan <- drake_plan(
-  transit_stops_osm = make_transit_stops_osm()
-)
-
-play_spaces_plan <- drake_plan(
+  affordable_housing_subsidies = make_affordable_housing_subsidies(),
+  transit_stops_osm = make_transit_stops_osm(),
   play_spaces_osm = make_play_spaces_osm()
 )
+
+# MAKE PLANS: SUITABILITY AND UTILIZATION ----
 
 development_assumptions_plan <- drake_plan(
   city_block_sqft = make_city_block_sqft(),
@@ -124,9 +121,7 @@ utilization_plan <- drake_plan(
 
 suit_util_plan <- bind_rows(
   parcel_plan, 
-  miscellaneous_plan,
-  transit_plan,
-  play_spaces_plan,
+  external_data_plan,
   development_assumptions_plan,
   suitability_criteria_plan,
   suitability_plan,
