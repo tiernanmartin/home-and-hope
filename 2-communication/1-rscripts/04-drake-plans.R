@@ -110,15 +110,19 @@ building_plan <- drake_plan(
 utilization_criteria_plan <-  drake_plan(
   util_criteria_lot_size = make_util_criteria_lot_size(city_block_sqft, lot_types),
   util_criteria_utilization_ratio =  make_util_criteria_utilization_ratio(),
-  utilization_criteria = make_utilization_criteria(util_criteria_lot_size, util_criteria_utilization_ratio)
+  util_criteria_utilization_ratio_bins = make_util_criteria_utilization_ratio_bins(),
+  utilization_criteria = make_utilization_criteria(util_criteria_lot_size, util_criteria_utilization_ratio, util_criteria_utilization_ratio_bins)
 )
-
+ 
 utilization_plan <- drake_plan(
+  seattle_util_ratio = make_seattle_util_ratio(parcel_sf_ready, seattle_dev_cap),
   utilization_present = make_utilization_present(parcel_ready, building),
   utilization_lot_size = make_utilization_lot_size(parcel_ready, utilization_criteria),
   utilization_potential = make_utilization_potential(suitability, development_assumptions_lot, utilization_lot_size),
-  utilization = make_utilization(utilization_criteria, suitability, utilization_present, utilization_potential)
+  utilization = make_utilization(utilization_criteria, suitability, utilization_present, utilization_potential, seattle_util_ratio)
 )
+
+
 
 suit_util_plan <- bind_rows(
   parcel_plan, 
@@ -128,7 +132,7 @@ suit_util_plan <- bind_rows(
   suitability_plan,
   building_plan,
   utilization_criteria_plan,
-  utilization_plan
+  utilization_plan 
 )
 
 # MAKE PLANS: FILTERS AND HELPERS ----
@@ -203,7 +207,7 @@ filter_helper_plan <- bind_rows(
 # MAKE PLANS: INVENTORY_PLAN ----
 
 inventory_plan <- drake_plan(
-  inventory = make_inventory(owner, filters, helpers, suitability,  utilization),
+  inventory = make_inventory(owner, filters, helpers, suitability, utilization),
   inventory_suitable = make_inventory_suitable(inventory), 
   inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
@@ -249,7 +253,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180418.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180510.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),

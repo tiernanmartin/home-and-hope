@@ -3072,6 +3072,7 @@ make_util_criteria_lot_size <- function(city_block_sqft, lot_types){
    return(criteria_lot_size)
 }
 
+
 # COMMAND: MAKE_CRITERIA_UTILIZATION_RATIO ----
 
 make_util_criteria_utilization_ratio <- function(){
@@ -3088,12 +3089,47 @@ make_util_criteria_utilization_ratio <- function(){
   
 }
 
+# COMMAND: MAKE_CRITERIA_UTILIZATION_RATIO_BINS ----
+
+make_util_criteria_utilization_ratio_bins <- function(){
+  
+ crit_util_ratio_bins <-  list("util_ratio_breaks" = c(-Inf,.25,.5,.75,1,Inf),
+                      "util_ratio_labels" =  c("Less than 1/4","1/4 to 1/2", "1/2 to 3/4", "3/4 to 1", "Greater than 1")
+                      ) 
+  
+ criteria_utilization_ratio_bins <- crit_util_ratio_bins
+ 
+ return(criteria_utilization_ratio_bins)
+  
+  
+}
+
 # COMMAND: MAKE_UTILIZATION_CRITERIA ----
 
 make_utilization_criteria <- function(...){
   utilization_criteria <- c(...)
   
   return(utilization_criteria)
+}
+
+# COMMAND: MAKE_UTILILIZATION_SEATTLE_UTIL_RATIO ----
+
+make_seattle_util_ratio <- function(...){
+  
+  p <- parcel_sf_ready %>% 
+    select(PIN) %>% 
+    st_drop_geometry()
+  
+  sea_util_ratio <- p %>% 
+    inner_join(seattle_dev_cap, by = "PIN") %>%  
+    transmute(PIN,
+              SEATTLE_UTIL_RATIO_DBL = DR) %>% 
+    right_join(p, by = "PIN") 
+  
+  seattle_util_ratio <- sea_util_ratio
+  
+  return(seattle_util_ratio)
+  
 }
 
 # COMMAND: MAKE_UTILILIZATION_PRESENT ----
@@ -3171,10 +3207,14 @@ make_utilization <- function(...){
     st_drop_geometry() %>% 
     select(PIN) %>% 
     left_join(utilization_present, by = "PIN") %>% 
-    left_join(utilization_potential, by = "PIN") 
+    left_join(utilization_potential, by = "PIN") %>% 
+    left_join(seattle_util_ratio, by = "PIN")
   
   util_ready <-  util_join %>%  
-    mutate(UTILIZATION_RATIO = round(safe_divide(UTIL_PRESENT, UTIL_POTENTIAL_UTILIZATION_SQFT),2),
+    mutate(SEATTLE_UTIL_RATIO_DBL_TRIM = if_else(SEATTLE_UTIL_RATIO_DBL > 5, 5, SEATTLE_UTIL_RATIO_DBL),
+           SEATTLE_UTIL_RATIO_CAT = cut(SEATTLE_UTIL_RATIO_DBL, breaks = utilization_criteria[["util_ratio_breaks"]], labels = utilization_criteria[["util_ratio_labels"]]) %>% as.character(),
+           UTILIZATION_RATIO = round(safe_divide(UTIL_PRESENT, UTIL_POTENTIAL_UTILIZATION_SQFT),2),
+           UTILIZATION_RATIO_CAT = cut(UTILIZATION_RATIO, right = FALSE, breaks = utilization_criteria[["util_ratio_breaks"]], labels = utilization_criteria[["util_ratio_labels"]]) %>% as.character(),
            UTIL_UNDER_UTILIZED_GENTLE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_gentle"],TRUE,FALSE,NA),
            UTIL_UNDER_UTILIZED_MODERATE_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_moderate"],TRUE,FALSE,NA),
            UTIL_UNDER_UTILIZED_AGGR_LGL = if_else(UTILIZATION_RATIO < utilization_criteria["ratio_aggressive"],TRUE,FALSE,NA),
@@ -3187,6 +3227,8 @@ make_utilization <- function(...){
   return(utilization)
   
 }
+
+
 
 # COMMAND: MAKE_FILTERS_TRACT ----
 make_filters_census_tract <- function(parcel_sf_ready, census_tracts){
