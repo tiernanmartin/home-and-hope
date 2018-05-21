@@ -273,8 +273,18 @@ make_name_recode_key <- function(...){
   
   recode_key_gs <- gs_key("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s")
   
-  recode_key <- gs_read(recode_key_gs) %>% 
-    replace_na(list(NEW = ""))
+  recode_key_list <- gs_read_all(recode_key_gs, delay_length = 6) 
+  
+  recode_key_ngram_long <- recode_key_list %>% 
+    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -NAME_NEW))
+  
+  recode_key_ngram_wide <- recode_key_ngram_long %>% 
+    group_by(NGRAM_TYPE) %>% 
+    mutate(row = row_number()) %>% 
+    spread(NGRAM_TYPE, WORD) %>% 
+    replace_na(list(NAME_NEW = "")) %>% 
+    arrange(row) %>% 
+    select(-row)
   
   write_rds(recode_key, recode_key_fp)
   
@@ -1583,13 +1593,14 @@ make_owner_name_category_key<- function(...){
   
   cat_ngram_list$CATEGORIES <- NULL
   
+  cat_ngram_list$PRIORITY_LEVELS <- NULL
   
   cat_ngram_long <- cat_ngram_list %>% 
-    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY)) 
+    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY, -PRIORITY)) 
   
   cat_ngram_wide <- cat_ngram_long %>%  
     group_by(NGRAM_TYPE) %>% 
-    mutate(row = row_number()) %>% 
+    mutate(row = row_number()) %>%
     spread(NGRAM_TYPE,WORD) %>% 
     arrange(row) %>% 
     select(-row) 
