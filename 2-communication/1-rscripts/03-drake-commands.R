@@ -275,8 +275,10 @@ make_name_recode_key <- function(...){
   
   recode_key_list <- gs_read_all(recode_key_gs, delay_length = 6) 
   
+  recode_key_list["ABBREVIATIONS"] <- NULL
+  
   recode_key_ngram_long <- recode_key_list %>% 
-    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -NAME_NEW))
+    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -NAME_NEW, -NAME_ABBR))
   
   recode_key_ngram_wide <- recode_key_ngram_long %>% 
     group_by(NGRAM_TYPE) %>% 
@@ -286,10 +288,86 @@ make_name_recode_key <- function(...){
     arrange(row) %>% 
     select(-row)
   
-  write_rds(recode_key, recode_key_fp)
+  name_recode_key <- recode_key_ngram_wide
   
-  return(recode_key)
+  write_rds(name_recode_key, recode_key_fp)
   
+  return(name_recode_key)
+  
+  
+}
+
+# COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
+make_owner_name_category_key<- function(...){
+  
+  trigger <- list(...)
+  
+  owner_name_category_key_fp <- here("1-data/1-raw/owner_name_category_key.rda")
+  
+  categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
+  
+  cat_ngram_list <- gs_read_all(categories_gs,delay_length = 6) 
+  
+  cat_ngram_list$CATEGORIES <- NULL
+  
+  cat_ngram_list$PRIORITY_LEVELS <- NULL
+  
+  cat_ngram_long <- cat_ngram_list %>% 
+    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY, -PRIORITY)) 
+  
+  cat_ngram_wide <- cat_ngram_long %>%  
+    group_by(NGRAM_TYPE) %>% 
+    mutate(row = row_number()) %>%
+    spread(NGRAM_TYPE,WORD) %>% 
+    arrange(row) %>% 
+    select(-row) 
+  
+  owner_name_category_key <- cat_ngram_wide
+  
+  write_rds(owner_name_category_key, owner_name_category_key_fp)
+  
+  return(owner_name_category_key)
+  
+  
+}
+# COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
+make_owner_antijoin_names <- function(){
+  
+  anti_fp <- here("1-data/2-external/stop-words.csv")
+  
+  anti_dr_id <- as_id("17n2h9np6OjHyD9cZ0tHSRbBubpbN4ckX")
+  
+  anti_load <- 
+    make_or_read2(fp = anti_fp, dr_id = anti_dr_id, skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    data(stop_words)
+                    
+                    write_csv(stop_words, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                    
+                    drive_upload(fp, drive_folder)
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,
+                               .tempfile = FALSE,
+                               path = fp,
+                               read_fun = read_csv)
+                  },
+                  read_expr = function(fp){read_csv(fp)})
+  
+  numbers_0_500 <- tibble(word = as.character(0:500))
+  
+  ok_words <- c("STATE","STATES", "U", "S", "A", "US")
+  
+  anti <- transmute(anti_load, word = toupper(word)) %>% 
+    bind_rows(numbers_0_500) %>% 
+    filter(word %!in% ok_words)
+  
+  owner_antijoin_names <- anti
+
+  return(owner_antijoin_names)
+    
   
 }
 
@@ -613,7 +691,7 @@ make_parcel_addr_ready <- function(parcel_addr){
 
 # COMMAND: MAKE_PARCEL_DF_READY ----
 
-make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_parcel, parcel_df){
+make_parcel_df_ready <- function(...){
   
   # MAKE P_READY 
   
@@ -640,27 +718,14 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
     mutate_if(is_logical_yn, recode_logical_yn) %>% 
     mutate_if(is_logical_01, recode_logical_01) %>%
     mutate_if(is_logical_yesno, recode_logical_yesno) %>% 
-    mutate(PIN = make_pin(MAJOR, MINOR))
-  
-  parcel_df_recoded_clean_names <- parcel_df_recoded %>% 
-    transmute(PIN,
-              PROPERTY_NAME = if_else(is.na(PROP_NAME),NA_character_, str_clean_upper(PROP_NAME))) %>%  
-    unnest_tokens(ORIG, PROPERTY_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    mutate(ORIG = if_else(str_detect(ORIG,"NA"),"", ORIG)) %>% 
-    left_join(name_recode_key, by = "ORIG") %>% 
-    mutate(PROPERTY_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-    group_by(PIN) %>% 
-    summarise(PROPERTY_NAME = str_squish(str_c(PROPERTY_NAME, collapse = " ")))  %>% 
-    mutate(PROPERTY_NAME = if_else(PROPERTY_NAME %in% "",NA_character_,PROPERTY_NAME)) %>% 
-    right_join(parcel_df_recoded, by = "PIN")
-  
+    mutate(PIN = make_pin(MAJOR, MINOR),
+           PROPERTY_NAME = str_clean_upper(PROP_NAME)) 
 
   pub_parcel_ready <- pub_parcel %>%
     transmute(PIN,
               ASSESSOR_PUB_LIST_LGL = TRUE)
 
-  p_df_ready <- parcel_df_recoded_clean_names %>%
-   mutate(PIN = make_pin(MAJOR, MINOR)) %>%
+  p_df_ready <- parcel_df_recoded %>% 
     left_join(prop_type, by = "PROP_TYPE") %>%
     left_join(pub_parcel_ready, by = "PIN") %>%
     mutate(ASSESSOR_PUB_LIST_LGL = if_else(is.na(ASSESSOR_PUB_LIST_LGL),FALSE,ASSESSOR_PUB_LIST_LGL)) %>%  
@@ -668,7 +733,7 @@ make_parcel_df_ready <- function(parcel_lookup, prop_type, name_recode_key, pub_
            PROPERTY_NAME,
            PROP_TYPE = PROP_TYPE_DESC,
            ASSESSOR_PUB_LIST_LGL, 
-           MUNICIPALITY = if_else(toupper(DISTRICT_NAME) == "KING COUNTY", "UNINCORPORATED KING COUNTY", toupper(DISTRICT_NAME)),
+           DISTRICT_NAME = str_clean_upper(DISTRICT_NAME),
            CURRENT_ZONING,
            PRESENT_USE,
            HBU_AS_IF_VACANT,
@@ -720,8 +785,8 @@ make_parcel_acct_ready <- function(acct, tax_status, tax_reason){
            TAX_REASON = TAXVALREASON) %>%
     left_join(tax_status, by = "TAX_STATUS") %>%
     left_join(tax_reason, by = "TAX_REASON") %>%
-    select(PIN,
-           TAXPAYER_NAME = TAXPAYERNAME,
+    transmute(PIN,
+           TAXPAYER_NAME = str_clean_upper(TAXPAYERNAME),
            BILL_YR = BILLYR,
            TAX_STATUS = TAX_STATUS_DESC,
            TAX_REASON = TAX_REASON_DESC,
@@ -1539,81 +1604,188 @@ make_affordable_housing_subsidies <- function(){
   
 }
 
-# COMMAND: MAKE_OWNER_ANTIJOIN_NAMES ----
-make_owner_antijoin_names <- function(){
-  
-  anti_fp <- here("1-data/2-external/stop-words.csv")
-  
-  anti_dr_id <- as_id("17n2h9np6OjHyD9cZ0tHSRbBubpbN4ckX")
-  
-  anti_load <- 
-    make_or_read2(fp = anti_fp, dr_id = anti_dr_id, skip_get_expr = FALSE,
-                  get_expr = function(fp){
-                    data(stop_words)
-                    
-                    write_csv(stop_words, fp)
-                    
-                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
-                    
-                    drive_upload(fp, drive_folder)
-                  },
-                  make_expr = function(fp, dr_id){
-                    drive_read(dr_id = dr_id,
-                               .tempfile = FALSE,
-                               path = fp,
-                               read_fun = read_csv)
-                  },
-                  read_expr = function(fp){read_csv(fp)})
-  
-  numbers_0_500 <- tibble(word = as.character(0:500))
-  
-  ok_words <- c("STATE","STATES", "U", "S", "A", "US")
-  
-  anti <- transmute(anti_load, word = toupper(word)) %>% 
-    bind_rows(numbers_0_500) %>% 
-    filter(word %!in% ok_words)
-  
-  owner_antijoin_names <- anti
 
-  return(owner_antijoin_names)
-    
+
+
+# COMMAND: MAKE_MUNICIPALITY ----
+
+make_municipality <- function(...){
+  
+  districts <- parcel_ready %>% 
+    pluck("DISTRICT_NAME") %>% 
+    discard(is.na) %>% 
+    unique
+  
+  muni <- parcel_ready %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN,
+              DISTRICT_NAME = if_else(DISTRICT_NAME %in% "KING COUNTY", "UNINCORPORATED KC", DISTRICT_NAME),
+              CITY_NAME,
+              CITY_NAME_POSTAL,
+              MUNICIPALITY = case_when(
+                is.na(DISTRICT_NAME) & is.na(CITY_NAME) ~ NA_character_,
+                DISTRICT_NAME %in% "UNINCORPORATED KC" & CITY_NAME %!in% districts ~ str_c(DISTRICT_NAME," (",CITY_NAME,")"),
+                TRUE ~ DISTRICT_NAME
+              )) %>% 
+    select(PIN,
+           MUNICIPALITY)
+  
+municipality <- muni
+
+return(muni)
+  
+  }
+
+
+
+# COMMAND: MAKE_OWNER_NAME_FULL ----
+make_owner_name_full <- function(...){
+  
+  # loadd(suitability, name_recode_key, owner_antijoin_names)
+   
+  
+  # Drop unnecessary columns (too big if you don't)
+  names <- suitability %>% 
+    st_drop_geometry() %>% 
+    transmute(PIN, 
+           OWNER_NAME = str_trim(str_squish(str_replace_all(TAXPAYER_NAME,"[[:punct:]]"," "))),
+           SUIT_OWNER_TAX_E)  
+  
+  names_tax_exempt <- names %>% 
+    filter(SUIT_OWNER_TAX_E) %>% 
+    select(-SUIT_OWNER_TAX_E)
+  
+  names_clean_ngram3_only <- names_tax_exempt %>% 
+    mutate(TOKEN = OWNER_NAME) %>% 
+    unnest_tokens(NGRAM3, TOKEN, token = "ngrams", n = 3, to_lower = FALSE) %>% 
+    separate(NGRAM3, c("NAME_NGRAM_3A","NAME_NGRAM_3B", "NAME_NGRAM_3C"), sep = " ") %>% 
+    left_join(name_recode_key) %>%  
+    transmute(PIN,
+              OWNER_NAME,
+              NAME_NEW,
+              PATTERN = str_c(NAME_NGRAM_3A,NAME_NGRAM_3B,NAME_NGRAM_3C, sep = " "),
+              NEW = case_when(
+                !is.na(NAME_NEW) ~ pmap_chr(list(OWNER_NAME,PATTERN, NAME_NEW), str_replace),
+                TRUE ~ NA_character_
+              )) %>%  
+    group_by(PIN)  %>%   
+    summarise(OWNER_NAME = if_else(all(is.na(NEW)), first(OWNER_NAME), first_not_na(NEW))) 
+  
+  names_clean_ngram3_all <- names_tax_exempt %>% 
+    filter(PIN %!in% names_clean_ngram3_only$PIN) %>% 
+    union(names_clean_ngram3_only)
+  
+  names_clean_ngram2_only <- names_clean_ngram3_all %>% 
+    mutate(TOKEN = OWNER_NAME) %>% 
+    unnest_tokens(NGRAM2, TOKEN, token = "ngrams", n = 2, to_lower = FALSE) %>% 
+    separate(NGRAM2, c("NAME_NGRAM_2A","NAME_NGRAM_2B"), sep = " ") %>% 
+    left_join(name_recode_key) %>%   
+    transmute(PIN,
+              OWNER_NAME,
+              PATTERN = map2_chr(NAME_NGRAM_2A,NAME_NGRAM_2B, str_c, sep = " "),
+              NEW = if_else(is.na(NAME_NEW), NA_character_, pmap_chr(list(OWNER_NAME, PATTERN, NAME_NEW), str_replace))) %>% 
+    group_by(PIN)  %>%   
+    summarise(OWNER_NAME = if_else(all(is.na(NEW)), first(OWNER_NAME), first_not_na(NEW))) 
+  
+  names_clean_ngram2_all <- names_tax_exempt %>% 
+    filter(PIN %!in% names_clean_ngram2_only$PIN) %>% 
+    union(names_clean_ngram2_only)
+  
+  names_clean_ngram1_only <- names_clean_ngram2_all %>% 
+    unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
+    left_join(name_recode_key, by = c(ORIG = "NAME_NGRAM_1")) %>% 
+    mutate(OWNER_NAME = if_else(is.na(NAME_NEW),ORIG,NAME_NEW)) %>% 
+    group_by(PIN) %>% 
+    summarise(OWNER_NAME = str_c(OWNER_NAME, collapse = " "))
+  
+  names_clean_ngram1_all <- names_tax_exempt %>% 
+    filter(PIN %!in% names_clean_ngram1_only$PIN) %>% 
+    union(names_clean_ngram1_only)
+  
+  # Fix inverted city names (Seattle City of -> City of Seattle)
+  # also fix ports and state of wa
+  names_clean_all_ngrams <- names_clean_ngram1_all %>% 
+    mutate(NO_XXX_OF = str_replace_all(OWNER_NAME, "CITY OF","") %>% str_replace_all("PORT OF", ""), 
+           OWNER_NAME = case_when(
+             str_detect(OWNER_NAME, "CITY OF") ~  str_clean_upper(str_c("CITY OF ", NO_XXX_OF)),
+             str_detect(OWNER_NAME, "PORT OF") ~  str_clean_upper(str_c("PORT OF ", NO_XXX_OF)), 
+             str_detect(OWNER_NAME, "WASHINGTON STATE") ~ str_replace(OWNER_NAME, "WASHINGTON STATE", "STATE OF WASHINGTON"),
+             TRUE ~ OWNER_NAME
+           )) %>% 
+    select(PIN,
+           OWNER_NAME)
+  
+  # names_clean_all_ngrams %>%
+  #   count(OWNER_NAME, sort = TRUE) %>%
+  #   filter(!str_detect(OWNER_NAME, "CITY OF")) %>%
+  #   filter(n>5) %>%
+  #   print(n=Inf)
+  
+  # Remove typo duplicates
+  common_owner_names <- 
+  names_clean_all_ngrams %>% 
+    count(OWNER_NAME, sort = TRUE) %>% 
+    filter(n >= 5 ) %>% 
+    transmute(ID = row_number(),
+              OWNER_NAME,
+              TOKEN = OWNER_NAME) %>% 
+    unnest_tokens(WORD, TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    anti_join(owner_antijoin_names, by = c("WORD" = "word")) %>%  
+    group_by(ID) %>% 
+    summarize(OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_TRIM = str_c(WORD, collapse = " ")) %>% 
+    filter(!duplicated(OWNER_NAME_TRIM)) %>% 
+    transmute(OWNER_NAME_NO_TYPO = OWNER_NAME, 
+              OWNER_NAME_TRIM_NO_TYPO = OWNER_NAME_TRIM)
+  
+  # Pull out the parcels with digits in the OWNER_NAME (these don't work for the typo join step)
+  names_with_digits <- names_clean_all_ngrams %>% 
+    filter(str_detect(OWNER_NAME, "[[:digit:]]"))
+  
+  names_without_digits <- names_clean_all_ngrams %>% 
+    filter(PIN %!in% names_with_digits$PIN)
+  
+  names_without_typos <-   
+    names_without_digits %>%  
+    transmute(ID = row_number(), 
+              PIN,
+              OWNER_NAME,
+              TOKEN = OWNER_NAME) %>%  
+    unnest_tokens(WORD, TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    anti_join(owner_antijoin_names, by = c("WORD" = "word")) %>%  
+    group_by(ID) %>% 
+    summarize(PIN = first(PIN),
+              OWNER_NAME = first(OWNER_NAME),
+              OWNER_NAME_TRIM = str_c(WORD, collapse = " ")) %>% 
+    stringdist_left_join(common_owner_names, by = c("OWNER_NAME_TRIM" = "OWNER_NAME_TRIM_NO_TYPO"),method = "jw",distance_col = "DIST",p=0.1, max_dist = .04) %>% 
+    group_by(ID) %>%
+    arrange(DIST) %>% 
+    slice(1) %>% 
+    ungroup %>% 
+    bind_rows(names_with_digits) %>%  
+    transmute(PIN,
+              OWNER_NAME_FULL = if_else(is.na(OWNER_NAME_TRIM_NO_TYPO), OWNER_NAME, OWNER_NAME_NO_TYPO))  
+  
+  # Check what was removed
+  # names_clean_all_ngrams %>% 
+  #   filter(OWNER_NAME_FULL %!in% names_without_typos$OWNER_NAME) %>% 
+  #   count(OWNER_NAME_FULL, sort = TRUE) %>% 
+  #   print(n=Inf)
+  
+  
+  owner_name_full <- names %>% 
+    left_join(names_without_typos, by = "PIN") %>%   
+    transmute(PIN, 
+             OWNER_NAME_FULL = if_else(is.na(OWNER_NAME_FULL), OWNER_NAME, OWNER_NAME_FULL)) 
+  
+  # Check out the result
+  # owner_name_full %>%
+  #   filter(PIN %in% names_tax_exempt$PIN) %>%
+  #   count(OWNER_NAME_FULL, sort = TRUE) %>% print(n=100)
+  
+  return(owner_name_full)
   
 }
-
-# COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
-make_owner_name_category_key<- function(...){
-  
-  trigger <- list(...)
-  
-  owner_name_category_key_fp <- here("1-data/1-raw/owner_name_category_key.rda")
-  
-  categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
-  
-  cat_ngram_list <- gs_read_all(categories_gs,delay_length = 6) 
-  
-  cat_ngram_list$CATEGORIES <- NULL
-  
-  cat_ngram_list$PRIORITY_LEVELS <- NULL
-  
-  cat_ngram_long <- cat_ngram_list %>% 
-    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY, -PRIORITY)) 
-  
-  cat_ngram_wide <- cat_ngram_long %>%  
-    group_by(NGRAM_TYPE) %>% 
-    mutate(row = row_number()) %>%
-    spread(NGRAM_TYPE,WORD) %>% 
-    arrange(row) %>% 
-    select(-row) 
-  
-  owner_name_category_key <- cat_ngram_wide
-  
-  write_rds(owner_name_category_key, owner_name_category_key_fp)
-  
-  return(owner_name_category_key)
-  
-  
-}
-
 # COMMAND: MAKE_OWNER_PUBLIC_CATEGORIES ----
 make_owner_public_categories <- function(...){
   
@@ -1628,21 +1800,21 @@ make_owner_public_categories <- function(...){
     inner_join(parcel_ready, by = "PIN") %>% 
     st_drop_geometry() %>% 
     transmute(PIN,
-              OWNER_NAME = str_trim(toupper(TAXPAYER_NAME)))
+              OWNER_NAME = TAXPAYER_NAME)
   
   # CLEAN/RECODE NAMES ----
   
-  names_cleaned <- names %>% 
-    unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(name_recode_key, by = "ORIG") %>% 
-    mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-    full_join(names, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  # names_cleaned <- names %>% 
+  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
+  #   left_join(name_recode_key, by = "ORIG") %>% 
+  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
+  #   group_by(PIN) %>% 
+  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
+  #   full_join(names, by = "PIN") %>%  
+  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
   
   names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
     group_by(PIN) %>% 
     summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
@@ -1763,7 +1935,6 @@ names_categorized <-
             OWNER_CATEGORY = first_not_na(c(CATEGORY.x,CATEGORY.y,CATEGORY))
   ) %>%
   transmute(PIN,
-            OWNER_NAME = OWNER_NAME_CLEAN,
             OWNER_CATEGORY)
 
 
@@ -1794,33 +1965,33 @@ make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt
   
  # CLEAN/RECODE NAMES ---- 
   
-  names_cleaned_ngrams_1 <- names %>% 
-    unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(name_recode_key, by = "ORIG") %>% 
-    mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-    full_join(names, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  # names_cleaned_ngrams_1 <- names %>% 
+  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
+  #   left_join(name_recode_key, by = "ORIG") %>% 
+  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
+  #   group_by(PIN) %>% 
+  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
+  #   full_join(names, by = "PIN") %>%  
+  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  # 
+  # names_cleaned_ngrams_2 <- names_cleaned_ngrams_1 %>% 
+  #   unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 2, to_lower = FALSE) %>%  
+  #   left_join(name_recode_key, by = "ORIG") %>% 
+  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>%  
+  #   arrange(PIN) %>% 
+  #   separate(OWNER_NAME, c("WORD_1", "WORD_2"), sep = " ") %>%  
+  #   gather(WORD, NAME_WORD, WORD_1:WORD_2) %>%  
+  #   group_by(PIN) %>% 
+  #   nest() %>% 
+  #   group_by(PIN) %>% 
+  #   summarise(OWNER_NAME_CLEAN = map_chr(data, ~ pluck(.x, "NAME_WORD") %>% unique %>% str_c(collapse = " "))) %>%
+  #   full_join(names, by = "PIN") %>%  
+  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
   
-  names_cleaned_ngrams_2 <- names_cleaned_ngrams_1 %>% 
-    unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 2, to_lower = FALSE) %>%  
-    left_join(name_recode_key, by = "ORIG") %>% 
-    mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>%  
-    arrange(PIN) %>% 
-    separate(OWNER_NAME, c("WORD_1", "WORD_2"), sep = " ") %>%  
-    gather(WORD, NAME_WORD, WORD_1:WORD_2) %>%  
-    group_by(PIN) %>% 
-    nest() %>% 
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_CLEAN = map_chr(data, ~ pluck(.x, "NAME_WORD") %>% unique %>% str_c(collapse = " "))) %>%
-    full_join(names, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
-  
-  names_cleaned <- names_cleaned_ngrams_2
+  # names_cleaned <- names_cleaned_ngrams_2
   
   names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
     group_by(PIN) %>% 
     summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
@@ -1955,8 +2126,9 @@ names_categorized <-
             OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY), "non-profit",OWNER_CATEGORY,OWNER_CATEGORY)) %>% 
   left_join(pub_join, by = "OWNER_NAME") %>% 
   group_by(PIN) %>% 
-  summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_CATEGORY = first_not_na(c(PUBLIC, OWNER_CATEGORY))) %>% 
+  summarise(
+    OWNER_NAME = first(OWNER_NAME),
+    OWNER_CATEGORY = first_not_na(c(PUBLIC, OWNER_CATEGORY))) %>% 
   ungroup
 
 
@@ -1988,17 +2160,17 @@ make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, o
   
  # CLEAN/RECODE NAMES ----
   
-  names_cleaned <- names %>% 
-    unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-    left_join(name_recode_key, by = "ORIG") %>% 
-    mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-    full_join(names, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  # names_cleaned <- names %>% 
+  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
+  #   left_join(name_recode_key, by = "ORIG") %>% 
+  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
+  #   group_by(PIN) %>% 
+  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
+  #   full_join(names, by = "PIN") %>%  
+  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
   
   names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
+    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
     anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
     group_by(PIN) %>% 
     summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
@@ -2136,8 +2308,9 @@ names_categorized <-
   left_join(pub_join, by = "OWNER_NAME") %>% 
   left_join(np_join, by = "OWNER_NAME") %>% 
   group_by(PIN) %>% 
-  summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_CATEGORY = first_not_na(c(OWNER_CATEGORY,PUBLIC,NONPROFIT))) %>% 
+  summarise(
+    OWNER_NAME = first(OWNER_NAME),
+    OWNER_CATEGORY = first_not_na(c(OWNER_CATEGORY,PUBLIC,NONPROFIT))) %>% 
   ungroup
 
 
@@ -2366,11 +2539,26 @@ make_lot_size_breaks <- function(...){
   
 }
 
+
 # COMMAND: MAKE_DEVELOPMENT_ASSUMPTIONS_ZONING ----
 
 make_development_assumptions_zoning <- function(){
   
-  dev_assumptions_tbl <- tribble(
+  dev_asmpt_fp <- here("1-data/3-interim/dev-assumptions-zoning.csv")
+  
+  dev_asmpt_dr_id <- as_id("1UHRi5NDgSQ-ideq74xMqHxMPCCfuPjOoxsWUgjCVWI8")
+  
+  dev_asmpt_load <- make_or_read2(fp = dev_asmpt_fp,
+                                  dr_id = dev_asmpt_dr_id,
+                                  skip_get_expr = FALSE,
+                                  get_expr = function(fp){
+                                    
+                                    # This script created the original set of development assumptions.
+                                    # 
+                                    # The drive document is intended to be edited in Drive, which means
+                                    # that it may *not* match the original version below. 
+                                    
+                                    dev_assumptions_tbl <- tribble(
                                  ~CONSOL_20, ~DEVELOPABLE_LGL,                                             ~DEVELOPMENT_ASSUMPTION,
                 "Central Business District",             TRUE,  "high rise construction, mixed-income, ~150 affordable apartments",
                        "General Commercial",             TRUE,                                               "six story mixed use",
@@ -2381,12 +2569,12 @@ make_development_assumptions_zoning <- function(){
                  "Multi-Family Residential",             TRUE,                                              "six story affordable",
                  "Public Use/Institutional",             TRUE,                                      "no assumption for this class",
                 "Single-Family Residential",             TRUE,                                  "one unit per 5000 SF of lot size",
+                 "Industrial/Manufacturing",             TRUE,                                      "no assumption for this class",
                              "Undesignated",             TRUE,                                      "no assumption for this class",
                                          NA,             TRUE,                                      "no assumption for this class",
                       "Agriculture-Related",            FALSE,                                      "no assumption for this class",
       "Aviation and Transportation-Related",            FALSE,                                      "no assumption for this class",
                                    "Forest",            FALSE,                                      "no assumption for this class",
-                 "Industrial/Manufacturing",            FALSE,                                      "no assumption for this class",
                  "Mineral Resource-Related",            FALSE,                                      "no assumption for this class",
               "Mixed Use Commercial/Office",            FALSE,                                      "no assumption for this class",
                      "Office/Business Park",            FALSE,                                      "no assumption for this class",
@@ -2394,8 +2582,25 @@ make_development_assumptions_zoning <- function(){
                                "Rural Area",            FALSE,                                      "no assumption for this class",
                   "Sensitive/Critical Area",            FALSE,                                      "no assumption for this class"
      )
+                                    orig_fp <- here("1-data/1-raw/dev-assumptions-zoning-original.csv")
+                                    
+                                    write_csv(dev_assumptions_tbl, orig_fp)
+                                    
+                                    dr_folder <- as_id("0B5Pp4V6eCkhrb1lDdlNaOFY4V0U")
+                                    
+                                    drive_upload(orig_fp, dr_folder, type = "spreadsheet")
+                                    
+                                  },
+                                  make_expr = function(fp, dr_id){
+                                    drive_download(dr_id, fp, type = "csv")
+                                    read_csv(fp)
+                                    
+                                  },
+                                  read_expr = function(fp){read_csv(fp)})
   
-  development_assumptions_zoning <- dev_assumptions_tbl
+  
+  
+  development_assumptions_zoning <- dev_asmpt_load
   
   return(development_assumptions_zoning)
 
@@ -2503,12 +2708,12 @@ make_criteria_developable_zoning <- function(development_assumptions_zoning){
 
 make_criteria_undevelopable_present_use <- function(){
   
-   # list_uses <- function(){
-   #                    parcel_ready %>%
-   #                      st_drop_geometry() %>%
-   #                      count(PRESENT_USE, sort = TRUE) %>%
-   #                      print(n = Inf)
-   #                  }
+   list_uses <- function(){
+                      parcel_ready %>%
+                        st_drop_geometry() %>%
+                        count(PRESENT_USE, sort = TRUE) %>%
+                        print(n = Inf)
+                    }
    
    undev_presentuse <- c(
      "Park Public Zoo Arbor",
