@@ -3458,11 +3458,11 @@ make_filters_census_tract <- function(parcel_sf_ready, census_tracts){
   tr_subdivide <- st_subdivide(census_tracts, 100) %>% 
     st_collection_extract() 
    
-  p_ready_pt$CENSUS_TRACT <- st_over(p_ready_pt,tr_subdivide, "GEOID") 
+  p_ready_pt$FILTER_CENSUS_TRACT <- st_over(p_ready_pt,tr_subdivide, "GEOID") 
   
   p_ready_tr <- p_ready_pt %>% 
     st_drop_geometry() %>% 
-    select(PIN, CENSUS_TRACT)
+    select(PIN, FILTER_CENSUS_TRACT)
   
   filters_census_tract <- p_ready_tr
   
@@ -3480,9 +3480,9 @@ make_filters_zcta <- function(parcel_sf_ready, zcta){
   
   zcta_subdivide <- st_subdivide(zcta, 100) %>% 
     st_collection_extract() %>% 
-    transmute(ZCTA = ZCTA5CE10)
+    transmute(FILTER_ZCTA = ZCTA5CE10)
    
-  p$ZCTA <- st_over(p$geom_pt,zcta_subdivide, "ZCTA") 
+  p$FILTER_ZCTA <- st_over(p$geom_pt,zcta_subdivide, "FILTER_ZCTA") 
   
   p_ready <- st_drop_geometry(p) 
   
@@ -4095,7 +4095,7 @@ make_filters_eligibility_nmtc <- function(filters_census_tract){
   elig_nmtc <- elig_nmtc_load %>% 
     clean_names() %>% 
     rename_all(to_screaming_snake_case) %>% 
-    transmute(CENSUS_TRACT = X_2010_CENSUS_TRACT_NUMBER_FIPS_CODE_GEOID,
+    transmute(FILTER_CENSUS_TRACT = X_2010_CENSUS_TRACT_NUMBER_FIPS_CODE_GEOID,
               NMTC = DOES_CENSUS_TRACT_QUALIFY_FOR_NMTC_LOW_INCOME_COMMUNITY_LIC_ON_POVERTY_OR_INCOME_CRITERIA,
               FILTER_ELIGIBILITY_NMTC = if_else(NMTC %in% "Yes",TRUE,FALSE, missing = FALSE)
               ) 
@@ -4103,8 +4103,8 @@ make_filters_eligibility_nmtc <- function(filters_census_tract){
   
    p_ready_eligibility_nmtc <- filters_census_tract %>% 
     st_drop_geometry() %>% 
-    select(PIN, CENSUS_TRACT) %>% 
-    left_join(elig_nmtc, by = "CENSUS_TRACT") %>% 
+    select(PIN, FILTER_CENSUS_TRACT) %>% 
+    left_join(elig_nmtc, by = "FILTER_CENSUS_TRACT") %>% 
     transmute(PIN,
            FILTER_ELIGIBILITY_NMTC = if_else(FILTER_ELIGIBILITY_NMTC, TRUE, FALSE, missing = FALSE))
   
@@ -4147,11 +4147,11 @@ make_filters_eligibility_dda <- function(filters_zcta){
     slice(3:14) %>% 
     gather(OLD_COL,ZCTA) %>% 
     drop_na() %>% 
-    transmute(ZCTA = str_replace(ZCTA,"\\*",""),
+    transmute(FILTER_ZCTA = str_replace(ZCTA,"\\*",""),
               FILTER_ELIGIBILITY_DDA = TRUE) 
   
   elig_dda <- filters_zcta %>% 
-    left_join(zcta_dda, by = "ZCTA") %>% 
+    left_join(zcta_dda, by = "FILTER_ZCTA") %>% 
     transmute(PIN,
               FILTER_ELIGIBILITY_DDA = if_else(FILTER_ELIGIBILITY_DDA,TRUE,FALSE, missing = FALSE))
   
@@ -4190,14 +4190,14 @@ make_filters_eligibility_qct <- function(filters_census_tract){
                   read_expr = function(fp){foreign::read.dbf(fp)})
   
   elig_qtc <- elig_qtc_load %>% 
-    transmute(CENSUS_TRACT = as.character(FIPS),
+    transmute(FILTER_CENSUS_TRACT = as.character(FIPS),
               FILTER_ELIGIBILITY_QCT = TRUE)
     
   
   p_ready_eligibility_qct <- filters_census_tract %>% 
     st_drop_geometry() %>% 
-    select(PIN, CENSUS_TRACT) %>% 
-    left_join(elig_qtc, by = "CENSUS_TRACT") %>% 
+    select(PIN, FILTER_CENSUS_TRACT) %>% 
+    left_join(elig_qtc, by = "FILTER_CENSUS_TRACT") %>% 
     transmute(PIN,
               FILTER_ELIGIBILITY_QCT = if_else(FILTER_ELIGIBILITY_QCT, TRUE, FALSE, missing = FALSE))
   
@@ -4229,12 +4229,12 @@ make_filters_eligibility_oz <- function(filters_census_tract){
                   })
   
   elig_oz <- elig_oz_load %>% 
-    transmute(CENSUS_TRACT = as.character(GEOID),
+    transmute(FILTER_CENSUS_TRACT = as.character(GEOID),
               FILTER_ELIGIBILITY_OZ = TRUE)
     
   
   p_ready_eligibility_oz <- filters_census_tract %>%   
-    left_join(elig_oz, by = "CENSUS_TRACT") %>% 
+    left_join(elig_oz, by = "FILTER_CENSUS_TRACT") %>% 
     transmute(PIN,
               FILTER_ELIGIBILITY_OZ = if_else(FILTER_ELIGIBILITY_OZ, TRUE, FALSE, missing = FALSE))
   
@@ -4332,7 +4332,7 @@ make_helpers_opp360_xwalk <- function(){
 make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){ 
   
   url_opp360 <- filters_census_tract %>%  
-    left_join(helpers_opp360_xwalk, by = c("CENSUS_TRACT" = "FIPS_TEXT")) %>% 
+    left_join(helpers_opp360_xwalk, by = c("FILTER_CENSUS_TRACT" = "FIPS_TEXT")) %>% 
     transmute(PIN, 
            HELPERS_URL_OPP360 = URL,
            HELPERS_PID_OPP360 = as.character(PID)) 
