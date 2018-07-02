@@ -1757,6 +1757,96 @@ make_affordable_housing_subsidies <- function(affordable_housing_subsidies_raw){
   
 }
 
+# COMMAND: MAKE_AFFORDABLE_HOUSING_PROPERTIES_RAW ----
+
+make_affordable_housing_properties_raw <- function(){
+  
+  properties_fp <- here("1-data/2-external/NHPD-properties-wa-active.xlsx")
+  
+  properties_dr_id <- as_id("1zm65rUoTqEGkKmcBz8ab2pKnWQnc5Aiv")
+  
+  properties_load <- 
+    make_or_read2(fp = properties_fp,
+                  dr_id = properties_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    # SOURCE: http://nhpd.preservationdatabase.org/Data
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel)
+                  },
+                  read_expr = function(fp){read_excel(fp)}) 
+  
+  affordable_housing_properties_raw <- properties_load 
+  
+  return(affordable_housing_properties_raw)
+}
+
+
+# COMMAND: MAKE_AFFORDABLE_HOUSING_PROPERTIES ----
+
+make_affordable_housing_properties <- function(affordable_housing_properties_raw){
+  
+  properties_fp <- here("1-data/3-interim/affordable-housing-properties.gpkg")
+  
+  properties_dr_id <- as_id("1VKYVytE7MbyBOEg0U4MEqMDZlHvBzETE")
+  
+  properties_load <- 
+    make_or_read2(fp = properties_fp,
+                  dr_id = properties_dr_id,
+                  affordable_housing_properties_raw = affordable_housing_properties_raw, 
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp, affordable_housing_properties_raw){ 
+                    
+                    # STEPS:
+                    # 1. remove for-profit and profit-motivated properties
+                    # 2. remove properties with fewer than 10 units
+                    # 3. remove properties without property names
+                    # 4. recode the target tenant type classes (reduce the number of levels)
+                    # 5. convert to sf (skip geocoding - this can be done later if necessary)
+                    
+                    properties_sf <- affordable_housing_properties_raw %>% 
+                      clean_names(case = "screaming_snake") %>% 
+                      filter(OWNER_TYPE %!in% c("For Profit","Profit Motivated")) %>% 
+                      filter(TOTAL_UNITS >= 10) %>% 
+                      filter(!is.na(PROPERTY_NAME)) %>%   
+                      transmute(PROPERTY_NAME,
+                                PROPERTY_ADDRESS,
+                                CITY = str_to_title(CITY),
+                                STATE,
+                                ZIP_CODE,
+                                LATITUDE,
+                                LONGITUDE,
+                                TOTAL_UNITS, 
+                                OWNER_NAME,
+                                FAIR_MARKET_RENT,
+                                TARGET_TENANT_TYPE = case_when(
+                                  is.na(TARGET_TENANT_TYPE) ~ "Unknown",
+                                  str_detect(TARGET_TENANT_TYPE, "Elderly|Disabled") ~ "Elderly or disabled",
+                                  TRUE ~ TARGET_TENANT_TYPE
+                                )) %>% 
+                      st_as_sf(coords = c("LONGITUDE","LATITUDE" )) %>% 
+                      st_set_crs(4326)
+                    
+                    
+                    st_write(properties_sf, fp, layer_options = "OVERWRITE=yes")
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(fp, drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf)
+                  },
+                  read_expr = function(fp){read_sf(fp)})  
+  
+  affordable_housing_properties <- properties_load
+  
+  return(affordable_housing_properties)
+  
+}
+
 # COMMAND: MAKE_MUNICIPALITY ----
 
 make_municipality <- function(parcel_ready){
@@ -3484,7 +3574,7 @@ make_filters_public_owner <- function(owner_category){
                TRUE ~ NA_character_
              ))
   
-  return(filters_owner_category)
+  return(filters_public_owner)
    
 }
  
@@ -3674,24 +3764,92 @@ make_filters_proximity_el_facilities <- function(...){
    
 }
 
-# COMMAND: MAKE_FILTERS_PROXIMITY_OPEN_SPACE ----
-make_filters_proximity_open_space <- function(parcel_ready){
+# COMMAND: MAKE_FILTERS_PROXIMITY_AFFORDABLE_HOUSING ----
+make_filters_proximity_affordable_housing <- function(parcel_sf_ready, affordable_housing_properties){ 
   
-  # THIS IS NOT CURRENTLY IMPLEMENTED IN THE DRAKE PLAN (3/22/2018)
-  # THIS IS DUMMY DATA + SHOULD BE REPLACED  
+  loadd(parcel_sf_ready, affordable_housing_properties)
   
-   p_ready_prox_os<- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN, 
-              FILTER_PROXIMITY_OPEN_SPACE = spatial_dummy(n(), mean = 5, sd = 5)
-              )
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    transmute(PIN)
   
-  filters_proximity_open_space <- p_ready_prox_os
+  buffer_dist_qtr <- set_units(1/4, "mile") 
+  buffer_dist_half <- set_units(1/2, "mile")
   
-  return(filters_proximity_open_space)
+  ah_buff <- affordable_housing_properties %>% 
+    st_transform(2926)
+  
+  ah_buff$geom_qtr_mi_buff <- st_buffer(st_geometry(ah_buff), buffer_dist_qtr)
+  
+  ah_buff$geom_half_mi_buff <- st_buffer(st_geometry(ah_buff), buffer_dist_half)
+  
+  
+  append_qtr <- function(x) str_c(x,"QTR",  sep = "_")
+  
+  append_half <- function(x) str_c(x, "HALF",  sep = "_")
+  
+  
+  ah_buff_qtr <- ah_buff %>% 
+    st_set_geometry("geom_qtr_mi_buff") %>% 
+    select_if(not_sfc) %>% 
+    rename_all(append_qtr)
+  
+    ah_buff_half <- ah_buff %>% 
+    st_set_geometry("geom_half_mi_buff") %>% 
+    select_if(not_sfc) %>% 
+    rename_all(append_half)
+  
+  # ~ 1 min. operation
+ 
+  p_ah_qtr <- st_join(p_pt, ah_buff_qtr)
+   
+   # ~ 1 min. operation
+ 
+  p_ah_half <- st_join(p_pt, ah_buff_half)
+
+  
+  
+  # ~ 11 min. operation
+  
+ 
+  p_prox_afford_qtr <- p_ah_qtr %>% 
+    st_drop_geometry() %>%    
+    group_by(PIN) %>%  
+    nest %>% 
+    mutate(FILTER_PROXIMITY_AFFORDABLE_HOUSING_QTR = map_lgl(data, ~ !all(map_lgl(.x$PROPERTY_NAME_QTR,is.na))),
+           AFFORDABLE_HOUSING_TYPES_QTR = map_chr(data, ~ str_count_factor(.x$TARGET_TENANT_TYPE_QTR))) %>% 
+    transmute(PIN,
+              FILTER_PROXIMITY_AFFORDABLE_HOUSING_QTR,
+              AFFORDABLE_HOUSING_TYPE_QTR = if_else(FILTER_PROXIMITY_AFFORDABLE_HOUSING_QTR,AFFORDABLE_HOUSING_TYPES_QTR, NA_character_)) 
+  
+  
+      # ~ 10 min. operation
+ 
+  p_prox_afford_half <- p_ah_half %>%  
+    st_drop_geometry() %>%    
+    group_by(PIN) %>%  
+    nest %>% 
+    mutate(FILTER_PROXIMITY_AFFORDABLE_HOUSING_HALF = map_lgl(data, ~ !all(map_lgl(.x$PROPERTY_NAME_HALF,is.na))),
+           AFFORDABLE_HOUSING_TYPE_HALF = map_chr(data, ~ str_count_factor(.x$TARGET_TENANT_TYPE_HALF))) %>% 
+    transmute(PIN,
+              FILTER_PROXIMITY_AFFORDABLE_HOUSING_HALF,
+              AFFORDABLE_HOUSING_TYPE_HALF = if_else(FILTER_PROXIMITY_AFFORDABLE_HOUSING_HALF,AFFORDABLE_HOUSING_TYPE_HALF, NA_character_)) 
+
+  
+  p_prox_afford <- full_join(p_prox_afford_qtr, p_prox_afford_half, by = "PIN") %>% 
+    mutate(FILTER_PROXIMITY_AFFORDABLE_HOUSING = case_when( 
+      FILTER_PROXIMITY_AFFORDABLE_HOUSING_QTR ~ "1/4 mile", 
+      FILTER_PROXIMITY_AFFORDABLE_HOUSING_HALF ~ "1/2 mile",
+      TRUE ~ "Greater than 1/2 mile"
+    ))
+  
+  
+  filters_proximity_affordable_housing <- p_prox_afford
+  
+  return(filters_proximity_affordable_housing)
    
 }
-
 # COMMAND: MAKE_FILTERS_POTENTIAL_UNITS ----
 make_filters_potential_units <- function(parcel_ready){
   
