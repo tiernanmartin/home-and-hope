@@ -297,36 +297,39 @@ make_name_recode_key <- function(...){
   
 }
 
-# COMMAND: MAKE_OWNER_NAME_CATEGORY_KEY ----
-make_owner_name_category_key<- function(...){
+# COMMAND: MAKE_PUBLIC_OWNER_NAME_CATEGORY_KEY ----
+make_public_owner_name_category_key<- function(trigger_public_owner_name_category_key){
   
-  trigger <- list(...)
+  trigger <- trigger_public_owner_name_category_key
   
-  owner_name_category_key_fp <- here("1-data/1-raw/owner_name_category_key.rda")
+  public_owner_name_category_key_fp <- here("1-data/1-raw/public_owner_name_category_key.rda")
   
-  categories_gs <- gs_key("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg")
+  categories_gs <- gs_key("1Uhj9GcPP93hfGehK1dPmxgLbsAXxUOnHXY8PFSfMnRI")
   
-  cat_ngram_list <- gs_read_all(categories_gs,delay_length = 6) 
+  public_owner_name_category_key <- gs_read(categories_gs,ws = "JOIN_OFFICIAL_NAMES_TARGET")
   
-  cat_ngram_list$CATEGORIES <- NULL
+  write_rds(public_owner_name_category_key, public_owner_name_category_key_fp)
   
-  cat_ngram_list$PRIORITY_LEVELS <- NULL
+  return(public_owner_name_category_key)
   
-  cat_ngram_long <- cat_ngram_list %>% 
-    map_dfr(~ gather(.x, NGRAM_TYPE, WORD, -CATEGORY, -PRIORITY)) 
   
-  cat_ngram_wide <- cat_ngram_long %>%  
-    group_by(NGRAM_TYPE) %>% 
-    mutate(row = row_number()) %>%
-    spread(NGRAM_TYPE,WORD) %>% 
-    arrange(row) %>% 
-    select(-row) 
+}
+
+# COMMAND: MAKE_OTHER_EXEMPT_OWNER_NAME_CATEGORY_KEY ----------------------
+
+make_other_exempt_owner_name_category_key<- function(trigger_other_exempt_owner_name_category_key){
   
-  owner_name_category_key <- cat_ngram_wide
+  trigger <- trigger_other_exempt_owner_name_category_key
   
-  write_rds(owner_name_category_key, owner_name_category_key_fp)
+  other_exempt_owner_name_category_key_fp <- here("1-data/1-raw/other_exempt_owner_name_category_key.csv")
   
-  return(owner_name_category_key)
+  categories_gs <- gs_key("1xRE5A2suzH_KcrrFpqdcX7fguFShokjFchm7khML6sQ")
+  
+  other_exempt_owner_name_category_key <- gs_read(categories_gs,ws = "OWNER_NAME_CATEGORIES")
+  
+  write_csv(other_exempt_owner_name_category_key, other_exempt_owner_name_category_key_fp)
+  
+  return(other_exempt_owner_name_category_key)
   
   
 }
@@ -667,19 +670,19 @@ make_parcel_addr_ready <- function(parcel_addr){
   # MAKE P_ADDR_READY
   p_addr_ready <- parcel_addr %>%
     transmute(PIN,
-              ADDRESS_FULL = ADDR_FULL,
-              CITY_NAME = CTYNAME,
-              CITY_NAME_POSTAL = POSTALCTYN,
-              ZIPCODE = factor(ZIP_5),
-              PRIMARY_ADDR_LGL = as.logical(PRIM_ADDR)) %>%
-    mutate(CITY_NAME = factor(case_when(
-                all(is.na(CITY_NAME),is.na(CITY_NAME_POSTAL)) ~ NA_character_,
-                is.na(CITY_NAME) ~ CITY_NAME_POSTAL,
-                TRUE ~ CITY_NAME
+              ADDR_ADDRESS_FULL = ADDR_FULL,
+              ADDR_CITY_NAME = CTYNAME,
+              ADDR_CITY_NAME_POSTAL = POSTALCTYN,
+              ADDR_ZIPCODE = factor(ZIP_5),
+              ADDR_PRIMARY_ADDR_LGL = as.logical(PRIM_ADDR)) %>%
+    mutate(ADDR_CITY_NAME = factor(case_when(
+                all(is.na(ADDR_CITY_NAME),is.na(ADDR_CITY_NAME_POSTAL)) ~ NA_character_,
+                is.na(ADDR_CITY_NAME) ~ ADDR_CITY_NAME_POSTAL,
+                TRUE ~ ADDR_CITY_NAME
               ))) %>%
     mutate_if(is.factor, as.character) %>% 
   group_by(PIN) %>%
-    arrange(desc(PRIMARY_ADDR_LGL)) %>%
+    arrange(desc(ADDR_PRIMARY_ADDR_LGL)) %>%
     slice(1) %>%
     ungroup
 
@@ -691,7 +694,7 @@ make_parcel_addr_ready <- function(parcel_addr){
 
 # COMMAND: MAKE_PARCEL_DF_READY ----
 
-make_parcel_df_ready <- function(...){
+make_parcel_df_ready <- function(parcel_lookup, prop_type, pub_parcel, parcel_df){
   
   # MAKE P_READY 
   
@@ -838,13 +841,11 @@ make_parcel_env_ready <- function(env_restrictions){
 
 # COMMAND: MAKE_PARCEL_READY ----
 
-make_parcel_ready <- function(parcel_addr_ready, parcel_env_ready, ...){
+make_parcel_ready <- function(parcel_addr_ready, parcel_env_ready, join_list){
 
-  # MAKE PARCEL_READY
+  # MAKE PARCEL_READY 
 
-  obj_list <- list(...)
-
-  parcel_ready <- obj_list %>%
+  parcel_ready <- join_list %>%
     reduce(.f = inner_join, by = "PIN") %>%
     left_join(parcel_addr_ready, by = "PIN") %>% 
     left_join(parcel_env_ready, by = "PIN") %>% 
@@ -951,6 +952,44 @@ make_zoning <- function(){
   return(zoning)
 }
 
+# COMMAND: MAKE_KC_CITY ----
+make_kc_city <- function(){
+  
+  kc_city_fp <- here("1-data/2-external/city_kc")
+  
+  kc_city_dr_id <- as_id("1ZdVJyon1ZFSSFq8-lBAYDDpsvN5tnSvk")
+  
+  kc_city_load <- 
+    make_or_read2(fp = kc_city_fp,
+                  dr_id = kc_city_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    # SOURCE: ftp://ftp.kingcounty.gov/gis-web/GISData/city_kc_SHP.zip
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "city_kc"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  
+  kc_city <- kc_city_load %>% 
+    transmute(CITY_NAME = toupper(CITYNAME)) %>% 
+    st_transform(2926) 
+  
+  return(kc_city)
+  
+}
 # COMMAND: MAKE_CENSUS_TRACTS ----
 make_census_tracts <- function(){
   
@@ -1080,6 +1119,55 @@ make_zcta <- function(king_county){
   return(zcta)
   
 }
+
+# COMMAND: MAKE_CENSUS_PLACE ----
+make_census_place <- function(){
+  
+  census_place_fp <- here("1-data/2-external/census-place.gpkg")
+  
+  census_place_dr_id <- as_id("1YErKKDwe0rodI2ENDPdeVGCbBZ3EnNo3")
+  
+  census_place_load <- 
+    make_or_read2(fp = census_place_fp,
+                  dr_id = census_place_dr_id,
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp){
+                    
+                    census_place <- tigris::places(state = "WA",cb = FALSE, year = 2015) %>% 
+                      as_tibble() %>% 
+                      st_sf()
+                    
+                    st_write(census_place, fp, driver = "GPKG")
+                    
+                    zip_path <- here("1-data/2-external/census_place.zip")
+                    
+                    zip_pithy(zip_path, fp)
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                  
+                    drive_upload(zip_path, drive_folder)
+                      
+                  },
+                  make_expr = function(fp, dr_id){
+                    zip_dir <- here("1-data/2-external")
+                    
+                    target_name <- "census_place.gpkg"
+                    
+                    drive_read_zip(dr_id = dr_id,
+                                   dir_path = zip_dir,
+                                   read_fun = st_read,
+                                   target_name = target_name,
+                                   .tempdir = FALSE, 
+                                   stringsAsFactors = FALSE)
+                  },
+                  read_expr = function(fp){read_sf(fp,stringsAsFactors = FALSE)})
+  
+  census_place <- census_place_load 
+  
+  return(census_place)
+  
+}
+
 # COMMAND: MAKE_SCHOOL_DISTRICTS ----
 make_school_districts <- function(){
   
@@ -1398,9 +1486,9 @@ make_play_spaces_osm <- function(){
   
 }
 
-# COMMAND: MAKE_MJ_BUSINESSES ----
+# COMMAND: MAKE_MJ_BUSINESSES_RAW ----
 
-make_mj_businesses <- function(){
+make_mj_businesses_raw <- function(){
   
   mj_biz_fp <- here("1-data/2-external/MarijuanaApplicants.xls")
   
@@ -1413,7 +1501,7 @@ make_mj_businesses <- function(){
                   get_expr = function(fp){
                     
                     # SOURCE: https://lcb.wa.gov/sites/default/files/publications/Public_Records/2018/MarijuanaApplicants.xls
-                      
+                    
                   },
                   make_expr = function(fp, dr_id){
                     
@@ -1421,44 +1509,78 @@ make_mj_businesses <- function(){
                   },
                   read_expr = function(fp){read_excel(fp, sheet)})
   }
-    
+  
   sheet_list <- list("Retailers 4-10-18", "Producers 4-10-18", "Processors 4-10-18", "Marijuana Transporter 4-10-18")
   
   mj_biz <- map_dfr(sheet_list, read_mj_biz) %>% 
     janitor::clean_names(case = "screaming_snake") %>%  
-     transmute(TRADENAME,
+    transmute(TRADENAME,
               PRIV_DESC = PRIV_DESC,
               PRIVILEGE_STATUS = PRIVILEGE_STATUS,
               ZIP_CODE = str_extract(ZIP_CODE,"^.{0,5}"),
               COUNTY = COUNTY,
               ADDRESS_FULL = str_c( STREET_ADDRESS, CITY, STATE, ZIP_CODE, sep = ", "))
   
-  # filter to King County then geocode
+  
+  mj_businesses_raw <- mj_biz
+  
+  return(mj_businesses_raw)
+  
+}
 
-  geocode_fun <- function(address){
-    geocode_url(address, 
-                auth="standard_api", 
-                privkey="AIzaSyAC19c3TtQwrSiQYKYDaf-9nDIqahirnD8",
-                clean=TRUE, 
-                add_date='today', 
-                verbose=TRUE) 
-  }
-    
-  mj_biz_geocoded <- mj_biz %>% 
-    filter(COUNTY %in% "KING") %>%  
-    filter(str_detect(PRIVILEGE_STATUS,"ACTIVE|PENDING") ) %>% 
-    arrange(desc(as.integer(ZIP_CODE))) %>%  
-    mutate(geocode_output = map(ADDRESS_FULL, geocode_fun)) %>% 
-    unnest() %>% 
-    rename_all(to_screaming_snake_case)
+# COMMAND: MAKE_MJ_BUSINESSES ----
+
+make_mj_businesses <- function(mj_businesses_raw){
   
-  mj_biz_sf <- mj_biz_geocoded %>% 
-    filter(!is.na(LAT)) %>% 
-    st_as_sf(coords = c("LNG", "LAT")) %>% 
-    st_set_crs(4326) %>% 
-    st_transform(2926)
+  mj_biz_fp <- here("1-data/3-interim/mj-businesses.gpkg")
   
- mj_businesses <- mj_biz_sf
+  mj_biz_dr_id <- as_id("1-H6XORJZscl4Pb5JNKoHbS4TZuqGYzkt")
+  
+  mj_biz_load <- 
+    make_or_read2(fp = mj_biz_fp,
+                  dr_id = mj_biz_dr_id,
+                  skip_get_expr = FALSE,
+                  mj_biz_raw = mj_businesses_raw,
+                  get_expr = function(fp, mj_biz_raw){ 
+                    
+                    geocode_fun <- function(address){
+                      geocode_url(address, 
+                                  auth="standard_api", 
+                                  privkey="AIzaSyAC19c3TtQwrSiQYKYDaf-9nDIqahirnD8",
+                                  clean=TRUE, 
+                                  add_date='today', 
+                                  verbose=TRUE) 
+                    }
+                    
+                    mj_biz_geocoded <- mj_biz_raw %>% 
+                      filter(COUNTY %in% "KING") %>%  
+                      filter(str_detect(PRIVILEGE_STATUS,"ACTIVE|PENDING") ) %>% 
+                      arrange(desc(as.integer(ZIP_CODE))) %>%  
+                      mutate(geocode_output = map(ADDRESS_FULL, geocode_fun)) %>% 
+                      unnest() %>% 
+                      rename_all(to_screaming_snake_case)
+                    
+                    mj_biz_sf <- mj_biz_geocoded %>% 
+                      filter(!is.na(LAT)) %>% 
+                      st_as_sf(coords = c("LNG", "LAT")) %>% 
+                      st_set_crs(4326) %>% 
+                      st_transform(2926)
+                    
+                    st_write(mj_biz_sf, fp, layer_options = "OVERWRITE=yes")
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(fp, drive_folder)
+                    
+                  },
+                  make_expr = function(dr_id, fp){
+                    drive_read(dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf)
+                    
+                  },
+                  read_expr = function(fp){read_sf(fp)})
+   
+  
+  mj_businesses <- mj_biz_load
   return(mj_businesses)
   
 }
@@ -1546,9 +1668,9 @@ make_seattle_dev_cap <- function(){
   
 }
 
-# COMMAND: MAKE_AFFORDABLE_HOUSING_SUBSIDIES ----
+# COMMAND: MAKE_AFFORDABLE_HOUSING_SUBSIDIES_RAW ----
 
-make_affordable_housing_subsidies <- function(){
+make_affordable_housing_subsidies_raw <- function(){
   
   subsidies_fp <- here("1-data/2-external/NHPD Subsidies Only Export.xlsx")
   
@@ -1564,52 +1686,80 @@ make_affordable_housing_subsidies <- function(){
                   make_expr = function(fp, dr_id){
                     drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel)
                   },
-                  read_expr = function(fp){read_excel(fp)})
+                  read_expr = function(fp){read_excel(fp)}) 
   
-  subsidies_df <- subsidies_load %>% 
-    clean_names(case = "screaming_snake") %>% 
-    filter(SUBSIDY_STATUS %in% c("Active","Inconclusive")) %>%  
-    select(SUBSIDY_NAME:MANAGER_TYPE, -LATITUDE, -LONGITUDE) %>% 
-    mutate(ADDRESS_FULL = str_c( STREET_ADDRESS, CITY, STATE, ZIP_CODE, sep = ", "))
-    
-  geocode_fun <- function(address){
-    geocode_url(address, 
-                auth="standard_api", 
-                privkey="AIzaSyCYhgjxQ0PRqo9VTHUrK1KnzaI65AGwZgs",
-                clean=TRUE, 
-                add_date='today', 
-                verbose=TRUE) 
-  }
+  affordable_housing_subsidies_raw <- subsidies_load 
   
-  subsidies_geocode_ready <- subsidies_df %>% 
-    slice(1) %>% 
-    bind_rows(subsidies_df)
+  return(affordable_housing_subsidies_raw)
   
-  subsidies_geocoded <- subsidies_geocode_ready %>% 
-    mutate(geocode_output = map(ADDRESS_FULL, geocode_fun))  
+}
+
+# COMMAND: MAKE_AFFORDABLE_HOUSING_SUBSIDIES ----
+
+make_affordable_housing_subsidies <- function(affordable_housing_subsidies_raw){
   
-  subsidies_sf <- subsidies_geocoded %>% 
-    unnest() %>% 
-    clean_names(case = "screaming_snake") %>% 
-    filter(!is.na(LAT)) %>% 
-    st_as_sf(coords = c("LNG", "LAT")) %>%   
-    st_set_crs(4326) %>% 
-    st_transform(2926) %>% 
-    distinct
+  subsidies_fp <- here("1-data/3-interim/affordable-housing-subsidies.gpkg")
   
+  subsidies_dr_id <- as_id("13CoXbTeggKWbc91ucpVyp17XYp66SiDm")
   
-  affordable_housing_subsidies <- subsidies_sf 
+  subsidies_load <- 
+    make_or_read2(fp = subsidies_fp,
+                  dr_id = subsidies_dr_id,
+                  affordable_housing_subsidies_raw = affordable_housing_subsidies_raw, 
+                  skip_get_expr = FALSE,
+                  get_expr = function(fp, affordable_housing_subsidies_raw){ 
+                    subsidies_df <- affordable_housing_subsidies_raw %>% 
+                      clean_names(case = "screaming_snake") %>% 
+                      filter(SUBSIDY_STATUS %in% c("Active","Inconclusive")) %>%  
+                      select(SUBSIDY_NAME:MANAGER_TYPE, -LATITUDE, -LONGITUDE) %>% 
+                      mutate(ADDRESS_FULL = str_c( STREET_ADDRESS, CITY, STATE, ZIP_CODE, sep = ", "))
+                    
+                    geocode_fun <- function(address){
+                      geocode_url(address, 
+                                  auth="standard_api", 
+                                  privkey="AIzaSyCYhgjxQ0PRqo9VTHUrK1KnzaI65AGwZgs",
+                                  clean=TRUE, 
+                                  add_date='today', 
+                                  verbose=TRUE) 
+                    }
+                    
+                    subsidies_geocode_ready <- subsidies_df %>% 
+                      slice(1) %>% 
+                      bind_rows(subsidies_df)
+                    
+                    subsidies_geocoded <- subsidies_geocode_ready %>%  
+                      mutate(geocode_output = map(ADDRESS_FULL, geocode_fun))  
+                    
+                    subsidies_sf <- subsidies_geocoded %>% 
+                      unnest() %>% 
+                      clean_names(case = "screaming_snake") %>% 
+                      filter(!is.na(LAT)) %>% 
+                      st_as_sf(coords = c("LNG", "LAT")) %>%   
+                      st_set_crs(4326) %>% 
+                      st_transform(2926) %>% 
+                      distinct 
+                    
+                    st_write(subsidies_sf, fp, layer_options = "OVERWRITE=yes")
+                    
+                    drive_folder <- as_id("0B5Pp4V6eCkhrZ3NHOEE0Sl9FbWc")
+                    
+                    drive_upload(fp, drive_folder)
+                    
+                  },
+                  make_expr = function(fp, dr_id){
+                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf)
+                  },
+                  read_expr = function(fp){read_sf(fp)})  
+  
+  affordable_housing_subsidies <- subsidies_load
   
   return(affordable_housing_subsidies)
   
 }
 
-
-
-
 # COMMAND: MAKE_MUNICIPALITY ----
 
-make_municipality <- function(...){
+make_municipality <- function(parcel_ready){
   
   districts <- parcel_ready %>% 
     pluck("DISTRICT_NAME") %>% 
@@ -1620,11 +1770,11 @@ make_municipality <- function(...){
     st_drop_geometry() %>% 
     transmute(PIN,
               DISTRICT_NAME = if_else(DISTRICT_NAME %in% "KING COUNTY", "UNINCORPORATED KC", DISTRICT_NAME),
-              CITY_NAME,
-              CITY_NAME_POSTAL,
+              ADDR_CITY_NAME,
+              ADDR_CITY_NAME_POSTAL,
               MUNICIPALITY = case_when(
-                is.na(DISTRICT_NAME) & is.na(CITY_NAME) ~ NA_character_,
-                DISTRICT_NAME %in% "UNINCORPORATED KC" & CITY_NAME %!in% districts ~ str_c(DISTRICT_NAME," (",CITY_NAME,")"),
+                is.na(DISTRICT_NAME) & is.na(ADDR_CITY_NAME) ~ NA_character_,
+                DISTRICT_NAME %in% "UNINCORPORATED KC" & ADDR_CITY_NAME %!in% districts ~ str_c(DISTRICT_NAME," (",ADDR_CITY_NAME,")"),
                 TRUE ~ DISTRICT_NAME
               )) %>% 
     select(PIN,
@@ -1637,6 +1787,398 @@ return(muni)
   }
 
 
+
+
+# COMMAND: MAKE_OFFICIAL_NAMES_SEATTLE----
+
+make_official_names_seattle <- function(){
+  
+  names_seattle_fp <-  here("1-data/2-external/seattle-bureaucracy.csv")
+  
+  names_seattle_dr_id <- as_id("1ge_Gz-GS5Oa2KeGF97GTieVuIxtBYByo")
+  
+  names_seattle_load <- make_or_read2(fp = names_seattle_fp,dr_id = names_seattle_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master/seattle-bureaucracy/data/seattle-bureaucracy.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_seattle <- names_seattle_load
+  
+  return(official_names_seattle)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_KC ----
+
+make_official_names_kc <- function(){
+  
+  names_kc_fp <-  here("1-data/2-external/kc-bureaucracy.csv")
+  
+  names_kc_dr_id <- as_id("1c_e0BzC6vb-ddDtgTj_-2myPad06K0X5")
+  
+  names_kc_load <- make_or_read2(fp = names_kc_fp,dr_id = names_kc_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master/king-county-bureaucracy/data/kc-bureaucracy.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_kc <- names_kc_load
+  return(official_names_kc)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_WA ----
+make_official_names_wa <- function(){
+  
+  names_wa_fp <-  here("1-data/2-external/wa-bureaucracy.csv")
+  
+  names_wa_dr_id <- as_id("1DavyPbOvzZTT-x4GiMVSoIfbFyanw3YS")
+  
+  names_wa_load <- make_or_read2(fp = names_wa_fp,dr_id = names_wa_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://raw.githubusercontent.com/tiernanmartin/datasets/master/wa-bureaucracy/data/wa-bureaucracy.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  wa_state <- tibble(AGENCY_NAME = "State of Washington",
+               FOCUS = NA_character_,
+               TYPE = "State Government",
+               ABBREVIATION = "WA")
+  
+  official_names_wa <- bind_rows(wa_state,names_wa_load) %>% 
+    mutate(AGENCY_NAME = case_when(AGENCY_NAME %in% "Department of Transportation (DOT)" ~ "Department of Transportation (WSDOT)", TRUE ~ AGENCY_NAME),
+           ABBREVIATION = case_when(ABBREVIATION %in% "DOT" ~ "WSDOT",TRUE ~ ABBREVIATION))
+  
+  
+  
+  return(official_names_wa)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_US ----
+
+make_official_names_us <- function(){
+  
+  names_us_fp <-  here("1-data/2-external/us-bureaucracy.csv")
+  
+  names_us_dr_id <- as_id("1gK7o2sGuPD2glFPmEk65qIMqtdAOUH7w")
+  
+  names_us_load <- make_or_read2(fp = names_us_fp,dr_id = names_us_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master/us-bureaucracy/data/us-bureaucracy.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)}) 
+  
+  
+  
+  us <- tibble(NAME = "U.S. Federal Government",
+               DEPARTMENT = NA_character_,
+               ABBREVIATION = "US")
+  
+  official_names_us <- bind_rows(us, names_us_load)
+  
+  return(official_names_us)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_PLACES ----
+
+make_official_names_places <- function(census_place){
+  
+  official_names_places <- census_place %>% 
+    transmute(NAME = case_when(
+                str_detect(NAMELSAD,"city$") ~ str_c("City of ",str_extract(NAMELSAD,".+(?=\\scity$)")),
+                str_detect(NAMELSAD,"town$") ~ str_c("Town of ",str_extract(NAMELSAD,".+(?=\\stown$)")),
+                str_detect(NAMELSAD,"CDP$") ~ str_c(str_extract(NAMELSAD,".+(?=\\sCDP$)")),
+                TRUE ~ NA_character_
+                
+              )) %>% 
+    st_drop_geometry()
+    
+    
+    
+  return(official_names_places)
+  
+}
+# COMMAND: MAKE_OFFICIAL_NAMES_TRIBES ----
+
+make_official_names_tribes <- function(){
+  
+  names_tribes_fp <-  here("1-data/2-external/wa-tribes.csv")
+  
+  names_tribes_dr_id <- as_id("1PHFhpBeRrDQm5UB0M0dlsAsa1tiJJYNU")
+  
+  names_tribes_load <- make_or_read2(fp = names_tribes_fp,dr_id = names_tribes_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master/wa-tribes/data/wa-tribes.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_tribes <- names_tribes_load
+  return(official_names_tribes)
+  
+}
+# COMMAND: MAKE_OFFICIAL_NAMES_HOUSING_AUTHORITIES ----
+
+make_official_names_housing_authorities <- function(){
+  
+  names_housing_authorities_fp <-  here("1-data/2-external/wa-housing-authorities.csv")
+  
+  names_housing_authorities_dr_id <- as_id("1wuuJJ37KyEbJUVAO865-t9VxxSfz3Bjc")
+  
+  names_housing_authorities_load <- make_or_read2(fp = names_housing_authorities_fp,dr_id = names_housing_authorities_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master/wa-housing-authorities/data/wa-housing-authorities.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_housing_authorities <- names_housing_authorities_load
+  return(official_names_housing_authorities)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_REGIONAL_TRANSIT_AUTHORITIES ----
+
+make_official_names_regional_transit_authorities <- function(){
+  
+  
+  official_names_regional_transit_authorities <- tibble(NAME = "Central Puget Sound Regional Transit Authority",
+                                                        ORGANIZATION = "Sound Transit")
+  
+  return(official_names_regional_transit_authorities)
+  
+}
+# COMMAND: MAKE_OFFICIAL_NAMES_SPECIAL_PURPOSE_DISTRICTS----
+
+make_official_names_special_purpose_districts <- function(){
+  
+  names_special_purpose_districts_fp <-  here("1-data/2-external/wa-special-purpose-districts.csv")
+  
+  names_special_purpose_districts_dr_id <- as_id("1rArgC4Ft5SefwsmR9qaxA8OQj20PNNpw")
+  
+  names_special_purpose_districts_load <- make_or_read2(fp = names_special_purpose_districts_fp,dr_id = names_special_purpose_districts_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://github.com/tiernanmartin/datasets/raw/master//wa-special-purpose-districts/data/wa-special-purpose-districts.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_special_purpose_districts <- names_special_purpose_districts_load %>% 
+    filter(str_detect(COUNTIES_INCLUDED,"King")) %>%  
+    filter(STATUS %in% "active") %>% 
+    transmute(NAME = DISTRICT_NAME)
+  
+  return(official_names_special_purpose_districts)
+  
+}
+
+
+# COMMAND: MAKE_OFFICIAL_NAMES_HIGHER-ED_PROVIDERS----
+
+make_official_names_higher_ed_providers <- function(){
+  
+  names_higher_ed_providers_fp <-  here("1-data/2-external/wa-higher-ed-providers.csv")
+  
+  names_higher_ed_providers_dr_id <- as_id("1hqI1w6ocXg07ciEWA4hDHZ_e-CIhMK8N")
+  
+  names_higher_ed_providers_load <- make_or_read2(fp = names_higher_ed_providers_fp,dr_id = names_higher_ed_providers_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://raw.githubusercontent.com/tiernanmartin/datasets/master/wa-higher-ed-providers/data/wa-higher-ed-providers.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_higher_ed_providers <- names_higher_ed_providers_load 
+  
+  return(official_names_higher_ed_providers)
+  
+}
+
+# COMMAND: MAKE_OFFICIAL_NAMES_HOSPITALS----
+
+make_official_names_hospitals <- function(){
+  
+  names_hospitals_fp <-  here("1-data/2-external/wa-hospitals.csv")
+  
+  names_hospitals_dr_id <- as_id("1OS_Yc0eX5lecEaQabkonRSrms2M4s-Z4")
+  
+  names_hospitals_load <- make_or_read2(fp = names_hospitals_fp,dr_id = names_hospitals_dr_id, skip_get_expr = TRUE,
+                                 get_expr = function(fp){
+                                   github_url <- "https://raw.githubusercontent.com/tiernanmartin/datasets/master/wa-hospitals/data/wa-hospitals.csv"
+                                 
+                                   dat <- read_csv(github_url) 
+                                   
+                                   write_csv(dat, fp)
+                                   
+                                   drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                   
+                                   drive_upload(media = fp, drive_folder)
+                                   
+                                   },
+                                 make_expr = function(fp, dr_id){
+                                   drive_read(dr_id = dr_id,
+                                              .tempfile = FALSE,
+                                              path = fp,
+                                              read_fun = read_csv)
+                                 },
+                                 read_expr = function(fp){read_csv(fp)})
+  
+  official_names_hospitals <- names_hospitals_load %>% 
+    select(NAME)
+  
+  return(official_names_hospitals)
+  
+}
+# COMMAND: MAKE_OFFICIAL_NAMES ----
+
+make_official_names <- function(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_higher_ed_providers, official_names_hospitals){
+  
+  # loadd(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_special_purpose_districts,official_names_higher_ed_providers)
+  
+  
+  names_list <- list(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_higher_ed_providers, official_names_hospitals)
+  
+  category_list <- list("city","county","state", "federal", "city", "tribal", "housing authority", "regional transit authority","special purpose district", "higher-education provider", "hospital")
+  
+  org_list <- list("City of Seattle", "King County", "Washington State", "U.S. Federal Government", NA_character_, NA_character_, NA_character_, "Sound Transit", NA_character_, NA_character_, NA_character_)
+  
+  make_category <- function(name, category){mutate(name, CATEGORY = category)}
+  
+  make_org <- function(name, org){mutate(name, ORGANIZATION = org)}
+  
+  names <- map2(names_list, category_list, make_category) %>%  
+    map2(org_list, make_org) %>% 
+    reduce(bind_rows) %>%   
+    transmute(OWNER_NAME_OFFICIAL = case_when(!is.na(AGENCY_NAME) ~ AGENCY_NAME, 
+                               !is.na(NAME) ~ NAME,
+                               TRUE ~ DEPARTMENT),
+              OWNER_NAME_DEPT = DEPARTMENT,
+              OWNER_NAME_CATEGORY = CATEGORY,
+              OWNER_NAME_ORG = case_when(is.na(ORGANIZATION) ~ NAME,TRUE ~ ORGANIZATION))
+  
+  official_names <- names
+  
+  return(official_names)
+}
 
 # COMMAND: MAKE_OWNER_NAME_FULL ----
 make_owner_name_full <- function(...){
@@ -1786,700 +2328,69 @@ make_owner_name_full <- function(...){
   return(owner_name_full)
   
 }
-# COMMAND: MAKE_OWNER_PUBLIC_CATEGORIES ----
-make_owner_public_categories <- function(...){
+# COMMAND: MAKE_OWNER_CATEGORY ----
+make_owner_category <- function(owner_name_full, public_owner_name_category_key, other_exempt_owner_name_category_key){
   
-  # loadd(parcel_ready) 
-  # loadd(suitability_tax_exempt) 
-  # loadd(owner_antijoin_names) 
-  # loadd(owner_name_category_key) 
-  # loadd(name_recode_key) 
   
-  names <- suitability_tax_exempt %>%  
-    filter(SUIT_OWNER_PUBLIC) %>% 
-    inner_join(parcel_ready, by = "PIN") %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN,
-              OWNER_NAME = TAXPAYER_NAME)
+  loadd(owner_name_full, public_owner_name_category_key, other_exempt_owner_name_category_key)
   
-  # CLEAN/RECODE NAMES ----
   
-  # names_cleaned <- names %>% 
-  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-  #   left_join(name_recode_key, by = "ORIG") %>% 
-  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-  #   group_by(PIN) %>% 
-  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-  #   full_join(names, by = "PIN") %>%  
-  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
+  # 1. join public owners
+  # 2. join other tax exempt (regex) and remove duplicates
+  # 3. case_when() to condense owners whose names show up in public and other tax exempt
   
-  names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
+  category_types <- tibble(OWNER_CATEGORY = c("federal","state","county","city","special purpose district","housing authority","higher-education provider", "tribal","religious association","residential association","uncategorized")) %>% 
+    mutate(OWNER_CATEGORY_TYPE = case_when(
+      OWNER_CATEGORY %in% "higher-education provider" ~ "uncertain",
+      OWNER_CATEGORY %in% c("tribal","religious association","residential association","uncategorized") ~ "private",
+      TRUE ~ "public"
+    ))
+  
+  
+  owner_public <- owner_name_full %>% 
+    left_join(public_owner_name_category_key, by = "OWNER_NAME_FULL")
+  
+  public_pins <- owner_name_full %>% 
+    semi_join(public_owner_name_category_key, by = "OWNER_NAME_FULL") %>% 
+    pluck("PIN")
+  
+  owner_tax_exempt <- owner_public %>% 
+    regex_left_join(other_exempt_owner_name_category_key, by = c(OWNER_NAME_FULL = "OWNER_NAME_FULL_OTHER")) %>% 
     group_by(PIN) %>% 
-    summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
-    full_join(names_cleaned, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN,OWNER_NAME_TRIM)
+    summarise_all(first_not_na)
   
-  view_names_trimmed_cnt <- function(){
-    names_trimmed_cnt <- names_trimmed %>% 
-      count(OWNER_NAME_TRIM, sort = TRUE)
-  }
-  
-  # view_names_trimmed_cnt()
-  
-  # CREATE NGRAMS ----
-  
-  names_ngrams_1 <- names_trimmed %>%  
-    unnest_tokens(PUBLIC_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_1_cnt <- names_ngrams_1 %>% 
-    count(PUBLIC_NGRAM_1, sort = TRUE)
-  
-  names_ngrams_2 <- names_trimmed %>%  
-    unnest_tokens(PUBLIC_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
-    separate(PUBLIC_NGRAM_2, c("PUBLIC_NGRAM_2_A", "PUBLIC_NGRAM_2_B"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_2_cnt <- names_ngrams_2 %>% 
-    count(PUBLIC_NGRAM_2_A,PUBLIC_NGRAM_2_B, sort = TRUE)
-  
-  names_ngrams_3 <- names_trimmed %>%  
-    unnest_tokens(PUBLIC_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
-    separate(PUBLIC_NGRAM_3, c("PUBLIC_NGRAM_3_A", "PUBLIC_NGRAM_3_B", "PUBLIC_NGRAM_3_C"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_3_cnt <- names_ngrams_3 %>% 
-    count(PUBLIC_NGRAM_3_A,PUBLIC_NGRAM_3_B,PUBLIC_NGRAM_3_C, sort = TRUE)
-  
-  names_ngrams <- 
-    list(names_cleaned,names_ngrams_1,names_ngrams_2,names_ngrams_3) %>% 
-    reduce(left_join, by = c("PIN","OWNER_NAME_CLEAN"))
-  
-  
-  # VIEW NGRAMS NETWORK ----
-
-make_bigram_graph <- function(){
-  bigram_graph <- names_ngrams_2 %>% 
-  count(NGRAM_2_A,NGRAM_2_B, sort = TRUE) %>% 
-  filter(n > 20) %>% 
-  graph_from_data_frame
-  
-  set.seed(2016)
-
-a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
-
-ggraph(bigram_graph, layout = "fr") +
-  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
-                 arrow = a, end_cap = circle(.07, 'inches')) +
-  geom_node_point(color = "lightblue", size = 5) +
-  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-  theme_void()
-}
-
-# make_bigram_graph()
-  
-  
-  
-
-# CREATE NGRAM CATEGORY KEYS ----
-
-cat_ngram_1 <- owner_name_category_key %>% 
-  select(CATEGORY,PUBLIC_NGRAM_1) %>% 
-  drop_na
-
-cat_ngram_2 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("PUBLIC_NGRAM_2")) %>% 
-  drop_na
-
-cat_ngram_3 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("PUBLIC_NGRAM_3")) %>% 
-  drop_na
-
-
-# JOIN CATEGORIES TABLE ----
-
-
-ngram_1_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_1, by = "PUBLIC_NGRAM_1") %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_2_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_2, c("PUBLIC_NGRAM_2_A", "PUBLIC_NGRAM_2_B")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_3_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_3, c("PUBLIC_NGRAM_3_A", "PUBLIC_NGRAM_3_B", "PUBLIC_NGRAM_3_C")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-names_categorized <- 
-  list(names_trimmed, 
-       ngram_1_categorized,
-       ngram_2_categorized,
-       ngram_3_categorized) %>% 
-  reduce(left_join, by = "PIN") %>% 
-  group_by(PIN) %>% 
-  summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_NAME_CLEAN = first(OWNER_NAME_CLEAN),
-            OWNER_NAME_TRIM = first(OWNER_NAME_TRIM),
-            OWNER_CATEGORY = first_not_na(c(CATEGORY.x,CATEGORY.y,CATEGORY))
-  ) %>%
-  transmute(PIN,
-            OWNER_CATEGORY)
-
-
-
-# VIEW CATEGORIES ----
-
-# names_categorized %>% count(CATEGORY, sort = TRUE)
-
-# names_categorized %>% filter(is.na(CATEGORY)) %>% count(OWNER_NAME_TRIM, sort = TRUE) %>% print(n=Inf)
+  owner_category <- owner_tax_exempt %>% 
+    transmute(PIN,
+              OWNER_NAME_FULL = toupper(OWNER_NAME_FULL),
+              OWNER_CATEGORY = case_when(
+                !is.na(OWNER_CATEGORY) ~ OWNER_CATEGORY,
+                !is.na(OWNER_NAME_FULL_OTHER) ~ OWNER_CATEGORY_OTHER,
+                TRUE ~ "uncategorized"
+              ),
+              OWNER_NAME_ORG = case_when(
+                !is.na(OWNER_NAME_ORG) ~ toupper(OWNER_NAME_ORG),
+                TRUE ~ toupper(OWNER_NAME_FULL)
+              ),
+              OWNER_NAME_DEPT = toupper(OWNER_NAME_DEPT)) %>% 
+    left_join(category_types, by = "OWNER_CATEGORY") %>% 
+    mutate(OWNER_PUBLIC_LGL = case_when(
+      OWNER_CATEGORY_TYPE %in% "uncertain" & PIN %in% public_pins ~ TRUE,
+      OWNER_CATEGORY_TYPE %in% "public" ~ TRUE,
+      TRUE ~ FALSE
+    )
+    ) %>% 
+    select(PIN,
+           OWNER_PUBLIC_LGL,
+           OWNER_CATEGORY,
+           OWNER_NAME_ORG,
+           OWNER_NAME_DEPT)
+    
 
 # RETURN----
 
-return(names_categorized)
+return(owner_category)
 
 
-}
-
-# COMMAND: MAKE_OWNER_NONPROFIT_CATEGORIES ----
-make_owner_nonprofit_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key){
-  
-  
-  names <- suitability_tax_exempt %>%  
-    filter(SUIT_OWNER_NONPROFIT) %>% 
-    inner_join(parcel_ready, by = "PIN") %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN,
-              OWNER_NAME = str_trim(toupper(TAXPAYER_NAME)))
-  
- # CLEAN/RECODE NAMES ---- 
-  
-  # names_cleaned_ngrams_1 <- names %>% 
-  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-  #   left_join(name_recode_key, by = "ORIG") %>% 
-  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-  #   group_by(PIN) %>% 
-  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-  #   full_join(names, by = "PIN") %>%  
-  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
-  # 
-  # names_cleaned_ngrams_2 <- names_cleaned_ngrams_1 %>% 
-  #   unnest_tokens(ORIG, OWNER_NAME_CLEAN, token = "ngrams", n = 2, to_lower = FALSE) %>%  
-  #   left_join(name_recode_key, by = "ORIG") %>% 
-  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>%  
-  #   arrange(PIN) %>% 
-  #   separate(OWNER_NAME, c("WORD_1", "WORD_2"), sep = " ") %>%  
-  #   gather(WORD, NAME_WORD, WORD_1:WORD_2) %>%  
-  #   group_by(PIN) %>% 
-  #   nest() %>% 
-  #   group_by(PIN) %>% 
-  #   summarise(OWNER_NAME_CLEAN = map_chr(data, ~ pluck(.x, "NAME_WORD") %>% unique %>% str_c(collapse = " "))) %>%
-  #   full_join(names, by = "PIN") %>%  
-  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
-  
-  # names_cleaned <- names_cleaned_ngrams_2
-  
-  names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
-    full_join(names_cleaned, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN,OWNER_NAME_TRIM)
-  
-  view_names_trimmed_cnt <- function(){
-    names_trimmed_cnt <- names_trimmed %>% 
-      count(OWNER_NAME_TRIM, sort = TRUE)
-    
-    return(names_trimmed_cnt)
-  }
-  
-  # view_names_trimmed_cnt()
-  
-  # CREATE NGRAMS ----
-  
-  names_ngrams_1 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_1_cnt <- names_ngrams_1 %>% 
-    count(NP_NGRAM_1, sort = TRUE)
-  
-  names_ngrams_2 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
-    separate(NP_NGRAM_2, c("NP_NGRAM_2_A", "NP_NGRAM_2_B"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_2_cnt <- names_ngrams_2 %>% 
-    count(NP_NGRAM_2_A,NP_NGRAM_2_B, sort = TRUE)
-  
-  names_ngrams_3 <- names_trimmed %>%  
-    unnest_tokens(NP_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
-    separate(NP_NGRAM_3, c("NP_NGRAM_3_A", "NP_NGRAM_3_B", "NP_NGRAM_3_C"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_3_cnt <- names_ngrams_3 %>% 
-    count(NP_NGRAM_3_A,NP_NGRAM_3_B,NP_NGRAM_3_C, sort = TRUE)
-  
-  names_ngrams <- 
-    list(names_cleaned,names_ngrams_1,names_ngrams_2,names_ngrams_3) %>% 
-    reduce(left_join, by = c("PIN","OWNER_NAME_CLEAN"))
-  
-  
-  # VIEW NGRAMS NETWORK ----
-
-make_bigram_graph <- function(){
-  bigram_graph <- names_ngrams_2 %>% 
-  count(NGRAM_2_A,NGRAM_2_B, sort = TRUE) %>% 
-  filter(n > 20) %>% 
-  graph_from_data_frame
-  
-  set.seed(2016)
-
-a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
-
-ggraph(bigram_graph, layout = "fr") +
-  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
-                 arrow = a, end_cap = circle(.07, 'inches')) +
-  geom_node_point(color = "lightblue", size = 5) +
-  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-  theme_void()
-}
-
-# make_bigram_graph()
-  
-  
-  
-
-# CREATE NGRAM CATEGORY KEYS ----
-
-cat_ngram_1 <- owner_name_category_key %>% 
-  select(CATEGORY,NP_NGRAM_1) %>% 
-  drop_na
-
-cat_ngram_2 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NP_NGRAM_2")) %>% 
-  drop_na
-
-cat_ngram_3 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("NP_NGRAM_3")) %>% 
-  drop_na
-
-
-
-# PUBLIC AND NONPROFIT CATEGORIES ----
-
-pub_join <- owner_public_categories %>% 
-  group_by(OWNER_NAME) %>% 
-  summarise(PUBLIC = first(OWNER_CATEGORY)) 
-
-
-# JOIN CATEGORIES TABLE ----
-
-
-ngram_1_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_1, by = "NP_NGRAM_1") %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_2_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_2, c("NP_NGRAM_2_A", "NP_NGRAM_2_B")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_3_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_3, c("NP_NGRAM_3_A", "NP_NGRAM_3_B", "NP_NGRAM_3_C")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-names_categorized <- 
-  list(names_trimmed, 
-       ngram_1_categorized,
-       ngram_2_categorized,
-       ngram_3_categorized) %>% 
-  reduce(left_join, by = "PIN") %>% 
-  group_by(PIN) %>% 
-  summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_NAME_CLEAN = first(OWNER_NAME_CLEAN),
-            OWNER_NAME_TRIM = first(OWNER_NAME_TRIM),
-            OWNER_CATEGORY = first_not_na(c(CATEGORY.x,CATEGORY.y,CATEGORY))
-  ) %>%
-  transmute(PIN,
-            OWNER_NAME = OWNER_NAME_CLEAN,
-            OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY), "non-profit",OWNER_CATEGORY,OWNER_CATEGORY)) %>% 
-  left_join(pub_join, by = "OWNER_NAME") %>% 
-  group_by(PIN) %>% 
-  summarise(
-    OWNER_NAME = first(OWNER_NAME),
-    OWNER_CATEGORY = first_not_na(c(PUBLIC, OWNER_CATEGORY))) %>% 
-  ungroup
-
-
-
-# VIEW CATEGORIES ----
-
-# names_categorized %>% count(OWNER_CATEGORY, sort = TRUE)
-
-# names_categorized %>% filter(is.na(OWNER_CATEGORY)) %>% count(OWNER_NAME, sort = TRUE) %>% print(n=Inf)
-
-# RETURN----
-
-return(names_categorized)
-
-
-}
-
-
-# COMMAND: MAKE_OWNER_EXEMPT_CATEGORIES ----
-make_owner_exempt_categories <- function(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key){
-  
-  
-  names <- suitability_tax_exempt %>%  
-    filter(SUIT_OWNER_OTHER_EXEMPT) %>% 
-    inner_join(parcel_ready, by = "PIN") %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN,
-              OWNER_NAME = str_trim(toupper(TAXPAYER_NAME)))
-  
- # CLEAN/RECODE NAMES ----
-  
-  # names_cleaned <- names %>% 
-  #   unnest_tokens(ORIG, OWNER_NAME, token = "ngrams", n = 1, to_lower = FALSE) %>%  
-  #   left_join(name_recode_key, by = "ORIG") %>% 
-  #   mutate(OWNER_NAME = if_else(is.na(NEW),ORIG,NEW)) %>% 
-  #   group_by(PIN) %>% 
-  #   summarise(OWNER_NAME_CLEAN = str_c(OWNER_NAME, collapse = " ")) %>% 
-  #   full_join(names, by = "PIN") %>%  
-  #   select(PIN,OWNER_NAME,OWNER_NAME_CLEAN)
-  
-  names_trimmed <- names_cleaned %>% 
-    unnest_tokens(ORIG, OWNER_NAME_FULL, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    anti_join(owner_antijoin_names, by = c("ORIG" = "word")) %>%   
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME_TRIM = str_c(ORIG, collapse = " ")) %>% 
-    full_join(names_cleaned, by = "PIN") %>%  
-    select(PIN,OWNER_NAME,OWNER_NAME_CLEAN,OWNER_NAME_TRIM)
-  
-  view_names_trimmed_cnt <- function(){
-    names_trimmed_cnt <- names_trimmed %>% 
-      count(OWNER_NAME_TRIM, sort = TRUE)
-    
-    return(names_trimmed_cnt)
-  }
-  
-  # view_names_trimmed_cnt()
-  
-  # CREATE NGRAMS ----
-  
-  names_ngrams_1 <- names_trimmed %>%  
-    unnest_tokens(EXEMPT_NGRAM_1, OWNER_NAME_TRIM, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_1_cnt <- names_ngrams_1 %>% 
-    count(EXEMPT_NGRAM_1, sort = TRUE)
-  
-  names_ngrams_2 <- names_trimmed %>%  
-    unnest_tokens(EXEMPT_NGRAM_2, OWNER_NAME_TRIM, token = "ngrams", n = 2, to_lower = FALSE) %>% 
-    separate(EXEMPT_NGRAM_2, c("EXEMPT_NGRAM_2_A", "EXEMPT_NGRAM_2_B"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_2_cnt <- names_ngrams_2 %>% 
-    count(EXEMPT_NGRAM_2_A,EXEMPT_NGRAM_2_B, sort = TRUE)
-  
-  names_ngrams_3 <- names_trimmed %>%  
-    unnest_tokens(EXEMPT_NGRAM_3, OWNER_NAME_TRIM, token = "ngrams", n = 3, to_lower = FALSE) %>% 
-    separate(EXEMPT_NGRAM_3, c("EXEMPT_NGRAM_3_A", "EXEMPT_NGRAM_3_B", "EXEMPT_NGRAM_3_C"),sep = " ") %>% 
-    select(-OWNER_NAME)
-  
-  names_ngrams_3_cnt <- names_ngrams_3 %>% 
-    count(EXEMPT_NGRAM_3_A,EXEMPT_NGRAM_3_B,EXEMPT_NGRAM_3_C, sort = TRUE)
-  
-  names_ngrams <- 
-    list(names_cleaned,names_ngrams_1,names_ngrams_2,names_ngrams_3) %>% 
-    reduce(left_join, by = c("PIN","OWNER_NAME_CLEAN"))
-  
-  
-  # VIEW NGRAMS NETWORK ----
-
-make_bigram_graph <- function(){
-  bigram_graph <- names_ngrams_2 %>% 
-  count(EXEMPT_NGRAM_2_A,EXEMPT_NGRAM_2_B, sort = TRUE) %>% 
-  filter(n > 20) %>% 
-  graph_from_data_frame
-  
-  set.seed(2016)
-
-a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
-
-ggraph(bigram_graph, layout = "fr") +
-  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE,
-                 arrow = a, end_cap = circle(.07, 'inches')) +
-  geom_node_point(color = "lightblue", size = 5) +
-  geom_node_text(aes(label = name), vjust = 1, hjust = 1) +
-  theme_void()
-}
-
-# make_bigram_graph()
-  
-  
-  
-
-# CREATE NGRAM CATEGORY KEYS ----
-
-cat_ngram_1 <- owner_name_category_key %>% 
-  select(CATEGORY,EXEMPT_NGRAM_1) %>% 
-  drop_na
-
-cat_ngram_2 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("EXEMPT_NGRAM_2")) %>% 
-  drop_na
-
-cat_ngram_3 <- owner_name_category_key %>% 
-  select(CATEGORY,matches("EXEMPT_NGRAM_3")) %>% 
-  drop_na
-
-
-# PUBLIC AND NONPROFIT CATEGORIES ----
-
-pub_join <- owner_public_categories %>% 
-  group_by(OWNER_NAME) %>% 
-  summarise(PUBLIC = first(OWNER_CATEGORY)) 
-
-np_join <- owner_nonprofit_categories %>% 
-  group_by(OWNER_NAME) %>% 
-  summarise(NONPROFIT = first(OWNER_CATEGORY))
-
-# JOIN CATEGORIES TABLE ----
-
-
-ngram_1_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_1, by = "EXEMPT_NGRAM_1") %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_2_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_2, c("EXEMPT_NGRAM_2_A", "EXEMPT_NGRAM_2_B")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-ngram_3_categorized <- names_ngrams %>% 
-  left_join(cat_ngram_3, c("EXEMPT_NGRAM_3_A", "EXEMPT_NGRAM_3_B", "EXEMPT_NGRAM_3_C")) %>% 
-  group_by(PIN,OWNER_NAME_CLEAN) %>% 
-  summarise(CATEGORY = first_not_na(CATEGORY)) %>% 
-  select(-OWNER_NAME_CLEAN) %>% 
-  drop_na
-
-names_categorized <- 
-  list(names_trimmed, 
-       ngram_1_categorized,
-       ngram_2_categorized,
-       ngram_3_categorized) %>% 
-  reduce(left_join, by = "PIN") %>% 
-  group_by(PIN) %>% 
-  summarise(OWNER_NAME = first(OWNER_NAME),
-            OWNER_NAME_CLEAN = first(OWNER_NAME_CLEAN),
-            OWNER_NAME_TRIM = first(OWNER_NAME_TRIM),
-            OWNER_CATEGORY = first_not_na(c(CATEGORY.x,CATEGORY.y,CATEGORY))
-  ) %>%
-  transmute(PIN,
-            OWNER_NAME = OWNER_NAME_CLEAN,
-            OWNER_CATEGORY = OWNER_CATEGORY) %>%
-  left_join(pub_join, by = "OWNER_NAME") %>% 
-  left_join(np_join, by = "OWNER_NAME") %>% 
-  group_by(PIN) %>% 
-  summarise(
-    OWNER_NAME = first(OWNER_NAME),
-    OWNER_CATEGORY = first_not_na(c(OWNER_CATEGORY,PUBLIC,NONPROFIT))) %>% 
-  ungroup
-
-
-
-# VIEW CATEGORIES ----
-
-# names_categorized %>% count(OWNER_CATEGORY, sort = TRUE)
-# 
-# names_categorized %>%
-#   filter(is.na(OWNER_CATEGORY)) %>%
-#   count(OWNER_NAME, sort = TRUE) %>%
-#   filter(n>10) %>%
-#   print(n=Inf)
-
-# RETURN----
-
-return(names_categorized)
-
-
-}
-
-
-# COMMAND: MAKE_OWNER ----
-
-make_owner <- function(parcel_ready, ...){
- # BIND OWNER CATEGORIES AND JOIN TO PARCEL_READY ----    
-   p <- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    select(PIN)
-  
-  owner <- reduce(list(...), bind_rows) %>% 
-    right_join(p, by = "PIN") %>% 
-    mutate(OWNER_CATEGORY = if_else(is.na(OWNER_CATEGORY),"uncategorized",OWNER_CATEGORY))
-  
-  # CREAT CLEAN NAMES ----
-  
-  city_names_clean <- parcel_ready %>% 
-    pluck("MUNICIPALITY") %>%  
-    unique() %>% 
-    toupper() %>% 
-    discard(is.na) %>% 
-    c("TACOMA", "VASHON ISLAND") %>% 
-    toupper %>% 
-    str_replace_all("KING COUNTY", "UNINCORPORATED KING COUNTY") %>% 
-    {tibble(OWNER_NAME_CLEAN = .)}
-  
-  city_names_clean_long <- city_names_clean %>% 
-    mutate(OWNER_NAME_CLEAN_FULL = OWNER_NAME_CLEAN) %>% 
-    unnest_tokens(TOKEN, OWNER_NAME_CLEAN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    select(TOKEN, OWNER_NAME_CLEAN_FULL) %>% 
-    mutate(OWNER_NAME_CLEAN_FULL = if_else(OWNER_NAME_CLEAN_FULL %in% c("KING COUNTY", "UNINCORPORATED KING COUNTY"),
-                                           OWNER_NAME_CLEAN_FULL,
-                                           str_c("CITY OF ",OWNER_NAME_CLEAN_FULL)))
-  
-  tribe_names_clean <- tibble(TOKEN = c("MUCKLESHOOT",
-                                        "SNOQUALMIE",
-                                        "COWLITZ"),
-                              OWNER_NAME_CLEAN_FULL = c("MUCKLESHOOT INDIAN TRIBE",
-                                                        "SNOQUALMIE INDIAN TRIBE",
-                                                        "COWLITZ INDIAN TRIBE"))
-  
-  nonprofit_names_clean <- owner_nonprofit_categories 
-  
-  nonprofit_names_trim <- owner_nonprofit_categories %>% 
-    count(OWNER_NAME, sort = TRUE) %>% 
-    filter(n > 3) %>% 
-    drop_na() %>% 
-    transmute(ID = row_number(),
-              OWNER_NAME,
-              TOKEN = OWNER_NAME) %>% 
-    unnest_tokens(WORD, TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    anti_join(owner_antijoin_names, by = c("WORD" = "word")) %>% 
-    group_by(ID) %>% 
-    summarize(OWNER_NAME_CLEAN = first(OWNER_NAME),
-              OWNER_NAME_TRIM = str_c(WORD, collapse = " ")) %>% 
-    filter(!duplicated(OWNER_NAME_TRIM)) %>% 
-    select(OWNER_NAME_CLEAN, OWNER_NAME_TRIM)
-    
-  
-  
-  # CREAT ANTI_JOIN TABLES ----   
-  new_owner_antijoin_names <- tibble(TOKEN = c("CITY", "OF"))
-  
-  tribe_owner_antijoin_names <- tibble(TOKEN = c("INDIAN", "TRIBE"))
-  
-  # CREAT JOIN TABLES ----   
-  
-  clean_name_tbl <- 
-    tribble(
-      ~ OWNER_CATEGORY, ~OWNER_NAME_CLEAN,
-      "uncategorized", NA_character_,
-      "city", NA_character_,
-      "county", "KING COUNTY",
-      "non-profit", NA_character_,
-      "school district", NA_character_,
-      "federal", "US GOVERNMENT",
-      "state", "WASHINGTON STATE",
-      "special purpose district", NA_character_,
-      "homeowners association", NA_character_,
-      "port", "PORT OF SEATTLE",
-      "tribal", NA_character_, 
-      "regional transit authority", "SOUND TRANSIT"
-    ) 
-  
-  city_names_join_tbl <- 
-    owner %>%  
-    mutate(OWNER_NAME_TOKEN = OWNER_NAME) %>% 
-    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>%  
-    filter(OWNER_CATEGORY %in% "city") %>% 
-    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>% 
-    anti_join(new_owner_antijoin_names ) %>% 
-    stringdist_left_join(city_names_clean_long, by = c(TOKEN = "TOKEN"),  max_dist = 1, distance_col = "DIST") %>% 
-    group_by(PIN) %>% 
-    summarise(OWNER_NAME = first(OWNER_NAME),
-              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN_FULL)) %>%  
-    select(-OWNER_NAME) 
-  
-  tribe_names_join_tbl <- 
-    owner %>% 
-    mutate(OWNER_NAME_TOKEN = OWNER_NAME) %>% 
-    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>%
-    filter(OWNER_CATEGORY %in% "tribal") %>%
-    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>%
-    anti_join(tribe_owner_antijoin_names) %>%
-    stringdist_left_join(tribe_names_clean, by = c(TOKEN = "TOKEN"),  max_dist = 1, distance_col = "DIST") %>%
-    group_by(PIN) %>%
-    summarise(OWNER_NAME = first(OWNER_NAME),
-              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN_FULL)) %>%
-    select(-OWNER_NAME)
-  
-  nonprofit_names_join_tbl <- 
-    owner %>% 
-    mutate(PIN,
-           OWNER_NAME_TOKEN = OWNER_NAME) %>%  
-    filter(OWNER_CATEGORY %in% "non-profit") %>%
-    unnest_tokens(TOKEN, OWNER_NAME_TOKEN, token = "ngrams", n = 1, to_lower = FALSE) %>%
-    anti_join(owner_antijoin_names, by = c("TOKEN" = "word")) %>% 
-    group_by(PIN) %>% 
-    summarize(OWNER_NAME = first(OWNER_NAME),
-              OWNER_NAME_TRIM = str_c(TOKEN, collapse = " ")) %>% 
-    stringdist_left_join(nonprofit_names_trim, by = c(OWNER_NAME_TRIM = "OWNER_NAME_TRIM"),  max_dist = 3, distance_col = "DIST") %>% 
-    group_by(PIN) %>%
-    summarise(OWNER_NAME_CLEAN = if_else(is.na(OWNER_NAME_CLEAN),OWNER_NAME,OWNER_NAME_CLEAN))  
-  
-  
-  
-  # JOIN THE TABLES ----   
-  
-  owner_names_consolidated <- 
-    owner %>%  
-    left_join(clean_name_tbl, by = "OWNER_CATEGORY") %>% 
-    left_join(city_names_join_tbl, by = "PIN") %>% 
-    left_join(tribe_names_join_tbl, by = "PIN") %>% 
-    left_join(nonprofit_names_join_tbl, by = "PIN") %>%  
-    gather(OLD_FIELD, OWNER_NAME_CLEAN, matches("OWNER_NAME_CLEAN")) %>% 
-    group_by(PIN) %>% 
-    summarize(OWNER_CATEGORY = first(OWNER_CATEGORY),
-              OWNER_NAME = first(OWNER_NAME), 
-              OWNER_NAME_CLEAN = first_not_na(OWNER_NAME_CLEAN)) %>% 
-    transmute(PIN,
-              OWNER_NAME,
-              OWNER_NAME_CONSOLIDATED = if_else(is.na(OWNER_NAME_CLEAN), OWNER_NAME,OWNER_NAME_CLEAN),
-              OWNER_CATEGORY)
-  
-  # RETURN ----   
-  
-  owner_ready <- owner_names_consolidated
-  
-  return(owner_ready)
 }
 # COMMAND: MAKE_CITY_BLOCK_SQFT   ----
 
@@ -3491,38 +3402,89 @@ make_filters_zcta <- function(parcel_sf_ready, zcta){
    
 }
 
-# COMMAND: MAKE_FILTERS_OWNER_TYPE ----
-
-make_filters_owner_type <- function(parcel_ready, owner){
+# COMMAND: MAKE_FILTERS_PLACE ----
+make_filters_place <- function(parcel_sf_ready, census_place){
   
-  p <- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    select(PIN)
+  p <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    transmute(PIN) 
   
-  p_own_cat <- p %>% 
-    left_join(owner, by = "PIN") %>% 
+  census_place_subdivide <- census_place %>% 
+    transmute(PLACE = str_squish(NAME)) %>% 
+    st_subdivide(100) %>% 
+    st_transform(2926) %>% 
+    st_collection_extract()
+    
+  p$PLACE <- st_over(p$geom_pt,census_place_subdivide, "PLACE")  
+  
+  
+  p_ready <- p %>% 
     transmute(PIN,
-              FILTER_OWNER_TYPE = if_else(OWNER_CATEGORY == "homeowners association", "non-profit", OWNER_CATEGORY) 
-              )
+              FILTER_PLACE = if_else(is.na(PLACE),"Unnamed, Unincorporated King County",PLACE) %>% toupper) %>% 
+    st_drop_geometry() 
   
-  filters_owner_type <- p_own_cat
+  filters_place <- p_ready
   
-  return(filters_owner_type)
+  return(filters_place)
+   
+}
+
+# COMMAND: MAKE_FILTERS_PLACE_NAME ----
+
+make_filters_place_name <- function(parcel_df_ready, filters_place){
+  
+  loadd(parcel_df_ready, filters_place)
+  
+  
+  districts <- parcel_df_ready %>% 
+    pluck("DISTRICT_NAME") %>% 
+    discard(is.na) %>% 
+    unique
+  
+   filters_place_name <- parcel_df_ready %>% 
+    st_drop_geometry() %>% 
+    select(PIN, DISTRICT_NAME) %>% 
+    left_join(filters_place, by = "PIN") %>% 
+    transmute(PIN,
+              FILTER_PLACE_NAME = case_when(
+                DISTRICT_NAME %in% "KING COUNTY" & FILTER_PLACE %in% districts ~ "UNINCORPORATED KC",
+                DISTRICT_NAME %in% "KING COUNTY" & is.na(FILTER_PLACE) ~ "UNINCORPORATED KC",
+                DISTRICT_NAME %in% "KING COUNTY" & str_detect(FILTER_PLACE, "UNNAMED") ~ "UNINCORPORATED KC",
+                DISTRICT_NAME %in% "KING COUNTY" ~ str_c("UNINCORPORATED KC (",FILTER_PLACE,")"),
+                DISTRICT_NAME %in% districts ~ DISTRICT_NAME,
+                is.na(DISTRICT_NAME) & !is.na(FILTER_PLACE) ~ FILTER_PLACE,
+                TRUE ~ "OTHER"
+              ))  
+
+
+return(filters_place_name)
+  
+  }
+
+# COMMAND: MAKE_FILTERS_OWNER_CATEGORY ----
+
+make_filters_owner_category <- function(owner_category){
+  
+  filters_owner_category <- owner_category %>% 
+    transmute(PIN,
+             FILTER_OWNER_CATEGORY = OWNER_CATEGORY)
+  
+  return(filters_owner_category)
    
 }
 
 # COMMAND: MAKE_FILTERS_PUBLIC_OWNER ----
-make_filters_public_owner <- function(...){ 
+make_filters_public_owner <- function(owner_category){ 
   
-  p_ready_po <- owner %>%  
-    transmute(PIN, 
-              FILTER_PUBLIC_OWNER = if_else(OWNER_CATEGORY %in% c("non-profit","uncategorized", "homeowners association"),
-                                            NA_character_,
-                                            OWNER_NAME_CONSOLIDATED))
+  filters_public_owner <- owner_category %>% 
+    transmute(PIN,
+             FILTER_PUBLIC_OWNER = case_when(
+               OWNER_PUBLIC_LGL ~ OWNER_NAME_ORG,
+               TRUE ~ NA_character_
+             ))
   
-  filters_public_owner <- p_ready_po
-  
-  return(filters_public_owner)
+  return(filters_owner_category)
    
 }
  
@@ -4016,7 +3978,7 @@ make_filters_eligibility_dda <- function(filters_zcta){
                     message(glue("* Note: This file is not actually read but it does exists here: '{fp}'.")) 
                     })
   
-  list_pages <- extract_tables(elig_dda_fp, method = "data.frame")
+  list_pages <- extract_tables(elig_dda_fp, output = "data.frame")
   
   tbl_pages <- list_pages %>% 
     map(~ .x %>% t %>% as_tibble) %>% 
@@ -4320,8 +4282,8 @@ tibble::tribble(
                     "TAXABLE_IMPS_VAL",  "King County Department of Assessments",
                     "TAXABLE_LAND_VAL",  "King County Department of Assessments",
                         "ADDRESS_FULL",  "King County Department of Assessments",
-                           "CITY_NAME",  "King County Department of Assessments",
-                    "CITY_NAME_POSTAL",  "King County Department of Assessments",
+                           "ADDR_CITY_NAME",  "King County Department of Assessments",
+                    "ADDR_CITY_NAME_POSTAL",  "King County Department of Assessments",
                              "ZIPCODE",  "King County Department of Assessments",
                     "PRIMARY_ADDR_LGL",  "King County Department of Assessments",
                            "PROP_NAME",  "King County Department of Assessments",

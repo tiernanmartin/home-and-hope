@@ -1,8 +1,9 @@
 # MAKE PLANS: TRIGGERS ----
 
 triggers_plan <- drake_plan(
-  trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"),
-  trigger_owner_name_category_key = drive_get_datetime_modified("1cYNIpQpDJTZWi46S_9bZ6rjgRu8JWes1BxOeoJJD2tg"),
+  trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"), 
+  trigger_public_owner_name_category_key = drive_get_datetime_modified("1Uhj9GcPP93hfGehK1dPmxgLbsAXxUOnHXY8PFSfMnRI"),
+  trigger_other_exempt_owner_name_category_key = drive_get_datetime_modified("1xRE5A2suzH_KcrrFpqdcX7fguFShokjFchm7khML6sQ"),
   trigger_suit_other = drive_get_datetime_modified("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU"),
   trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
   strings_in_dots = "literals"
@@ -18,9 +19,15 @@ lookup_plan <- drake_plan(
   tax_reason = make_tax_reason(),
   present_use_recode = make_present_use_recode(), 
   parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu, present_use_recode),
-  name_recode_key = make_name_recode_key(trigger_name_recode_key)
+  name_recode_key = make_name_recode_key(trigger_name_recode_key),
+  owner_antijoin_names = make_owner_antijoin_names(),
+  public_owner_name_category_key = make_public_owner_name_category_key(trigger_public_owner_name_category_key),
+  other_exempt_owner_name_category_key = make_other_exempt_owner_name_category_key(trigger_other_exempt_owner_name_category_key)
 ) %>% 
-  bind_rows(triggers_plan)
+  bind_rows(triggers_plan) %>% 
+  mutate(trigger = if_else(str_detect(target, "trigger"),
+                           "always",
+                           drake::default_trigger())) 
 
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
@@ -32,11 +39,15 @@ parcel_plan <- drake_plan(
   parcel_sf = make_parcel_sf(parcel_sf_poly),
   parcel_sf_ready = make_parcel_sf_ready(parcel_sf),
   parcel_addr_ready = make_parcel_addr_ready(parcel_addr),
-  parcel_df_ready = make_parcel_df_ready(parcel_lookup, prop_type, name_recode_key, pub_parcel, parcel_df),
-  parcel_acct_ready = make_parcel_acct_ready(acct, tax_status, tax_reason),
+  parcel_df_ready = make_parcel_df_ready(parcel_lookup, prop_type, pub_parcel, parcel_df),
+  parcel_acct_ready = make_parcel_acct_ready(acct, tax_status, tax_reason), 
   parcel_env_ready = make_parcel_env_ready(env_restrictions),
-  parcel_ready = make_parcel_ready(parcel_addr_ready, parcel_env_ready, parcel_acct_ready, parcel_sf_ready, parcel_df_ready) 
-) %>% bind_rows(lookup_plan) 
+  parcel_ready = make_parcel_ready(parcel_addr_ready, parcel_env_ready, join_list = list(parcel_acct_ready, parcel_sf_ready, parcel_df_ready)) 
+) %>% 
+  bind_rows(lookup_plan) %>% 
+  mutate(trigger = if_else(str_detect(target, "trigger"),
+                           "always",
+                           drake::default_trigger())) 
 
 
 # MAKE PLANS: EXTERNAL_DATA ----
@@ -45,17 +56,21 @@ external_data_plan <- drake_plan(
   waterbodies = make_waterbodies(),
   uga = make_uga(),
   zoning = make_zoning(),
+  kc_city = make_kc_city(),
   census_tracts = make_census_tracts(),
   king_county = make_king_county(),
   zcta = make_zcta(king_county),
+  census_place = make_census_place(),
   school_districts = make_school_districts(),
   leg_districts = make_leg_districts(),
   kc_council_districts = make_kc_council_districts(),
   seattle_council_districts = make_seattle_council_districts(),
-  mj_businesses = make_mj_businesses(),
+  mj_businesses_raw = make_mj_businesses_raw(),
+  mj_businesses = make_mj_businesses(mj_businesses_raw = mj_businesses_raw),
   el_facilities = make_el_facilities(),
   other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other),
-  affordable_housing_subsidies = make_affordable_housing_subsidies(),
+  affordable_housing_subsidies_raw = make_affordable_housing_subsidies_raw(),
+  affordable_housing_subsidies = make_affordable_housing_subsidies(affordable_housing_subsidies_raw = make_affordable_housing_subsidies),
   transit_stops_osm = make_transit_stops_osm(),
   play_spaces_osm = make_play_spaces_osm(),
   seattle_dev_cap = make_seattle_dev_cap()
@@ -133,17 +148,31 @@ suit_util_plan <- bind_rows(
   building_plan,
   utilization_criteria_plan,
   utilization_plan 
-)
+) %>% 
+  mutate(trigger = if_else(str_detect(target, "trigger"),
+                           "always",
+                           drake::default_trigger())) 
 
 # MAKE PLANS: FILTERS AND HELPERS ----
 
-owner_plan <- drake_plan(
-  owner_antijoin_names = make_owner_antijoin_names(),
-  owner_name_category_key = make_owner_name_category_key(trigger_owner_name_category_key), 
-  owner_public_categories = make_owner_public_categories(parcel_ready, suitability_tax_exempt, owner_antijoin_names, owner_name_category_key, name_recode_key),
-  owner_nonprofit_categories = make_owner_nonprofit_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
-  owner_exempt_categories = make_owner_exempt_categories(parcel_ready, suitability_tax_exempt, owner_public_categories, owner_nonprofit_categories, owner_antijoin_names, owner_name_category_key, name_recode_key),
-  owner = make_owner(parcel_ready, owner_public_categories, owner_nonprofit_categories,  owner_exempt_categories, owner_antijoin_names) 
+official_names_plan <- drake_plan(
+  official_names_seattle = make_official_names_seattle(),
+  official_names_kc = make_official_names_kc(),
+  official_names_wa = make_official_names_wa(),
+  official_names_us = make_official_names_us(),
+  official_names_places = make_official_names_places(census_place),
+  official_names_tribes = make_official_names_tribes(),
+  official_names_housing_authorities = make_official_names_housing_authorities(),
+  official_names_regional_transit_authorities = make_official_names_regional_transit_authorities(),
+  official_names_special_purpose_districts = make_official_names_special_purpose_districts(),
+  official_names_higher_ed_providers = make_official_names_higher_ed_providers(),
+  official_names_hospitals = make_official_names_hospitals(),
+  official_names = make_official_names(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_higher_ed_providers, official_names_hospitals)
+)
+
+owner_plan <- drake_plan( 
+  owner_name_full = make_owner_name_full(suitability, name_recode_key, owner_antijoin_names),
+  owner_category = make_owner_category(owner_name_full, public_owner_name_category_key, other_exempt_owner_name_category_key) 
   
 )
 
@@ -151,8 +180,10 @@ owner_plan <- drake_plan(
 filter_plan <- drake_plan(
   filters_census_tract = make_filters_census_tract(parcel_sf_ready, census_tracts),
   filters_zcta = make_filters_zcta(parcel_sf_ready, zcta),
-  filters_owner_type = make_filters_owner_type(parcel_ready, owner),
-  filters_public_owner = make_filters_public_owner(owner), 
+  filters_place = make_filters_place(parcel_sf_ready, census_place),
+  filters_place_name = make_filters_place_name(parcel_df_ready, filters_place),
+  filters_owner_category = make_filters_owner_category(owner_category),
+  filters_public_owner = make_filters_public_owner(owner_category), 
   filters_proximity_transit = make_filters_proximity_transit(parcel_sf_ready, transit_stops_osm),
   filters_proximity_play_space = make_filters_proximity_play_space(parcel_sf_ready, play_spaces_osm),
   filters_proximity_marijuana = make_filters_proximity_marijuana(parcel_sf_ready, mj_businesses),
@@ -171,7 +202,9 @@ filter_plan <- drake_plan(
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
-                         filters_owner_type,
+                         filters_place,
+                         filters_place_name,
+                         filters_owner_category,
                          filters_public_owner,  
                          filters_proximity_transit,
                          filters_proximity_play_space,
@@ -202,12 +235,15 @@ filter_helper_plan <- bind_rows(
   owner_plan,
   filter_plan,
   helper_plan
-)
+) %>% 
+  mutate(trigger = if_else(str_detect(target, "trigger"),
+                           "always",
+                           drake::default_trigger())) 
 
 # MAKE PLANS: INVENTORY_PLAN ----
 
 inventory_plan <- drake_plan(
-  inventory = make_inventory(owner, filters, helpers, suitability, utilization),
+  inventory = make_inventory(owner_category, filters, helpers, suitability, utilization),
   inventory_suitable = make_inventory_suitable(inventory), 
   inventory_suitable_poly = make_inventory_suitable_poly(inventory_suitable),
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
