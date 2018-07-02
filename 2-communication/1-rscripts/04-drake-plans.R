@@ -202,6 +202,7 @@ filter_plan <- drake_plan(
   filters_eligibility_dda = make_filters_eligibility_dda(filters_zcta),
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
   filters_eligibility_oz = make_filters_eligibility_oz(filters_census_tract),
+  filters_parking = make_filters_parking(parcel_df_ready),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
@@ -223,7 +224,8 @@ filter_plan <- drake_plan(
                          filters_eligibility_nmtc,
                          filters_eligibility_dda,
                          filters_eligibility_qct,
-                         filters_eligibility_oz)
+                         filters_eligibility_oz,
+                         filters_parking)
 )
 
 helper_plan <- drake_plan(

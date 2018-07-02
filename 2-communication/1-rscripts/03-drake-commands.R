@@ -4243,6 +4243,27 @@ make_filters_eligibility_oz <- function(filters_census_tract){
   return(filters_eligibility_oz)
   
 }
+
+
+# COMMAND: MAKE_FILTERS_PARKING -------------------------------------------
+
+make_filters_parking <- function(parcel_df_ready){
+  
+  # CHECK OUT HOW MANY PARCELS THIS WILL INCLUDE
+  
+  # parcel_df_ready %>% 
+  #   filter(str_detect(toupper(PRESENT_USE),"PARKING" )) %>% 
+  #   count(PRESENT_USE, sort = TRUE)
+  
+  # Total: 1,836
+  
+  filters_parking <- parcel_df_ready %>% 
+    transmute(PIN,
+              FILTER_PARKING = PRESENT_USE %in% c("Parking Assoc","Parking Commercial Lot"))
+  
+  return(filters_parking)
+}
+
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   
