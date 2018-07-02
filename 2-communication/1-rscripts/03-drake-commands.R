@@ -1628,7 +1628,7 @@ make_other_suitability_characteristics <- function(...){
   
   other_gs <- gs_key("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU")
   
-  other <- gs_read(other_gs, sheet = "SUIT_OTHER", col_types = "ccc") 
+  other <- gs_read(other_gs, sheet = "SUIT_OTHER", col_types = "clcc") 
   
   write_rds(other, other_suitability_characteristics_fp)
   
@@ -2791,7 +2791,7 @@ make_criteria_steep_vacant <- function(){
 
 make_criteria_other <- function(){
   
-  crit_other <- list("other" = FALSE)
+  crit_other <- list("other" = TRUE)
   
   criteria_other <- crit_other
   
@@ -3012,16 +3012,11 @@ make_suitability_steep_vacant <- function(...){
 
 # COMMAND: MAKE_SUITABILITY_OTHER ----
 
-make_suitability_other <- function(...){
+make_suitability_other <- function(parcel_sf_ready, other_suitability_characteristics ){
   
   p_ready_other <- parcel_sf_ready %>% 
     st_drop_geometry() %>% 
-    left_join(other_suitability_characteristics, by = "PIN") %>% 
-    transmute(PIN,
-              SUIT_OTHER_TYPE = SUIT_OTHER,
-              SUIT_OTHER = if_else(is.na(SUIT_OTHER),FALSE, TRUE, missing = FALSE),
-              SUIT_OTHER_NOTE
-              ) %>% 
+    left_join(other_suitability_characteristics, by = "PIN") %>%  
     select(PIN,
            SUIT_OTHER,
            SUIT_OTHER_TYPE,
@@ -3045,8 +3040,12 @@ make_suitability <- function(parcel_ready, suitability_criteria, ...){
       SUITABLE_LOT_SIZE_LGL = if_else(SUIT_LOT_SIZE %in% suitability_criteria[["lot_size"]],TRUE,FALSE,FALSE),
       SUITABLE_PARCEL_AREA_RATIO_LGL = if_else(SUIT_PARCEL_AREA_RATIO >= suitability_criteria[["area_ratio"]],TRUE,FALSE,FALSE),
       SUITABLE_STEEP_VACANT_LGL = if_else(SUIT_STEEP_VACANT == suitability_criteria[["steep_vacant"]], TRUE, FALSE, FALSE),
-      SUITABLE_OTHER_LGL = if_else(SUIT_OTHER == suitability_criteria[["other"]], TRUE, FALSE, FALSE),
-      SUITABLE_LGL = SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL & SUITABLE_STEEP_VACANT_LGL & SUITABLE_OTHER_LGL
+      SUITABLE_OTHER_LGL = case_when(is.na(SUIT_OTHER) ~ NA, 
+                                     SUIT_OTHER == suitability_criteria[["other"]] ~ TRUE,  
+                                     TRUE ~ FALSE),
+      SUITABLE_LGL = case_when(!is.na(SUITABLE_OTHER_LGL) ~ SUITABLE_OTHER_LGL,
+                               TRUE ~ (SUITABLE_OWNER_LGL & SUITABLE_WATER_OVERLAP_LGL & SUITABLE_WITHIN_UGA_LGL & SUITABLE_ZONING_CONSOL_20_LGL & SUITABLE_PRESENT_USE_LGL & SUITABLE_LOT_SIZE_LGL & SUITABLE_PARCEL_AREA_RATIO_LGL & SUITABLE_STEEP_VACANT_LGL)
+      )
     ) %>% 
     st_sf
   
