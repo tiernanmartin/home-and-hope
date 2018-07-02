@@ -71,9 +71,10 @@ st_area_ratio <- function(x){
     
   }
 
-# FUNCTION: STR_TO_clean_upper ----
 
-str_clean_upper <- function(x){str_to_upper(str_trim(str_replace_all(x,"^[:graph:]]","")))}
+# FUNCTION: STR_CLEAN_UPPER ----
+
+str_clean_upper <- function(x){str_to_upper(str_trim(str_squish(str_replace_all(x,"^[:punct:]]",""))))}
 
 # FUNCTION: GS_READ_ALL ----
 
