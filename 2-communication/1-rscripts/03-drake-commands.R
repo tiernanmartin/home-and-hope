@@ -4082,13 +4082,17 @@ make_filters_historic <- function(parcel_ready){
 }
 
 # COMMAND: MAKE_FILTERS_AFFORD_EXPIR_DATE ----
-make_filters_afford_expir_date <- function(...){ 
+make_filters_afford_expir_date <- function(parcel_sf_ready, affordable_housing_subsidies){ 
   
    p_ready_afford_expir_date <- parcel_sf_ready %>%  
      st_join(affordable_housing_subsidies) %>% 
     st_drop_geometry() %>% 
     transmute(PIN, 
-              FILTER_AFFORD_TYPE = SUBSIDY_NAME,
+              FILTER_AFFORD_TYPE = case_when(
+                is.na(SUBSIDY_NAME) ~ "none",
+                SUBSIDY_NAME %in% c("Section 202", "RHS 515") ~ "Other",
+                TRUE ~ SUBSIDY_NAME
+              ),
               FILTER_AFFORD_UNITS = ASSISTED_UNITS,
               FILTER_AFFORD_EXPIR_DATE = as.Date(END_DATE)
               ) %>% 
