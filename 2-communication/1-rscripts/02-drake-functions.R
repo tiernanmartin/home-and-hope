@@ -36,11 +36,13 @@ safe_divide <- function(x,y){
 
 str_count_factor <- function(x){ 
   
-  x_summary <- summary(factor(x))
-  
-  summary_string <- map2_chr(names(x_summary),x_summary,~ str_c(.x,": ",.y)) %>% str_c(collapse = "; ")
-  
-  return(summary_string)
+ if(length(x)==1 & all(is.na(x))){return(NA_character_)}else{
+    x_summary <- summary(factor(x))
+    
+    summary_string <- map2_chr(names(x_summary),x_summary,~ str_c(.x,": ",.y)) %>% str_c(collapse = "; ")
+    
+    return(summary_string)
+  }
 }
 
 

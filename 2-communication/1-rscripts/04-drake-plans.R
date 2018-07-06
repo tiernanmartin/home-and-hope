@@ -75,7 +75,8 @@ external_data_plan <- drake_plan(
   affordable_housing_properties = make_affordable_housing_properties(affordable_housing_properties_raw),
   transit_stops_osm = make_transit_stops_osm(),
   play_spaces_osm = make_play_spaces_osm(),
-  seattle_dev_cap = make_seattle_dev_cap()
+  seattle_dev_cap = make_seattle_dev_cap(),
+  future_lightrail = make_future_lightrail()
 )
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----
@@ -203,6 +204,7 @@ filter_plan <- drake_plan(
   filters_eligibility_qct = make_filters_eligibility_qct(filters_census_tract),
   filters_eligibility_oz = make_filters_eligibility_oz(filters_census_tract),
   filters_parking = make_filters_parking(parcel_df_ready),
+  filters_proximity_lightrail = make_filters_proximity_lightrail(parcel_sf_ready, future_lightrail),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
@@ -225,7 +227,8 @@ filter_plan <- drake_plan(
                          filters_eligibility_dda,
                          filters_eligibility_qct,
                          filters_eligibility_oz,
-                         filters_parking)
+                         filters_parking,
+                         filters_proximity_lightrail)
 )
 
 helper_plan <- drake_plan(
@@ -295,7 +298,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180510.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180705.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),

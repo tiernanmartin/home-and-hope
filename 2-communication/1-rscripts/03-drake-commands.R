@@ -1847,37 +1847,41 @@ make_affordable_housing_properties <- function(affordable_housing_properties_raw
   
 }
 
-# COMMAND: MAKE_MUNICIPALITY ----
+# COMMAND: MAKE_FUTURE_LIGHTRAIL ----
 
-make_municipality <- function(parcel_ready){
+make_future_lightrail <- function(){
   
-  districts <- parcel_ready %>% 
-    pluck("DISTRICT_NAME") %>% 
-    discard(is.na) %>% 
-    unique
+  lightrail_fp <- here("1-data/2-external/sound-transit-lightrail.gpkg")
   
-  muni <- parcel_ready %>% 
-    st_drop_geometry() %>% 
-    transmute(PIN,
-              DISTRICT_NAME = if_else(DISTRICT_NAME %in% "KING COUNTY", "UNINCORPORATED KC", DISTRICT_NAME),
-              ADDR_CITY_NAME,
-              ADDR_CITY_NAME_POSTAL,
-              MUNICIPALITY = case_when(
-                is.na(DISTRICT_NAME) & is.na(ADDR_CITY_NAME) ~ NA_character_,
-                DISTRICT_NAME %in% "UNINCORPORATED KC" & ADDR_CITY_NAME %!in% districts ~ str_c(DISTRICT_NAME," (",ADDR_CITY_NAME,")"),
-                TRUE ~ DISTRICT_NAME
-              )) %>% 
-    select(PIN,
-           MUNICIPALITY)
+  lightrail_dr_id <- as_id("1UCqNV3fI4VwzIfSXxTS9nIaHWGhrnJuM")
   
-municipality <- muni
-
-return(muni)
+  lightrail_load <- make_or_read2(fp = lightrail_fp, dr_id = lightrail_dr_id, skip_get_expr = FALSE,
+                                  get_expr = function(fp){
+                                    
+                                    lightrail_url <- "https://github.com/tiernanmartin/datasets/raw/master/sound-transit-lightrail/data/sound-transit-lightrail.gpkg"
+                                    
+                                    dat <- read_sf(lightrail_url)
+                                    
+                                    drive_folder <- as_id("0B5Pp4V6eCkhrdlJ3MXVaNW16T0U")
+                                    
+                                    st_write(dat, fp)
+                                    
+                                    drive_upload(fp, drive_folder)
+                                    
+                                    
+                                  },
+                                  make_expr = function(fp, dr_id){
+                                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_sf)
+                                    
+                                  },
+                                  read_expr = function(fp){read_sf(fp)})
   
-  }
+  future_lightrail <- lightrail_load
+  
+  return(future_lightrail)
+  
 
-
-
+}
 
 # COMMAND: MAKE_OFFICIAL_NAMES_SEATTLE----
 
@@ -2470,6 +2474,7 @@ make_owner_category <- function(owner_name_full, public_owner_name_category_key,
     )
     ) %>% 
     select(PIN,
+           OWNER_NAME_FULL,
            OWNER_PUBLIC_LGL,
            OWNER_CATEGORY,
            OWNER_NAME_ORG,
@@ -4263,6 +4268,61 @@ make_filters_parking <- function(parcel_df_ready){
   return(filters_parking)
 }
 
+# COMMAND: MAKE_FILTERS_PROXIMITY_FUTURE_LIGHTRAIL ----
+make_filters_proximity_lightrail <- function(parcel_sf_ready, future_lightrail){ 
+  
+  p_pt <- parcel_sf_ready %>% 
+    st_set_geometry("geom_pt") %>% 
+    st_transform(2926) %>% 
+    transmute(PIN)
+
+  flr <- future_lightrail %>%  
+    filter(!str_detect(LOCATION_CERTAINTY,"exists")) %>% 
+    transmute(PROJECT,
+              NAME,
+              LOCATION_STATUS = case_when(
+      str_detect(LOCATION_CERTAINTY, "high") ~ "confirmed",
+      str_detect(LOCATION_CERTAINTY, "low") ~ "unconfirmed",
+      TRUE ~ "other"
+    )) %>% 
+    st_transform(2926)
+  
+  
+  buffer_dist_half <- set_units(1/2, "mile")
+  
+  p_flr <- st_join(p_pt, st_buffer(flr, buffer_dist_half))
+  
+    # ~ 10 min. operation
+    
+  p_prox_flr <- p_flr %>%  
+    st_drop_geometry() %>%     
+    group_by(PIN) %>%  
+    nest %>% 
+    mutate(TYPES = map(data, "LOCATION_STATUS")) %>% 
+    group_by(PIN) %>%
+    transmute( FILTER_PROXIMITY_FUTURE_LIGHTRAIL = case_when( 
+                any(flatten_chr(TYPES) %in% "confirmed") ~ "1/2 mile (confirmed station)",
+                any(flatten_chr(TYPES) %in% "unconfirmed") ~ "1/2 mile (unconfirmed station)",
+                TRUE ~ "Greater than 1/2 mile"),
+              FILTER_PROXIMITY_FUTURE_LIGHTRAIL_HALF = case_when(
+                FILTER_PROXIMITY_FUTURE_LIGHTRAIL %in% "Greater than 1/2 mile" ~ FALSE,
+                TRUE ~ TRUE
+              ),
+              FUTURE_LIGHTRAIL_STATION_TYPES = map_chr(data, ~ str_count_factor(.x$LOCATION_STATUS)),
+              FUTURE_LIGHTRAIL_STATION_NAMES = map_chr(data, ~ str_c(.x$NAME, collapse = ", "))
+    ) %>% 
+    ungroup %>% 
+    select(PIN,
+           FILTER_PROXIMITY_FUTURE_LIGHTRAIL_HALF,
+           FUTURE_LIGHTRAIL_STATION_TYPES,
+           FUTURE_LIGHTRAIL_STATION_NAMES,
+           FILTER_PROXIMITY_FUTURE_LIGHTRAIL)
+    
+  filters_proximity_transit <- p_prox_flr
+  
+  return(filters_proximity_transit)
+   
+}
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   
