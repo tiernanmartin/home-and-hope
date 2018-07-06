@@ -670,7 +670,7 @@ make_parcel_addr_ready <- function(parcel_addr){
   # MAKE P_ADDR_READY
   p_addr_ready <- parcel_addr %>%
     transmute(PIN,
-              ADDR_ADDRESS_FULL = ADDR_FULL,
+              ADDR_ADDRESS_STREET = ADDR_FULL, 
               ADDR_CITY_NAME = CTYNAME,
               ADDR_CITY_NAME_POSTAL = POSTALCTYN,
               ADDR_ZIPCODE = factor(ZIP_5),
@@ -681,6 +681,14 @@ make_parcel_addr_ready <- function(parcel_addr){
                 TRUE ~ ADDR_CITY_NAME
               ))) %>%
     mutate_if(is.factor, as.character) %>% 
+    transmute(PIN,
+              ADDR_ADDRESS_STREET,
+              ADDR_ADDRESS_FULL = str_c(ADDR_ADDRESS_STREET, ADDR_CITY_NAME,sep = ", "),
+              ADDR_CITY_NAME,
+              ADDR_CITY_NAME_POSTAL,
+              ADDR_ZIPCODE,
+              ADDR_PRIMARY_ADDR_LGL 
+              ) %>% 
   group_by(PIN) %>%
     arrange(desc(ADDR_PRIMARY_ADDR_LGL)) %>%
     slice(1) %>%
@@ -3335,7 +3343,7 @@ make_utilization_criteria <- function(...){
 
 # COMMAND: MAKE_UTILILIZATION_SEATTLE_UTIL_RATIO ----
 
-make_seattle_util_ratio <- function(...){
+make_seattle_util_ratio <- function(parcel_sf_ready, seattle_dev_cap){
   
   p <- parcel_sf_ready %>% 
     select(PIN) %>% 
