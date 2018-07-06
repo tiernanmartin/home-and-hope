@@ -3581,6 +3581,23 @@ make_filters_public_owner <- function(owner_category){
   return(filters_public_owner)
    
 }
+# COMMAND: MAKE_FILTERS_ZONING_CATEGORY ----
+make_filters_zoning_category <- function(suitability_developable_zoning){ 
+  
+  filters_public_owner <- suitability_developable_zoning %>% 
+    rename(Z = SUIT_ZONING_CONSOL_20) %>% 
+    transmute(PIN,
+              FILTER_ZONING_CATEGORY = case_when(
+      is.na(Z) | Z %in% "Undesignated" ~ "Other",
+      Z %in% c("General Mixed Use","Mixed Use Commercial/Residential") ~ "Mixed Use",
+      Z %in% "General Commercial" ~ "Commercial",
+      TRUE ~ Z
+    ) 
+    )
+  
+  return(filters_public_owner)
+   
+}
  
 # COMMAND: MAKE_FILTERS_PROXIMITY_TRANSIT ----
 make_filters_proximity_transit <- function(...){
