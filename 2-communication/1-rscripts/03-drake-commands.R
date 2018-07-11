@@ -3352,7 +3352,11 @@ make_seattle_util_ratio <- function(parcel_sf_ready, seattle_dev_cap){
   sea_util_ratio <- p %>% 
     inner_join(seattle_dev_cap, by = "PIN") %>%  
     transmute(PIN,
-              SEATTLE_UTIL_RATIO_DBL = DR) %>% 
+              SEATTLE_UTIL_RATIO_DBL = case_when(
+                is.na(DR) ~ 0,
+                DR < 0 ~ 0,
+                TRUE ~ DR
+              )) %>% 
     right_join(p, by = "PIN") 
   
   seattle_util_ratio <- sea_util_ratio
@@ -3429,7 +3433,7 @@ make_utilization_potential <- function(suitability, development_assumptions_lot,
 
 # COMMAND: MAKE_UTILILIZATION ----
 
-make_utilization <- function(...){
+make_utilization <- function(utilization_criteria, suitability, utilization_present, utilization_potential, seattle_util_ratio){
    
   
   util_join <- suitability %>% 
