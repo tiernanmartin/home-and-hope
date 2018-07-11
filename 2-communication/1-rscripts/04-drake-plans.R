@@ -272,7 +272,7 @@ data_dictionary_plan <- drake_plan(
   dd_field_name_dev = make_dd_field_name_dev(inventory), 
   dd_field_format = make_dd_field_format(inventory),
   dd_data_source = make_dd_data_source(),
-  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.2"),
+  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.3"),
   dd_google_drive = make_dd_google_drive(trigger_dd_google_drive, dd_field_name_dev, dd_field_format, dd_dictionary_version),
   dd = make_dd(dd_google_drive), 
   strings_in_dots = "literals"
