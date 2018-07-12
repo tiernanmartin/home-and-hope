@@ -244,7 +244,8 @@ helper_plan <- drake_plan(
   helpers_opp360_xwalk = make_helpers_opp360_xwalk(),
   helpers_url_parcel_viewer = make_helpers_url_parcel_viewer(parcel_ready),
   helpers_url_opp360 = make_helpers_url_opp360(filters_census_tract, helpers_opp360_xwalk),
-  helpers = make_helpers(helpers_url_parcel_viewer,helpers_url_opp360)
+  helpers_url_contaminated = make_helpers_url_contaminated(filters_contaminated, contaminated_sites),
+  helpers = make_helpers(helpers_url_parcel_viewer,helpers_url_opp360,helpers_url_contaminated)
   
 )
 

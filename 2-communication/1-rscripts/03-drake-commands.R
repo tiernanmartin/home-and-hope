@@ -1998,7 +1998,7 @@ make_contaminated_sites <- function(){
     clean_names(case = "screaming_snake") %>% 
     transmute(CLEANUP_SITE_ID,
               FILTER_CONTAMINATED = TRUE,
-              FILTER_CONTAMINATED_NAME = CLEANUP_SITE_NAME,
+              FILTER_CONTAMINATED_NAME = str_to_title(CLEANUP_SITE_NAME),
               FILTER_CONTAMINATED_STATUS = str_to_lower(SITE_STATUS),
               LATITUDE = as.double(LATITUDE),
               LONGITUDE = as.double(LONGITUDE)) %>% 
@@ -4597,6 +4597,29 @@ make_helpers_url_opp360 <- function(filters_census_tract, helpers_opp360_xwalk){
  helpers_url_opp360 <- url_opp360
  
  return(helpers_url_opp360)
+  
+  
+}
+
+# COMMAND: MAKE_HELPERS_URL_CONTAMINATED ----
+make_helpers_url_contaminated <- function(filters_contaminated, contaminated_sites){ 
+  
+  url_base <- "https://fortress.wa.gov/ecy/tcpwebreporting/tcpreportviewer.aspx?id=csd&format=pdf&csid="
+  
+  sites_url_ready <- contaminated_sites %>% 
+    st_drop_geometry() %>% 
+    transmute(FILTER_CONTAMINATED_NAME, 
+              HELPERS_URL_CONTAMINATED = str_c(url_base, CLEANUP_SITE_ID, sep = ""))
+  
+  
+  url_contaminated <- filters_contaminated %>%   
+    left_join(sites_url_ready, by = "FILTER_CONTAMINATED_NAME")  %>% 
+    transmute(PIN,
+              HELPERS_URL_CONTAMINATED)
+  
+ helpers_url_contaminated <- url_contaminated
+ 
+ return(helpers_url_contaminated)
   
   
 }
