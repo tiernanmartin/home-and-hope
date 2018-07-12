@@ -77,7 +77,9 @@ external_data_plan <- drake_plan(
   play_spaces_osm = make_play_spaces_osm(),
   seattle_dev_cap = make_seattle_dev_cap(),
   future_lightrail = make_future_lightrail(),
-  brownfield_sites = make_brownfield_sites()
+  brownfield_sites = make_brownfield_sites(),
+  contaminated_sites_raw = make_contaminated_sites_raw(),
+  contaminated_sites = make_contaminated_sites()
 )
 
 # MAKE PLANS: SUITABILITY AND UTILIZATION ----

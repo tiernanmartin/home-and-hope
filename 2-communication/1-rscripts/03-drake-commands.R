@@ -1924,6 +1924,97 @@ make_brownfield_sites <- function(){
 
 }
 
+# COMMAND: MAKE_CONTAMINATED_SITES_RAW ----
+
+make_contaminated_sites_raw <- function(){
+  
+  contaminated_fp <- here("1-data/2-external/CleanupSiteDetails.xlsx")
+  
+  contaminated_dr_id <- as_id("1gSLNgEmZqpjc-svR0sTVk-XQ3OlcRPYm")
+  
+  contaminated_load <- make_or_read2(fp = contaminated_fp, dr_id = contaminated_dr_id, skip_get_expr = TRUE,
+                                  get_expr = function(fp){
+                                    
+                                    # source: https://fortress.wa.gov/ecy/tcpwebreporting/report.aspx
+                                    
+                                    
+                                  },
+                                  make_expr = function(fp, dr_id){
+                                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel)
+                                    
+                                  },
+                                  read_expr = function(fp){read_excel(fp)})
+  
+ contaminated_sites_raw <- contaminated_load %>% 
+   clean_names(case = "screaming_snake")
+  
+  
+  return(contaminated_sites_raw)
+  
+
+}
+
+# COMMAND: MAKE_CONTAMINATED_SITES ----
+
+make_contaminated_sites <- function(){
+  
+  contaminated_fp <- here("1-data/2-external/CleanupSiteDetails.xlsx")
+  
+  contaminated_dr_id <- as_id("1gSLNgEmZqpjc-svR0sTVk-XQ3OlcRPYm")
+  
+  contaminated_load <- make_or_read2(fp = contaminated_fp, dr_id = contaminated_dr_id, skip_get_expr = TRUE,
+                                  get_expr = function(fp){
+                                    
+                                    # source: https://fortress.wa.gov/ecy/tcpwebreporting/report.aspx
+                                    
+                                    
+                                  },
+                                  make_expr = function(fp, dr_id){
+                                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_excel)
+                                    
+                                  },
+                                  read_expr = function(fp){read_excel(fp)})
+  
+  contaminated_details <- read_excel(contaminated_fp, sheet = "Media-Contaminants", col_types = "text") %>% 
+    clean_names("screaming_snake")
+  
+
+  
+  contaminated_details_ready <- contaminated_details %>% 
+    select(CLEANUP_SITE_ID, 
+           CONTAMINANT_TYPE:BEDROCK) %>% 
+    gather(MEDIA, CODE, GROUND_WATER:BEDROCK) %>%  
+    group_by(CLEANUP_SITE_ID) %>%  
+    nest() %>% 
+    mutate(CONTAMINANT_TYPE = map_chr(data, ~ pull(.x, CONTAMINANT_TYPE) %>% str_unique_lower),
+           CONTAMINANT_TYPE = case_when(
+             str_detect(CONTAMINANT_TYPE, ",") ~ "multiple contaminants",
+             TRUE ~ CONTAMINANT_TYPE
+           ),
+           CONTAMINATED_MEDIA = map_chr(data, ~ filter(.x, !is.na(CODE)) %>% pull(MEDIA) %>% str_unique_lower()))  %>% 
+    select(-data) 
+  
+  contaminated_sites_sf <- contaminated_load %>% 
+    clean_names(case = "screaming_snake") %>% 
+    transmute(CLEANUP_SITE_ID,
+              FILTER_CONTAMINATED = TRUE,
+              FILTER_CONTAMINATED_NAME = CLEANUP_SITE_NAME,
+              FILTER_CONTAMINATED_STATUS = str_to_lower(SITE_STATUS),
+              LATITUDE = as.double(LATITUDE),
+              LONGITUDE = as.double(LONGITUDE)) %>% 
+    left_join(contaminated_details_ready, by = "CLEANUP_SITE_ID") %>% 
+    rename(FILTER_CONTAMINATED_TYPE = CONTAMINANT_TYPE,
+           FILTER_CONTAMINATED_MEDIA = CONTAMINATED_MEDIA) %>% 
+    st_as_sf(coords = c("LONGITUDE","LATITUDE")) %>% 
+    st_set_crs(4326)
+  
+  contaminated_sites <- contaminated_sites_sf
+  
+  return(contaminated_sites)
+  
+
+}
+
 # COMMAND: MAKE_OFFICIAL_NAMES_SEATTLE----
 
 make_official_names_seattle <- function(){
