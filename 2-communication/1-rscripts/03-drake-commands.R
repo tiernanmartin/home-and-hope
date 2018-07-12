@@ -1891,6 +1891,39 @@ make_future_lightrail <- function(){
 
 }
 
+# COMMAND: MAKE_BROWNFIELD_SITES ----
+
+make_brownfield_sites <- function(){
+  
+  brownfield_fp <- here("1-data/2-external/BrownfieldsInventoryDataset.csv")
+  
+  brownfield_dr_id <- as_id("1fUdnvNaJtTNXNLvlCNlb9GWv_10jpkLm")
+  
+  brownfield_load <- make_or_read2(fp = brownfield_fp, dr_id = brownfield_dr_id, skip_get_expr = TRUE,
+                                  get_expr = function(fp){
+                                    
+                                    # source: https://fortress.wa.gov/ecy/tcpwebreporting/report.aspx
+                                    
+                                    
+                                  },
+                                  make_expr = function(fp, dr_id){
+                                    drive_read(dr_id = dr_id,.tempfile = FALSE,path = fp,read_fun = read_csv)
+                                    
+                                  },
+                                  read_expr = function(fp){read_csv(fp)})
+  
+  brownfield_sites_sf <- brownfield_load %>% 
+    clean_names(case = "screaming_snake") %>% 
+    st_as_sf(coords = c("LONGITUDE", "LATITUDE")) %>% 
+    st_set_crs(4326)
+    
+  brownfield_sites <- brownfield_sites_sf
+  
+  return(brownfield_sites)
+  
+
+}
+
 # COMMAND: MAKE_OFFICIAL_NAMES_SEATTLE----
 
 make_official_names_seattle <- function(){
