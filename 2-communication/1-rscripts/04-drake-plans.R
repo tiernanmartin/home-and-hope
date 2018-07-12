@@ -308,7 +308,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180705.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180712.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),
