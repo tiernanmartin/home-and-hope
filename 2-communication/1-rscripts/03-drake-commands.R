@@ -4389,6 +4389,30 @@ make_filters_proximity_lightrail <- function(parcel_sf_ready, future_lightrail){
   return(filters_proximity_transit)
    
 }
+# COMMAND: MAKE_FILTERS_BROWNFIELD_SITE ----
+make_filters_brownfield <- function(parcel_sf_ready, brownfield_sites){ 
+  
+  brownfield_ready <- brownfield_sites %>% 
+    transmute(FILTER_BROWNFIELD = TRUE,
+              FILTER_BROWNFIELD_NAME = str_trim(CLEANUP_SITE_NAME),
+              FILTER_BROWNFIELD_STATUS = str_to_lower(ECOLOGY_STATUS),
+              FILTER_BROWNFIELD_TYPE = str_to_lower(CONTAMINANT_TYPE)) %>% 
+    st_transform(2926)
+  
+  # note: as of 2018-07-11 there are no brownfield sites in King County,
+  # so this join doesn't actually result in any data from RHS being joined to LHS
+  
+  p_ready_brownfield <- parcel_sf_ready %>%  
+    st_join(brownfield_ready) %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc)
+  
+  
+  filters_brownfield <- p_ready_brownfield
+  
+  return(filters_brownfield)
+  
+}
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   

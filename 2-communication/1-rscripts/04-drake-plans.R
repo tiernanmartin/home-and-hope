@@ -207,6 +207,7 @@ filter_plan <- drake_plan(
   filters_eligibility_oz = make_filters_eligibility_oz(filters_census_tract),
   filters_parking = make_filters_parking(parcel_df_ready),
   filters_proximity_lightrail = make_filters_proximity_lightrail(parcel_sf_ready, future_lightrail),
+  filters_brownfield = make_filters_brownfield(parcel_sf_ready, brownfield_sites),
   filters = make_filters(parcel_ready, 
                          filters_census_tract, 
                          filters_zcta,
@@ -231,7 +232,8 @@ filter_plan <- drake_plan(
                          filters_eligibility_qct,
                          filters_eligibility_oz,
                          filters_parking,
-                         filters_proximity_lightrail)
+                         filters_proximity_lightrail,
+                         filters_brownfield)
 )
 
 helper_plan <- drake_plan(
