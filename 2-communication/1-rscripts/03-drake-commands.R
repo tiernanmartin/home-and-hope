@@ -4504,6 +4504,23 @@ make_filters_brownfield <- function(parcel_sf_ready, brownfield_sites){
   return(filters_brownfield)
   
 }
+# COMMAND: MAKE_FILTERS_CONTAMINATED_SITE ----
+make_filters_contaminated <- function(parcel_sf_ready, contaminated_sites){ 
+  
+  contaminated_ready <- st_transform(contaminated_sites, 2926) %>% 
+    st_buffer(set_units(10, "feet"))
+  
+  p_ready_contaminated <- parcel_sf_ready %>%  
+    st_join(contaminated_ready) %>% 
+    st_drop_geometry() %>% 
+    select_if(not_sfc) %>% 
+    select(-CLEANUP_SITE_ID)
+  
+  filters_contaminated <- p_ready_contaminated
+  
+  return(filters_contaminated)
+  
+}
 # COMMAND: MAKE_FILTERS ----
 make_filters <- function(parcel_ready, ...){
   
