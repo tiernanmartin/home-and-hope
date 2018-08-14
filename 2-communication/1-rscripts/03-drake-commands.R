@@ -265,9 +265,7 @@ make_parcel_lookup <- function(parcel_metadata_table, lu, present_use_recode){
 }
 
 # COMMAND: MAKE_NAME_RECODE_KEY ----
-make_name_recode_key <- function(...){
-  
-  trigger <- list(...)
+make_name_recode_key <- function(){ 
   
   recode_key_fp <- here("1-data/1-raw/name_recode_key.rda")
   
@@ -298,9 +296,7 @@ make_name_recode_key <- function(...){
 }
 
 # COMMAND: MAKE_PUBLIC_OWNER_NAME_CATEGORY_KEY ----
-make_public_owner_name_category_key<- function(trigger_public_owner_name_category_key){
-  
-  trigger <- trigger_public_owner_name_category_key
+make_public_owner_name_category_key<- function(){ 
   
   public_owner_name_category_key_fp <- here("1-data/1-raw/public_owner_name_category_key.rda")
   
@@ -317,9 +313,7 @@ make_public_owner_name_category_key<- function(trigger_public_owner_name_categor
 
 # COMMAND: MAKE_OTHER_EXEMPT_OWNER_NAME_CATEGORY_KEY ----------------------
 
-make_other_exempt_owner_name_category_key<- function(trigger_other_exempt_owner_name_category_key){
-  
-  trigger <- trigger_other_exempt_owner_name_category_key
+make_other_exempt_owner_name_category_key<- function(){
   
   other_exempt_owner_name_category_key_fp <- here("1-data/1-raw/other_exempt_owner_name_category_key.csv")
   
@@ -1628,9 +1622,7 @@ make_el_facilities <- function(){
 }
 
 # COMMAND: MAKE_OTHER_SUITABILITY_CHARACTERISTICS ----
-make_other_suitability_characteristics <- function(...){
-  
-  trigger <- list(...)
+make_other_suitability_characteristics <- function(){ 
   
   other_suitability_characteristics_fp <- here("1-data/1-raw/other_suitability_characteristic.rda")
   
@@ -2558,14 +2550,12 @@ make_owner_name_full <- function(...){
 make_owner_category <- function(owner_name_full, public_owner_name_category_key, other_exempt_owner_name_category_key){
   
   
-  loadd(owner_name_full, public_owner_name_category_key, other_exempt_owner_name_category_key)
-  
   
   # 1. join public owners
   # 2. join other tax exempt (regex) and remove duplicates
   # 3. case_when() to condense owners whose names show up in public and other tax exempt
   
-  category_types <- tibble(OWNER_CATEGORY = c("federal","state","county","city","special purpose district","housing authority","higher-education provider", "tribal","religious association","residential association","uncategorized")) %>% 
+  category_types <- tibble(OWNER_CATEGORY = c("federal","state","county","city","special purpose district","housing authority","regional transit authority", "higher-education provider", "tribal","religious association","residential association","uncategorized")) %>% 
     mutate(OWNER_CATEGORY_TYPE = case_when(
       OWNER_CATEGORY %in% "higher-education provider" ~ "uncertain",
       OWNER_CATEGORY %in% c("tribal","religious association","residential association","uncategorized") ~ "private",
@@ -2580,6 +2570,7 @@ make_owner_category <- function(owner_name_full, public_owner_name_category_key,
     semi_join(public_owner_name_category_key, by = "OWNER_NAME_FULL") %>% 
     pluck("PIN")
   
+  # ~10 minute operation
   owner_tax_exempt <- owner_public %>% 
     regex_left_join(other_exempt_owner_name_category_key, by = c(OWNER_NAME_FULL = "OWNER_NAME_FULL_OTHER")) %>% 
     group_by(PIN) %>% 
@@ -4835,11 +4826,9 @@ make_dd_dictionary_version <- function(dd_field_name_dev, version_string){
 
 # COMMAND: MAKE_DD_GOOGLE_DRIVE ----
 
-make_dd_google_drive <- function(trigger_dd_google_drive, ...){
-  
-  trigger <- trigger_dd_google_drive
-  
-  dd_gd <- reduce(list(...), left_join, by = "FIELD_NAME_DEV")
+make_dd_google_drive <- function(dd_field_name_dev, dd_field_format, dd_dictionary_version){
+   
+  dd_gd <- reduce(list(dd_field_name_dev, dd_field_format, dd_dictionary_version), left_join, by = "FIELD_NAME_DEV")
   
   sheet_key <- as_id("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0")
   

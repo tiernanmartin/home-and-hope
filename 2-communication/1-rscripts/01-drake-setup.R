@@ -33,5 +33,6 @@ library(tidyverse)
 options(httr_oob_default=TRUE,
         tigris_class = "sf",
         tigris_use_cache = TRUE) 
+pkgconfig::set_config("drake::strings_in_dots" = "literals")
 htmltools::tagList(rmarkdown::html_dependency_font_awesome())
 set.seed(98104)

@@ -1,14 +1,3 @@
-# MAKE PLANS: TRIGGERS ----
-
-triggers_plan <- drake_plan(
-  trigger_name_recode_key = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s"), 
-  trigger_public_owner_name_category_key = drive_get_datetime_modified("1Uhj9GcPP93hfGehK1dPmxgLbsAXxUOnHXY8PFSfMnRI"),
-  trigger_other_exempt_owner_name_category_key = drive_get_datetime_modified("1xRE5A2suzH_KcrrFpqdcX7fguFShokjFchm7khML6sQ"),
-  trigger_suit_other = drive_get_datetime_modified("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU"),
-  trigger_dd_google_drive = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"),
-  strings_in_dots = "literals"
-)
-
 # MAKE PLANS: PARCEL ----
 
 lookup_plan <- drake_plan( 
@@ -19,15 +8,26 @@ lookup_plan <- drake_plan(
   tax_reason = make_tax_reason(),
   present_use_recode = make_present_use_recode(), 
   parcel_lookup = make_parcel_lookup(parcel_metadata_table, lu, present_use_recode),
-  name_recode_key = make_name_recode_key(trigger_name_recode_key),
+  name_recode_key = target(
+    command = make_name_recode_key(),
+    trigger = trigger(
+      change = drive_get_datetime_modified("1aInQqXPK3tqrXKd80PXPugR8G7Nysz46tirCTAdKn6s")
+    )
+  ),
   owner_antijoin_names = make_owner_antijoin_names(),
-  public_owner_name_category_key = make_public_owner_name_category_key(trigger_public_owner_name_category_key),
-  other_exempt_owner_name_category_key = make_other_exempt_owner_name_category_key(trigger_other_exempt_owner_name_category_key)
-) %>% 
-  bind_rows(triggers_plan) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger())) 
+  public_owner_name_category_key = target(
+    command = make_public_owner_name_category_key(),
+    trigger = trigger(
+      change = drive_get_datetime_modified("1Uhj9GcPP93hfGehK1dPmxgLbsAXxUOnHXY8PFSfMnRI") 
+    )
+  ), 
+  other_exempt_owner_name_category_key = target(
+    command = make_other_exempt_owner_name_category_key(),
+    trigger = trigger(
+      change = drive_get_datetime_modified("1xRE5A2suzH_KcrrFpqdcX7fguFShokjFchm7khML6sQ")
+    )
+  ) 
+)
 
 parcel_plan <- drake_plan(
   pub_parcel = make_pub_parcel(),
@@ -44,10 +44,7 @@ parcel_plan <- drake_plan(
   parcel_env_ready = make_parcel_env_ready(env_restrictions),
   parcel_ready = make_parcel_ready(parcel_addr_ready, parcel_env_ready, join_list = list(parcel_acct_ready, parcel_sf_ready, parcel_df_ready)) 
 ) %>% 
-  bind_rows(lookup_plan) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger())) 
+  bind_plans(lookup_plan)
 
 
 # MAKE PLANS: EXTERNAL_DATA ----
@@ -68,7 +65,10 @@ external_data_plan <- drake_plan(
   mj_businesses_raw = make_mj_businesses_raw(),
   mj_businesses = make_mj_businesses(mj_businesses_raw = mj_businesses_raw),
   el_facilities = make_el_facilities(),
-  other_suitability_characteristics = make_other_suitability_characteristics(trigger_suit_other),
+  other_suitability_characteristics = target(
+    command = make_other_suitability_characteristics(),
+    trigger = trigger(change = drive_get_datetime_modified("1a-xqAjyCI3XITm9BxfTdw6UNyoG5r2UyacNzE4N60QU"))
+  ), 
   affordable_housing_subsidies_raw = make_affordable_housing_subsidies_raw(),
   affordable_housing_subsidies = make_affordable_housing_subsidies(affordable_housing_subsidies_raw = make_affordable_housing_subsidies),
   affordable_housing_properties_raw = make_affordable_housing_properties_raw(),
@@ -134,7 +134,7 @@ utilization_criteria_plan <-  drake_plan(
   util_criteria_utilization_ratio_bins = make_util_criteria_utilization_ratio_bins(),
   utilization_criteria = make_utilization_criteria(util_criteria_lot_size, util_criteria_utilization_ratio, util_criteria_utilization_ratio_bins)
 )
- 
+
 utilization_plan <- drake_plan(
   seattle_util_ratio = make_seattle_util_ratio(parcel_sf_ready, seattle_dev_cap),
   utilization_present = make_utilization_present(parcel_ready, building),
@@ -145,7 +145,7 @@ utilization_plan <- drake_plan(
 
 
 
-suit_util_plan <- bind_rows(
+suit_util_plan <- bind_plans(
   parcel_plan, 
   external_data_plan,
   development_assumptions_plan,
@@ -154,11 +154,7 @@ suit_util_plan <- bind_rows(
   building_plan,
   utilization_criteria_plan,
   utilization_plan 
-) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger())) 
-
+) 
 # MAKE PLANS: FILTERS AND HELPERS ----
 
 official_names_plan <- drake_plan(
@@ -249,15 +245,12 @@ helper_plan <- drake_plan(
   
 )
 
-filter_helper_plan <- bind_rows(
+filter_helper_plan <- bind_plans(
   suit_util_plan,
   owner_plan,
   filter_plan,
   helper_plan
-) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger())) 
+)
 
 # MAKE PLANS: INVENTORY_PLAN ----
 
@@ -268,10 +261,7 @@ inventory_plan <- drake_plan(
   inventory_suitable_point = make_inventory_suitable_point(inventory_suitable)
   
 ) %>% 
-  bind_rows(filter_helper_plan) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger()))
+  bind_plans(filter_helper_plan)
 
 # MAKE PLANS: DOCUMENTATION ----
 
@@ -280,19 +270,19 @@ data_dictionary_plan <- drake_plan(
   dd_field_name_dev = make_dd_field_name_dev(inventory), 
   dd_field_format = make_dd_field_format(inventory),
   dd_data_source = make_dd_data_source(),
-  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.3"),
-  dd_google_drive = make_dd_google_drive(trigger_dd_google_drive, dd_field_name_dev, dd_field_format, dd_dictionary_version),
+  dd_dictionary_version = make_dd_dictionary_version(dd_field_name_dev, "v0.3.1"),
+  dd_google_drive = target(
+    command = make_dd_google_drive(dd_field_name_dev, dd_field_format, dd_dictionary_version),
+    trigger = trigger(change = drive_get_datetime_modified("1EAjo_iL_wibBQUqZ9hvE1My6by4ip57b-dWB8mzmhN0"))
+  ),
   dd = make_dd(dd_google_drive), 
   strings_in_dots = "literals"
 ) 
 
-documentation_plan <- bind_rows(
+documentation_plan <- bind_plans(
   inventory_plan,
   data_dictionary_plan
-) %>%  
-  mutate(trigger = if_else(str_detect(target, "trigger"),
-                           "always",
-                           drake::default_trigger()))
+) 
 
 # MAKE PLANS: EXPORT ----
 
@@ -308,7 +298,7 @@ export_plan <- drake_plan(
   write_inventory_shp(inventory_suitable_point, file_out(here("1-data/4-ready/inventory_suitable_point.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_poly.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_poly.shp"))),
   c(file_out(here("1-data/4-ready/inventory_suitable_point.EXTN")), file_in(here("1-data/4-ready/inventory_suitable_point.shp"))),
-  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180712.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
+  zip_pithy(file_out(here("1-data/4-ready/site-inventory-20180814.zip")), c(file_in(here("1-data/4-ready/data_dictionary.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.csv")),
                                                                             file_in(here("1-data/4-ready/inventory_table.rda")),
                                                                             file_in(here("1-data/4-ready/inventory_table.xlsx")),
@@ -323,12 +313,9 @@ export_plan <- drake_plan(
                                                                             file_in(here("1-data/4-ready/inventory_suitable_point.dbf")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_point.prj")),
                                                                             file_in(here("1-data/4-ready/inventory_suitable_point.shx"))
-                                                                            ))
+  ))
 ) %>% 
   evaluate_plan(wildcard = "EXTN", values = c("dbf", "prj", "shx")) %>% 
   modify_at("target", drake_here) %>% 
-  bind_rows(documentation_plan) %>% 
-  mutate(trigger = if_else(str_detect(target, "trigger")| target %in% c("dd_dictionary_version"),
-                           "always",
-                           drake::default_trigger())) 
-  
+  bind_plans(documentation_plan) 
+

@@ -15,8 +15,7 @@ source(here("2-communication/1-rscripts/03-drake-commands.R"))
 source(here("2-communication/1-rscripts/04-drake-plans.R"))
 
 # MAKE PLANS ---- 
-
-make(triggers_plan)
+ 
 make(lookup_plan)
 make(parcel_plan) 
 make(suit_util_plan) 
