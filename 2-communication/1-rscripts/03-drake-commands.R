@@ -2606,6 +2606,10 @@ make_owner_category <- function(owner_name_full, public_owner_name_category_key,
       TRUE ~ FALSE
     )
     ) %>% 
+    mutate(OWNER_CATEGORY = case_when(
+      OWNER_CATEGORY %in% "special purpose district" ~ "special purpose district (including utilities)",  # relable "special purpose district"
+      TRUE ~ OWNER_CATEGORY
+    )) %>% 
     select(PIN,
            OWNER_NAME_FULL,
            OWNER_PUBLIC_LGL,
