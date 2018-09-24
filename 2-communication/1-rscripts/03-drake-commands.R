@@ -2295,6 +2295,16 @@ make_official_names_special_purpose_districts <- function(){
   
 }
 
+# COMMAND: MAKE_OFFICIAL_NAMES_SCHOOL_DISTRICTS ----
+
+make_official_names_school_districts <- function(official_names_special_purpose_districts){
+  
+  official_names_school_districts <- official_names_special_purpose_districts %>% 
+    filter(str_detect(NAME, "School"))
+  
+  return(official_names_school_districts)
+  
+}
 
 # COMMAND: MAKE_OFFICIAL_NAMES_HIGHER-ED_PROVIDERS----
 
@@ -2368,16 +2378,16 @@ make_official_names_hospitals <- function(){
 }
 # COMMAND: MAKE_OFFICIAL_NAMES ----
 
-make_official_names <- function(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_higher_ed_providers, official_names_hospitals){
+make_official_names <- function(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_school_districts, official_names_higher_ed_providers, official_names_hospitals){
   
   # loadd(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_special_purpose_districts,official_names_higher_ed_providers)
   
   
   names_list <- list(official_names_seattle, official_names_kc, official_names_wa, official_names_us, official_names_places, official_names_tribes, official_names_housing_authorities, official_names_regional_transit_authorities, official_names_special_purpose_districts, official_names_higher_ed_providers, official_names_hospitals)
   
-  category_list <- list("city","county","state", "federal", "city", "tribal", "housing authority", "regional transit authority","special purpose district", "higher-education provider", "hospital")
+  category_list <- list("city","county","state", "federal", "city", "tribal", "housing authority", "regional transit authority","special purpose district", "school district", "higher-education provider", "hospital")
   
-  org_list <- list("City of Seattle", "King County", "Washington State", "U.S. Federal Government", NA_character_, NA_character_, NA_character_, "Sound Transit", NA_character_, NA_character_, NA_character_)
+  org_list <- list("City of Seattle", "King County", "Washington State", "U.S. Federal Government", NA_character_, NA_character_, NA_character_, "Sound Transit", NA_character_, NA_character_, NA_character_, NA_character_)
   
   make_category <- function(name, category){mutate(name, CATEGORY = category)}
   
@@ -2555,7 +2565,7 @@ make_owner_category <- function(owner_name_full, public_owner_name_category_key,
   # 2. join other tax exempt (regex) and remove duplicates
   # 3. case_when() to condense owners whose names show up in public and other tax exempt
   
-  category_types <- tibble(OWNER_CATEGORY = c("federal","state","county","city","special purpose district","housing authority","regional transit authority", "higher-education provider", "tribal","religious association","residential association","uncategorized")) %>% 
+  category_types <- tibble(OWNER_CATEGORY = c("federal","state","county","city","special purpose district","housing authority","regional transit authority","school district", "higher-education provider", "tribal","religious association","residential association","uncategorized")) %>% 
     mutate(OWNER_CATEGORY_TYPE = case_when(
       OWNER_CATEGORY %in% "higher-education provider" ~ "uncertain",
       OWNER_CATEGORY %in% c("tribal","religious association","residential association","uncategorized") ~ "private",

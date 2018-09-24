@@ -9,10 +9,8 @@ tmp <- inventory_suitable %>%
   select(-geom_pt) %>% 
   transmute(PIN,
             PROPERTY_NAME,
-            OWNER_NAME,
-            OWNER_CATEGORY,
-            TYPE = factor(case_when(OWNER_CATEGORY %in% c("non-profit","uncategorized") ~ OWNER_CATEGORY, 
-                                    TRUE ~ "public")),
+            OWNER_NAME_FULL,
+            OWNER_CATEGORY, 
             SUIT_PARCEL_AREA,
             SUIT_PARCEL_AREA_RATIO,
             PRESENT_USE,
@@ -38,5 +36,5 @@ mapview(tmp, zcol = "UTILIZATION_MODERATE", legend = TRUE)
 
 inventory_suitable %>% 
   st_set_geometry("geometry") %>% 
-  transmute(PIN,FILTER_PROXIMITY_TRANSIT = as.character(FILTER_PROXIMITY_TRANSIT), TRANSIT_STOP_TYPES, HELPERS_URL_PARCEL_VIEWER) %>% 
+  transmute(PIN,FILTER_PROXIMITY_TRANSIT = as.character(FILTER_PROXIMITY_TRANSIT), TRANSIT_STOP_TYPES_QTR, HELPERS_URL_PARCEL_VIEWER) %>% 
   mapview(zcol = "FILTER_PROXIMITY_TRANSIT", legend = TRUE)
